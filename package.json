@@ -1,9 +1,37 @@
 {
   "name": "page-save",
-  "version": "2026.04.01.0000",
+  "version": "0.1.0",
   "type": "module",
-  "private": true,
-  "description": "Chrome Extension + Node.js bridge to save browser tab content to disk for Claude Code.",
+  "license": "CC0-1.0",
+  "description": "Give AI coding assistants the ability to save and read any browser tab — even sites that block automation. Chrome Extension + Node.js bridge.",
+  "bin": {
+    "page-save": "./bin/page-save.js"
+  },
+  "files": [
+    "src/",
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "ai",
+    "browser",
+    "page-save",
+    "mhtml",
+    "chrome-extension",
+    "websocket",
+    "csp-bypass"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/somethinlike/page-save.git"
+  },
+  "author": "Ryan Wills <somethinlike@gmail.com>",
   "scripts": {
     "serve": "node --experimental-strip-types src/server.ts serve",
     "tabs": "node --experimental-strip-types src/server.ts tabs",
