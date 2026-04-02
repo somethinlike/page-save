@@ -123,6 +123,7 @@ async function handleCliCommand(
 
   // If tab is a pattern, resolve it first
   let tabId: number | undefined;
+  let warning: string | undefined;
   if (tab !== undefined) {
     const numericId = Number(tab);
     if (!Number.isNaN(numericId) && String(numericId) === tab) {
@@ -146,7 +147,7 @@ async function handleCliCommand(
         return;
       }
       if (matches.length > 1) {
-        respond({ warning: `${matches.length} tabs match '${tab}'. Using: ${matches[0].title} (${matches[0].url})` });
+        warning = `${matches.length} tabs match '${tab}'. Using: ${matches[0].title} (${matches[0].url})`;
       }
       tabId = matches[0].tabId;
     }
@@ -169,19 +170,21 @@ async function handleCliCommand(
   if (action === 'save-page' && response.result && 'data' in response.result) {
     const saveResult = response.result as SavePageResult;
     const filePath = writeMhtml(saveResult.data, saveResult.title, output || SAVE_DIR);
-    respond({ path: filePath, title: saveResult.title, url: saveResult.url });
+    respond({ path: filePath, title: saveResult.title, url: saveResult.url, ...(warning && { warning }) });
     return;
   }
 
   // Handle get-text: return text directly
   if (action === 'get-text' && response.result && 'text' in response.result) {
     const textResult = response.result as GetTextResult;
-    respond({ text: textResult.text, title: textResult.title, url: textResult.url });
+    respond({ text: textResult.text, title: textResult.title, url: textResult.url, ...(warning && { warning }) });
     return;
   }
 
   // list-tabs or other: return as-is
-  respond(response as unknown as Record<string, unknown>);
+  const responseObj = response as unknown as Record<string, unknown>;
+  if (warning) responseObj.warning = warning;
+  respond(responseObj);
 }
 
 function sendToExtension(
@@ -248,7 +251,7 @@ async function runCli(action: string, tab?: string, output?: string): Promise<vo
 
   const command: Record<string, unknown> = {
     type: 'cli-command',
-    action: action === 'save' ? 'save-page' : action === 'text' ? 'get-text' : action,
+    action: action === 'save' ? 'save-page' : action === 'text' ? 'get-text' : action === 'tabs' ? 'list-tabs' : action,
     tab,
     output,
   };
@@ -259,7 +262,7 @@ async function runCli(action: string, tab?: string, output?: string): Promise<vo
     const msg = JSON.parse(raw.toString());
 
     if (msg.warning) {
-      console.log(`Warning: ${msg.warning}`);
+      console.error(`Warning: ${msg.warning}`);
     }
 
     if (msg.error) {

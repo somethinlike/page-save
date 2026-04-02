@@ -1,31 +1,35 @@
 const WS_URL = 'ws://localhost:7224';
-const RECONNECT_BASE_MS = 1000;
-const RECONNECT_MAX_MS = 30000;
+const RECONNECT_ALARM = 'page-save-reconnect';
+const KEEPALIVE_ALARM = 'page-save-keepalive';
 
 let ws = null;
-let reconnectDelay = RECONNECT_BASE_MS;
-let reconnectTimer = null;
 
 // --- WebSocket Connection ---
 
 function connect() {
-  if (ws && ws.readyState === WebSocket.OPEN) return;
+  // Guard against multiple concurrent connection attempts
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
 
+  let socket;
   try {
-    ws = new WebSocket(WS_URL);
+    socket = new WebSocket(WS_URL);
   } catch (err) {
     console.error('[page-save] WebSocket constructor error:', err);
     scheduleReconnect();
     return;
   }
 
-  ws.onopen = () => {
+  ws = socket;
+
+  socket.onopen = () => {
     console.log('[page-save] Connected to bridge server');
-    reconnectDelay = RECONNECT_BASE_MS;
-    ws.send(JSON.stringify({ type: 'extension-hello' }));
+    chrome.alarms.clear(RECONNECT_ALARM);
+    chrome.alarms.create(KEEPALIVE_ALARM, { periodInMinutes: 0.4 });
+    // Use local ref to avoid race with a second connect() overwriting ws
+    socket.send(JSON.stringify({ type: 'extension-hello' }));
   };
 
-  ws.onmessage = async (event) => {
+  socket.onmessage = async (event) => {
     let msg;
     try {
       msg = JSON.parse(event.data);
@@ -36,25 +40,23 @@ function connect() {
     await handleMessage(msg);
   };
 
-  ws.onclose = () => {
+  socket.onclose = () => {
     console.log('[page-save] Disconnected from bridge server');
-    ws = null;
+    if (ws === socket) ws = null;
+    chrome.alarms.clear(KEEPALIVE_ALARM);
     scheduleReconnect();
   };
 
-  ws.onerror = (err) => {
+  socket.onerror = (err) => {
     console.error('[page-save] WebSocket error:', err);
-    // onclose will fire after this, triggering reconnect
   };
 }
 
 function scheduleReconnect() {
-  if (reconnectTimer) clearTimeout(reconnectTimer);
-  reconnectTimer = setTimeout(() => {
-    reconnectTimer = null;
-    connect();
-  }, reconnectDelay);
-  reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS);
+  // chrome.alarms survives service worker suspension (setTimeout does not)
+  // Minimum alarm period is 0.5 minutes (30 seconds) for production extensions,
+  // but unpacked extensions allow shorter. Use 0.25 min (~15 seconds).
+  chrome.alarms.create(RECONNECT_ALARM, { periodInMinutes: 0.25 });
 }
 
 function send(msg) {
@@ -64,6 +66,18 @@ function send(msg) {
   }
   ws.send(JSON.stringify(msg));
 }
+
+// --- Alarm Handler (reconnect + keepalive) ---
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === RECONNECT_ALARM) {
+    console.log('[page-save] Reconnect alarm fired, attempting connection...');
+    connect();
+  }
+  if (alarm.name === KEEPALIVE_ALARM) {
+    // Just waking the service worker to keep WebSocket alive — no action needed
+  }
+});
 
 // --- Message Handlers ---
 
@@ -207,6 +221,18 @@ chrome.commands.onCommand.addListener(async (command) => {
   }
 });
 
-// --- Initialize ---
+// --- Lifecycle: ensure connection on startup/install ---
+
+chrome.runtime.onStartup.addListener(() => {
+  console.log('[page-save] Chrome started, connecting...');
+  connect();
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  console.log('[page-save] Extension installed/updated, connecting...');
+  connect();
+});
+
+// --- Initialize (handles service worker wakeup) ---
 
 connect();
