@@ -1,0 +1,20 @@
+{
+  "name": "page-save",
+  "version": "2026.04.01.0000",
+  "type": "module",
+  "private": true,
+  "description": "Chrome Extension + Node.js bridge to save browser tab content to disk for Claude Code.",
+  "scripts": {
+    "serve": "node --experimental-strip-types src/server.ts serve",
+    "tabs": "node --experimental-strip-types src/server.ts tabs",
+    "save": "node --experimental-strip-types src/server.ts save",
+    "text": "node --experimental-strip-types src/server.ts text"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.8.0"
+  }
+}
