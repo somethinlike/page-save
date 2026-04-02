@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "generatedAt": "2026-04-02T13:22:55.556Z",
+  "files": {
+    "extension/service-worker.js": {
+      "filePath": "extension/service-worker.js",
+      "mtimeMs": 1775130693515.471,
+      "size": 6585
+    },
+    "src/file-writer.ts": {
+      "filePath": "src/file-writer.ts",
+      "mtimeMs": 1775089702183.4673,
+      "size": 1095
+    },
+    "src/server.ts": {
+      "filePath": "src/server.ts",
+      "mtimeMs": 1775130462920.736,
+      "size": 10177
+    },
+    "src/types.ts": {
+      "filePath": "src/types.ts",
+      "mtimeMs": 1775089684435.9016,
+      "size": 956
+    }
+  }
+}
