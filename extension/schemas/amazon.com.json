@@ -25,7 +25,6 @@
         "rating": { "selector": "#acrPopover span.a-icon-alt", "type": "text" },
         "reviewCount": { "selector": "#acrCustomerReviewText", "type": "text" },
         "features": { "selector": "#feature-bullets ul li span.a-list-item", "type": "textAll" },
-        "description": { "selector": "#productDescription p", "type": "text" },
         "brand": { "selector": "#bylineInfo", "type": "text" }
       }
     }

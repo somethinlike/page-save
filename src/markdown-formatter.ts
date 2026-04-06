@@ -29,6 +29,37 @@ function escapeCell(value: unknown): string {
 }
 
 /**
+ * Strip tracking parameters from URLs, keeping only the meaningful path.
+ * Amazon: /dp/ASIN → amazon.com/dp/ASIN
+ * Others: strip query params except essential ones (q, keyword, searchTerm, etc.)
+ */
+function cleanSourceUrl(url: string, domain: string): string {
+  try {
+    const parsed = new URL(url);
+
+    // Amazon: just show /dp/ASIN or /s?k=term
+    if (domain === 'amazon.com') {
+      const dpMatch = parsed.pathname.match(/\/dp\/([A-Z0-9]{10})/);
+      if (dpMatch) return `amazon.com/dp/${dpMatch[1]}`;
+      const searchParam = parsed.searchParams.get('k');
+      if (searchParam) return `amazon.com/s?k=${searchParam}`;
+    }
+
+    // For other domains, keep hostname + path, strip most query params
+    const keepParams = ['q', 'k', 'keyword', 'searchTerm', 'query', 'kw', 'Ntt', 'd', 'st'];
+    const cleanParams = new URLSearchParams();
+    for (const key of keepParams) {
+      const val = parsed.searchParams.get(key);
+      if (val) cleanParams.set(key, val);
+    }
+    const qs = cleanParams.toString();
+    return `${parsed.hostname}${parsed.pathname}${qs ? '?' + qs : ''}`;
+  } catch {
+    return url.slice(0, 120);
+  }
+}
+
+/**
  * Format a structured extraction result as markdown.
  * Uses a table for repeating items (search results), key-value pairs for single items.
  */
@@ -39,7 +70,7 @@ export function formatStructuredMarkdown(result: StructuredResult): string {
   lines.push(`# ${result.title}`);
   lines.push('');
   lines.push(`Extracted: ${timestamp} | Schema: ${result.domain}/${result.pageType} v${result.schemaVersion}`);
-  lines.push(`Source: ${result.url}`);
+  lines.push(`Source: ${cleanSourceUrl(result.url, result.domain)}`);
   lines.push('');
 
   const { data } = result;

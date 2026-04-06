@@ -42,7 +42,6 @@ const BUILTIN_SCHEMAS = [
           rating: { selector: '#acrPopover span.a-icon-alt', type: 'text' },
           reviewCount: { selector: '#acrCustomerReviewText', type: 'text' },
           features: { selector: '#feature-bullets ul li span.a-list-item', type: 'textAll' },
-          description: { selector: '#productDescription p', type: 'text' },
           brand: { selector: '#bylineInfo', type: 'text' },
         },
       },
@@ -443,6 +442,102 @@ function buildExtractionScript(pageDef) {
   };
 }
 
+// --- Post-Processing: domain-specific data normalization ---
+
+/**
+ * Normalize common patterns across all domains.
+ */
+function normalizeCommon(item) {
+  for (const [key, val] of Object.entries(item)) {
+    if (typeof val === 'string') {
+      item[key] = val.trim();
+    }
+  }
+  return item;
+}
+
+/**
+ * Domain-specific post-processors.
+ * Each function receives the extracted item and the URL, mutates in place.
+ */
+const POST_PROCESSORS = {
+  'amazon.com': (item, url) => {
+    // Rating: "4.6 out of 5 stars" → "4.6"
+    if (item.rating && typeof item.rating === 'string') {
+      const m = item.rating.match(/([\d.]+)\s+out of/);
+      if (m) item.rating = m[1];
+    }
+
+    // Review count: "(21,300)" or "(21.3K)" → number string
+    if (item.reviewCount && typeof item.reviewCount === 'string') {
+      let rc = item.reviewCount.replace(/[()]/g, '').trim();
+      if (rc.endsWith('K')) {
+        rc = String(Math.round(parseFloat(rc) * 1000));
+      } else {
+        rc = rc.replace(/,/g, '');
+      }
+      item.reviewCount = rc;
+    }
+
+    // Brand: "Visit the BulkSupplements Store" → "BulkSupplements"
+    if (item.brand && typeof item.brand === 'string') {
+      item.brand = item.brand
+        .replace(/^Visit the\s+/i, '')
+        .replace(/\s+Store$/i, '')
+        .trim();
+    }
+
+    // Features: truncate each bullet to first sentence (before first period + space)
+    if (Array.isArray(item.features)) {
+      item.features = item.features.map(f => {
+        const firstSentence = f.match(/^[^.]+\./);
+        return firstSentence ? firstSentence[0] : f.slice(0, 100);
+      });
+    }
+
+    // Add clean URL from ASIN if available
+    if (item.asin) {
+      item.url = 'amazon.com/dp/' + item.asin;
+    } else {
+      // Extract ASIN from page URL for product pages
+      const asinMatch = url.match(/\/dp\/([A-Z0-9]{10})/);
+      if (asinMatch) {
+        item.asin = asinMatch[1];
+        item.url = 'amazon.com/dp/' + asinMatch[1];
+      }
+    }
+
+    // Price: ensure it starts with $ and is clean
+    if (item.price && typeof item.price === 'string') {
+      const priceMatch = item.price.match(/\$[\d,.]+/);
+      if (priceMatch) item.price = priceMatch[0];
+    }
+
+    return item;
+  },
+};
+
+/**
+ * Apply post-processing to extraction results.
+ */
+function postProcess(domain, data, url) {
+  const processor = POST_PROCESSORS[domain];
+  if (!processor && !data) return data;
+
+  if (data.items) {
+    data.items = data.items.map(item => {
+      normalizeCommon(item);
+      if (processor) processor(item, url);
+      return item;
+    });
+  } else if (data.item) {
+    normalizeCommon(data.item);
+    if (processor) processor(data.item, url);
+  }
+
+  return data;
+}
+
 /**
  * Run structured extraction on a tab.
  * @param {number} tabId
@@ -462,7 +557,12 @@ async function extractStructured(tabId, url) {
       world: 'ISOLATED',
     });
 
-    const data = results?.[0]?.result;
+    let data = results?.[0]?.result;
+
+    // Apply domain-specific post-processing (normalize ratings, clean brands, etc.)
+    if (data && !data.error) {
+      data = postProcess(schema.domain, data, url);
+    }
 
     return {
       type: 'structured',
