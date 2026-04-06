@@ -374,6 +374,15 @@ async function handleBatchExtractFromPanel(tabIds) {
   });
 }
 
+// --- Action Click → Open Side Panel ---
+
+chrome.action.onClicked.addListener(async (tab) => {
+  await chrome.sidePanel.open({ windowId: tab.windowId });
+});
+
+// Enable the side panel to be openable
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+
 // --- Initialize (handles service worker wakeup) ---
 
 globalThis.extractors.loadSchemas();
