@@ -2,8 +2,9 @@
 
 export interface WsRequest {
   id: string;
-  action: 'list-tabs' | 'save-page' | 'get-text';
+  action: 'list-tabs' | 'save-page' | 'get-text' | 'get-structured' | 'get-structured-batch';
   tabId?: number;
+  tabIds?: number[];
 }
 
 export interface TabInfo {
@@ -30,9 +31,51 @@ export interface GetTextResult {
   url: string;
 }
 
+// --- Structured extraction types ---
+
+export interface StructuredResult {
+  type: 'structured';
+  domain: string;
+  pageType: string;
+  schemaVersion: string;
+  url: string;
+  title: string;
+  tabId?: number;
+  data: {
+    items?: Record<string, unknown>[];
+    item?: Record<string, unknown>;
+    count?: number;
+    error?: string;
+  };
+}
+
+export interface RawResult {
+  type: 'raw';
+  domain: string;
+  url: string;
+  title: string;
+  tabId?: number;
+  text: string;
+}
+
+export interface ErrorResult {
+  type: 'error';
+  tabId: number;
+  error: string;
+}
+
+export type ExtractionResult = StructuredResult | RawResult | ErrorResult;
+
+export interface BatchResult {
+  results: ExtractionResult[];
+  count: number;
+}
+
+// --- Response types ---
+
 export interface WsResponseSuccess {
   id: string;
-  result: TabListResult | SavePageResult | GetTextResult;
+  result: TabListResult | SavePageResult | GetTextResult | StructuredResult | RawResult | BatchResult;
 }
 
 export interface WsResponseError {
@@ -43,8 +86,9 @@ export interface WsResponseError {
 export type WsResponse = WsResponseSuccess | WsResponseError;
 
 export interface CliCommand {
-  action: 'serve' | 'tabs' | 'save' | 'text';
+  action: 'serve' | 'tabs' | 'save' | 'text' | 'extract' | 'extract-all';
   tab?: string;
+  domain?: string;
   output?: string;
 }
 

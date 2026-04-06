@@ -1,3 +1,5 @@
+importScripts('extractors.js');
+
 const WS_URL = 'ws://localhost:7224';
 const RECONNECT_ALARM = 'page-save-reconnect';
 const KEEPALIVE_ALARM = 'page-save-keepalive';
@@ -96,6 +98,12 @@ async function handleMessage(msg) {
       case 'get-text':
         await handleGetText(id, tabId);
         break;
+      case 'get-structured':
+        await handleGetStructured(id, tabId);
+        break;
+      case 'get-structured-batch':
+        await handleGetStructuredBatch(id, msg.tabIds);
+        break;
       default:
         send({ id, error: `Unknown action: ${action}` });
     }
@@ -167,6 +175,46 @@ async function handleGetText(id, tabId) {
   });
 }
 
+async function handleGetStructured(id, tabId) {
+  const resolvedId = await resolveTabId(tabId);
+  const tab = await chrome.tabs.get(resolvedId);
+
+  const result = await globalThis.extractors.extractStructured(resolvedId, tab.url);
+  result.title = tab.title || 'untitled';
+
+  send({ id, result });
+}
+
+async function handleGetStructuredBatch(id, tabIds) {
+  if (!Array.isArray(tabIds) || tabIds.length === 0) {
+    send({ id, error: 'tabIds must be a non-empty array' });
+    return;
+  }
+
+  const results = [];
+  // Process in parallel with concurrency limit of 5 to avoid overwhelming Chrome
+  const CONCURRENCY = 5;
+  for (let i = 0; i < tabIds.length; i += CONCURRENCY) {
+    const batch = tabIds.slice(i, i + CONCURRENCY);
+    const batchResults = await Promise.all(
+      batch.map(async (tid) => {
+        try {
+          const tab = await chrome.tabs.get(tid);
+          const result = await globalThis.extractors.extractStructured(tid, tab.url);
+          result.title = tab.title || 'untitled';
+          result.tabId = tid;
+          return result;
+        } catch (err) {
+          return { tabId: tid, type: 'error', error: err.message || String(err) };
+        }
+      })
+    );
+    results.push(...batchResults);
+  }
+
+  send({ id, result: { results, count: results.length } });
+}
+
 // --- Blob to Base64 ---
 
 async function blobToBase64(blob) {
@@ -233,6 +281,100 @@ chrome.runtime.onInstalled.addListener(() => {
   connect();
 });
 
+// --- Side Panel Message Handlers ---
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'get-schema-domains') {
+    const domains = Array.from(globalThis.extractors.schemaRegistry.keys());
+    sendResponse({ domains });
+    return false;
+  }
+
+  if (msg.type === 'get-status') {
+    sendResponse({ connected: ws && ws.readyState === WebSocket.OPEN });
+    return false;
+  }
+
+  if (msg.type === 'batch-extract') {
+    // Async handler — must return true to keep sendResponse channel open
+    handleBatchExtractFromPanel(msg.tabIds)
+      .then((result) => sendResponse(result))
+      .catch((err) => sendResponse({ error: err.message || String(err) }));
+    return true;
+  }
+
+  return false;
+});
+
+/**
+ * Handle batch extraction triggered from the side panel.
+ * Extracts data from all specified tabs using the schema engine,
+ * then sends results to the Node.js server for session writing.
+ */
+async function handleBatchExtractFromPanel(tabIds) {
+  if (!tabIds || tabIds.length === 0) {
+    return { error: 'No tabs selected' };
+  }
+
+  // Extract from all tabs
+  const CONCURRENCY = 5;
+  const results = [];
+  for (let i = 0; i < tabIds.length; i += CONCURRENCY) {
+    const batch = tabIds.slice(i, i + CONCURRENCY);
+    const batchResults = await Promise.all(
+      batch.map(async (tid) => {
+        try {
+          const tab = await chrome.tabs.get(tid);
+          const result = await globalThis.extractors.extractStructured(tid, tab.url);
+          result.title = tab.title || 'untitled';
+          result.tabId = tid;
+          return result;
+        } catch (err) {
+          return { tabId: tid, type: 'error', error: err.message || String(err) };
+        }
+      })
+    );
+    results.push(...batchResults);
+  }
+
+  // Send to Node.js server for session writing
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    return { error: 'Node.js server not connected. Start the page-save server.' };
+  }
+
+  return new Promise((resolve) => {
+    const id = crypto.randomUUID();
+    const timeout = setTimeout(() => {
+      resolve({ error: 'Server did not respond within 30 seconds.' });
+    }, 30000);
+
+    // Listen for the response
+    const handler = (event) => {
+      let response;
+      try { response = JSON.parse(event.data); } catch { return; }
+      if (response.id !== id) return;
+
+      ws.removeEventListener('message', handler);
+      clearTimeout(timeout);
+
+      if (response.error) {
+        resolve({ error: response.error });
+      } else {
+        resolve(response.result || response);
+      }
+    };
+    ws.addEventListener('message', handler);
+
+    // Send extraction results to server for session writing
+    ws.send(JSON.stringify({
+      type: 'panel-save-session',
+      id,
+      results,
+    }));
+  });
+}
+
 // --- Initialize (handles service worker wakeup) ---
 
+globalThis.extractors.loadSchemas();
 connect();

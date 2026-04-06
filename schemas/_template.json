@@ -1,0 +1,30 @@
+{
+  "domain": "example.com",
+  "version": "1",
+  "description": "Brief description of what this schema extracts",
+  "pages": {
+    "pageName": {
+      "urlPattern": "/path-pattern",
+      "description": "What type of page this matches",
+      "container": "CSS selector for repeating item containers (optional — omit for single-item pages)",
+      "fields": {
+        "fieldName": {
+          "selector": "CSS selector targeting the element",
+          "type": "text | textAll | attribute | exists",
+          "attribute": "HTML attribute name (only when type is 'attribute' and selector is a CSS selector, not @attr shorthand)"
+        }
+      }
+    }
+  },
+  "_fieldTypeReference": {
+    "text": "innerText of the first matching element, trimmed",
+    "textAll": "Array of innerText from all matching elements",
+    "attribute": "Value of an HTML attribute. Use '@attrName' as selector shorthand on the container, or a CSS selector + 'attribute' key for nested elements",
+    "exists": "Boolean — true if selector matches at least one element"
+  },
+  "_selectorNotes": {
+    "@data-asin": "Shorthand: '@' prefix reads an attribute directly from the container element itself",
+    "h2 a span": "Standard CSS selector scoped to each container (or document if no container)",
+    "#productTitle": "ID selectors work best for single-item product pages"
+  }
+}
