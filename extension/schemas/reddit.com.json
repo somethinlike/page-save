@@ -1,18 +1,18 @@
 {
   "domain": "reddit.com",
-  "version": "1",
-  "description": "Reddit post and comment pages with lazy-loaded comments",
+  "version": "2",
+  "description": "Reddit posts — rewrites to old.reddit.com for stable, server-rendered DOM",
   "pages": {
     "post": {
       "urlPattern": "/comments/",
-      "description": "Post with comment thread (scrolls to load all comments)",
-      "scrollDepth": "full",
+      "description": "Post with full comment thread via old.reddit.com",
+      "urlRewrite": { "from": "reddit.com", "to": "old.reddit.com" },
+      "scrollDepth": "none",
+      "container": ".comment",
       "fields": {
-        "title": { "selector": "h1", "type": "text" },
-        "postBody": { "selector": "[data-testid=\"post-container\"] [data-click-id=\"text\"]", "type": "text" },
-        "subreddit": { "selector": "[data-testid=\"subreddit-name\"]", "type": "text" },
-        "author": { "selector": "[data-testid=\"post-author-link\"]", "type": "text" },
-        "score": { "selector": "[data-testid=\"post-score\"]", "type": "text" }
+        "author": { "selector": ".author", "type": "text" },
+        "score": { "selector": ".score.unvoted", "type": "text" },
+        "body": { "selector": ".usertext-body .md", "type": "text" }
       }
     }
   }

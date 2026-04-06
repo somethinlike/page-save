@@ -293,19 +293,19 @@ const BUILTIN_SCHEMAS = [
   },
   {
     domain: 'reddit.com',
-    version: '1',
-    description: 'Reddit post and comment pages with lazy-loaded comments',
+    version: '2',
+    description: 'Reddit posts — rewrites to old.reddit.com for stable, server-rendered DOM',
     pages: {
       post: {
         urlPattern: '/comments/',
-        description: 'Post with comment thread (scrolls to load all comments)',
-        scrollDepth: 'full',
+        description: 'Post with full comment thread via old.reddit.com',
+        urlRewrite: { from: 'reddit.com', to: 'old.reddit.com' },
+        scrollDepth: 'none',
+        container: '.comment',
         fields: {
-          title: { selector: 'h1', type: 'text' },
-          postBody: { selector: '[data-testid="post-container"] [data-click-id="text"]', type: 'text' },
-          subreddit: { selector: '[data-testid="subreddit-name"]', type: 'text' },
-          author: { selector: '[data-testid="post-author-link"]', type: 'text' },
-          score: { selector: '[data-testid="post-score"]', type: 'text' },
+          author: { selector: '.author', type: 'text' },
+          score: { selector: '.score.unvoted', type: 'text' },
+          body: { selector: '.usertext-body .md', type: 'text' },
         },
       },
     },
@@ -480,6 +480,14 @@ function normalizeCommon(item) {
  * Each function receives the extracted item and the URL, mutates in place.
  */
 const POST_PROCESSORS = {
+  'reddit.com': (item, url) => {
+    // Clean up score text: "X points" → "X"
+    if (item.score && typeof item.score === 'string') {
+      const m = item.score.match(/(-?[\d]+)/);
+      if (m) item.score = m[1];
+    }
+    return item;
+  },
   'amazon.com': (item, url) => {
     // Rating: "4.6 out of 5 stars" → "4.6"
     if (item.rating && typeof item.rating === 'string') {
@@ -616,6 +624,37 @@ async function extractStructured(tabId, url) {
 
   if (match) {
     const { schema, page, pageType } = match;
+
+    // URL rewrite: navigate tab to a different URL before extracting
+    // (e.g., reddit.com → old.reddit.com for server-rendered content)
+    if (page.urlRewrite) {
+      const currentUrl = new URL(url);
+      if (currentUrl.hostname === page.urlRewrite.from || currentUrl.hostname === 'www.' + page.urlRewrite.from) {
+        const newUrl = url.replace(
+          /^(https?:\/\/)(www\.)?[^/]+/,
+          '$1' + page.urlRewrite.to
+        );
+        await chrome.tabs.update(tabId, { url: newUrl });
+        // Wait for page to load
+        await new Promise((resolve) => {
+          const listener = (tid, info) => {
+            if (tid === tabId && info.status === 'complete') {
+              chrome.tabs.onUpdated.removeListener(listener);
+              resolve();
+            }
+          };
+          chrome.tabs.onUpdated.addListener(listener);
+          // Safety timeout: 15 seconds
+          setTimeout(() => {
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }, 15000);
+        });
+        // Update url for the result metadata
+        const updatedTab = await chrome.tabs.get(tabId);
+        url = updatedTab.url || url;
+      }
+    }
 
     // Scroll to trigger lazy-loaded content if schema requests it
     if (page.scrollDepth && page.scrollDepth !== 'none') {
