@@ -291,6 +291,25 @@ const BUILTIN_SCHEMAS = [
       },
     },
   },
+  {
+    domain: 'reddit.com',
+    version: '1',
+    description: 'Reddit post and comment pages with lazy-loaded comments',
+    pages: {
+      post: {
+        urlPattern: '/comments/',
+        description: 'Post with comment thread (scrolls to load all comments)',
+        scrollDepth: 'full',
+        fields: {
+          title: { selector: 'h1', type: 'text' },
+          postBody: { selector: '[data-testid="post-container"] [data-click-id="text"]', type: 'text' },
+          subreddit: { selector: '[data-testid="subreddit-name"]', type: 'text' },
+          author: { selector: '[data-testid="post-author-link"]', type: 'text' },
+          score: { selector: '[data-testid="post-score"]', type: 'text' },
+        },
+      },
+    },
+  },
 ];
 
 /**
@@ -538,6 +557,54 @@ function postProcess(domain, data, url) {
   return data;
 }
 
+// --- Scroll-to-Load: trigger lazy content before extraction ---
+
+/**
+ * Inject a scroll script into the page to trigger lazy-loaded content.
+ * @param {number} tabId
+ * @param {string} scrollDepth - 'none', 'full', or 'pages:N'
+ * @returns {Promise<{ scrolled: number }>}
+ */
+async function scrollPage(tabId, scrollDepth) {
+  if (!scrollDepth || scrollDepth === 'none') return { scrolled: 0 };
+
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: async (mode) => {
+      const maxScrolls = mode === 'full' ? 30 : parseInt(mode.split(':')[1]) || 3;
+      let scrolled = 0;
+
+      for (let i = 0; i < maxScrolls; i++) {
+        const prevHeight = document.body.scrollHeight;
+        window.scrollTo(0, document.body.scrollHeight);
+
+        // Wait up to 2 seconds for new content to load
+        let loaded = false;
+        for (let w = 0; w < 20; w++) {
+          await new Promise(r => setTimeout(r, 100));
+          if (document.body.scrollHeight > prevHeight) {
+            loaded = true;
+            break;
+          }
+        }
+
+        scrolled++;
+
+        // In 'full' mode, stop when no new content loads
+        if (mode === 'full' && !loaded) break;
+      }
+
+      // Scroll back to top (clean state for user)
+      window.scrollTo(0, 0);
+      return { scrolled };
+    },
+    args: [scrollDepth],
+    world: 'ISOLATED',
+  });
+
+  return results?.[0]?.result || { scrolled: 0 };
+}
+
 /**
  * Run structured extraction on a tab.
  * @param {number} tabId
@@ -549,6 +616,11 @@ async function extractStructured(tabId, url) {
 
   if (match) {
     const { schema, page, pageType } = match;
+
+    // Scroll to trigger lazy-loaded content if schema requests it
+    if (page.scrollDepth && page.scrollDepth !== 'none') {
+      await scrollPage(tabId, page.scrollDepth);
+    }
 
     const results = await chrome.scripting.executeScript({
       target: { tabId },

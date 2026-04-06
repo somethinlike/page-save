@@ -1,0 +1,19 @@
+{
+  "domain": "reddit.com",
+  "version": "1",
+  "description": "Reddit post and comment pages with lazy-loaded comments",
+  "pages": {
+    "post": {
+      "urlPattern": "/comments/",
+      "description": "Post with comment thread (scrolls to load all comments)",
+      "scrollDepth": "full",
+      "fields": {
+        "title": { "selector": "h1", "type": "text" },
+        "postBody": { "selector": "[data-testid=\"post-container\"] [data-click-id=\"text\"]", "type": "text" },
+        "subreddit": { "selector": "[data-testid=\"subreddit-name\"]", "type": "text" },
+        "author": { "selector": "[data-testid=\"post-author-link\"]", "type": "text" },
+        "score": { "selector": "[data-testid=\"post-score\"]", "type": "text" }
+      }
+    }
+  }
+}
