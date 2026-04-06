@@ -565,6 +565,31 @@ function postProcess(domain, data, url) {
   return data;
 }
 
+// --- Navigation Helper ---
+
+/**
+ * Navigate a tab to a URL and wait for the page to fully load.
+ * @param {number} tabId
+ * @param {string} url
+ * @returns {Promise<void>}
+ */
+async function navigateAndWait(tabId, url) {
+  await chrome.tabs.update(tabId, { url });
+  await new Promise((resolve) => {
+    const listener = (tid, info) => {
+      if (tid === tabId && info.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    };
+    chrome.tabs.onUpdated.addListener(listener);
+    setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      resolve();
+    }, 15000);
+  });
+}
+
 // --- Scroll-to-Load: trigger lazy content before extraction ---
 
 /**
@@ -627,32 +652,27 @@ async function extractStructured(tabId, url) {
 
     // URL rewrite: navigate tab to a different URL before extracting
     // (e.g., reddit.com → old.reddit.com for server-rendered content)
+    // After extraction, navigates back to the original URL.
+    let originalUrl = null;
     if (page.urlRewrite) {
       const currentUrl = new URL(url);
-      if (currentUrl.hostname === page.urlRewrite.from || currentUrl.hostname === 'www.' + page.urlRewrite.from) {
+      const matchesFrom = currentUrl.hostname === page.urlRewrite.from
+        || currentUrl.hostname === 'www.' + page.urlRewrite.from;
+      const alreadyRewritten = currentUrl.hostname === page.urlRewrite.to
+        || currentUrl.hostname === 'www.' + page.urlRewrite.to;
+
+      if (matchesFrom) {
+        originalUrl = url; // save for restore after extraction
         const newUrl = url.replace(
           /^(https?:\/\/)(www\.)?[^/]+/,
           '$1' + page.urlRewrite.to
         );
-        await chrome.tabs.update(tabId, { url: newUrl });
-        // Wait for page to load
-        await new Promise((resolve) => {
-          const listener = (tid, info) => {
-            if (tid === tabId && info.status === 'complete') {
-              chrome.tabs.onUpdated.removeListener(listener);
-              resolve();
-            }
-          };
-          chrome.tabs.onUpdated.addListener(listener);
-          // Safety timeout: 15 seconds
-          setTimeout(() => {
-            chrome.tabs.onUpdated.removeListener(listener);
-            resolve();
-          }, 15000);
-        });
-        // Update url for the result metadata
+        await navigateAndWait(tabId, newUrl);
         const updatedTab = await chrome.tabs.get(tabId);
         url = updatedTab.url || url;
+      } else if (alreadyRewritten) {
+        // User is already on the rewritten domain (e.g., old.reddit.com)
+        // No navigation needed, no restore needed
       }
     }
 
@@ -675,12 +695,18 @@ async function extractStructured(tabId, url) {
       data = postProcess(schema.domain, data, url);
     }
 
+    // Restore original URL if we rewrote it (don't leave user on a different site)
+    if (originalUrl) {
+      // Fire and forget — don't await, extraction is done
+      navigateAndWait(tabId, originalUrl);
+    }
+
     return {
       type: 'structured',
       domain: schema.domain,
       pageType,
       schemaVersion: schema.version,
-      url,
+      url: originalUrl || url,
       data: data || { error: 'No result from extraction script' },
     };
   }
