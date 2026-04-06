@@ -1,0 +1,23 @@
+{
+  "domain": "walmart.com",
+  "version": "1",
+  "description": "Walmart product search results",
+  "pages": {
+    "search": {
+      "urlPattern": "/search?q=",
+      "description": "Search results listing page",
+      "container": "[data-item-id]",
+      "fields": {
+        "itemId": { "selector": "@data-item-id", "type": "attribute" },
+        "title": { "selector": "[data-automation-id=\"product-title\"]", "type": "text" },
+        "price": { "selector": "[data-automation-id=\"product-price\"]", "type": "text" },
+        "reviewCount": { "selector": "[data-testid=\"product-reviews\"]", "type": "text" },
+        "ratingAndReviews": { "selector": "[data-testid=\"product-ratings\"]", "type": "text" }
+      }
+    }
+  },
+  "_notes": {
+    "price": "Text contains prefix like 'current price $X.XX' — post-processing needed to extract numeric value",
+    "ratingAndReviews": "The rating stars element itself may return empty text. The parent element contains text like '4.8 out of 5 Stars. 1050 reviews' but CSS cannot select parent nodes. The reviewCount field captures the review number separately. Rating may need to be parsed from raw text fallback."
+  }
+}

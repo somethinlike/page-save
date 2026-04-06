@@ -1,0 +1,20 @@
+{
+  "domain": "ebay.com",
+  "version": "1",
+  "description": "eBay product search results",
+  "pages": {
+    "search": {
+      "urlPattern": "/sch/",
+      "description": "Search results listing page",
+      "container": ".s-card",
+      "fields": {
+        "title": { "selector": ".s-card__title", "type": "text" },
+        "price": { "selector": ".s-card__price", "type": "text" },
+        "condition": { "selector": ".s-card__subtitle-row .su-styled-text", "type": "text" }
+      }
+    }
+  },
+  "_notes": {
+    "promos": "First 1-2 cards are often 'Shop on eBay' promotional cards with no product data — consumers should filter these out"
+  }
+}

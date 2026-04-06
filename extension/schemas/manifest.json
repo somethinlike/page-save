@@ -1,5 +1,18 @@
 {
   "schemas": [
-    "amazon.com.json"
+    "amazon.com.json",
+    "walmart.com.json",
+    "ebay.com.json",
+    "target.com.json",
+    "bestbuy.com.json",
+    "newegg.com.json",
+    "homedepot.com.json",
+    "costco.com.json",
+    "etsy.com.json",
+    "microcenter.com.json",
+    "bhphotovideo.com.json",
+    "chewy.com.json",
+    "iherb.com.json",
+    "wayfair.com.json"
   ]
 }

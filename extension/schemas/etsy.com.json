@@ -1,0 +1,22 @@
+{
+  "domain": "etsy.com",
+  "version": "1",
+  "status": "experimental",
+  "description": "Etsy product search results (experimental/unverified — CAPTCHA blocked DOM probing, selectors based on historical knowledge)",
+  "pages": {
+    "search": {
+      "urlPattern": "/search?q=",
+      "description": "Search results listing page",
+      "container": "[data-listing-id]",
+      "fields": {
+        "listingId": { "selector": "@data-listing-id", "type": "attribute" },
+        "title": { "selector": "h3", "type": "text" },
+        "price": { "selector": ".currency-value", "type": "text" }
+      }
+    }
+  },
+  "_notes": {
+    "unverified": "This schema was NOT verified against live DOM — Etsy blocked probing with CAPTCHA. Selectors are based on historical Etsy DOM structure and may be outdated. Both [data-listing-id] and .v2-listing-card returned 0 matches during probing.",
+    "fallback": "Raw text fallback is strongly recommended until this schema can be verified"
+  }
+}

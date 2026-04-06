@@ -1,0 +1,21 @@
+{
+  "domain": "bestbuy.com",
+  "version": "1",
+  "description": "Best Buy product search results",
+  "pages": {
+    "search": {
+      "urlPattern": "/site/searchpage.jsp",
+      "description": "Search results listing page",
+      "container": ".product-list-item",
+      "fields": {
+        "title": { "selector": "a.product-list-item-link", "type": "text" },
+        "price": { "selector": ".priceView-customer-price span", "type": "text" },
+        "ratingText": { "selector": ".c-reviews", "type": "text" }
+      }
+    }
+  },
+  "_notes": {
+    "ratingText": "Rating and review count are mixed in a single text node like 'Rating X.X out of 5 stars with N reviews'. Parse numerically from this string.",
+    "price": "The priceView-customer-price span selector may need adjustment if Best Buy changes their class naming"
+  }
+}

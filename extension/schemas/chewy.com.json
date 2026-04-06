@@ -1,0 +1,31 @@
+{
+  "domain": "chewy.com",
+  "version": "1",
+  "description": "Chewy product search and category browse results",
+  "pages": {
+    "search": {
+      "urlPattern": "/s?query=",
+      "description": "Search results listing page",
+      "container": ".kib-product-card",
+      "fields": {
+        "title": { "selector": ".kib-product-title__text", "type": "text" },
+        "price": { "selector": "[data-testid=\"kib-product-price\"]", "type": "text" },
+        "rating": { "selector": ".kib-product-rating__label", "type": "text" }
+      }
+    },
+    "category": {
+      "urlPattern": "/b/",
+      "description": "Category browse page",
+      "container": ".kib-product-card",
+      "fields": {
+        "title": { "selector": ".kib-product-title__text", "type": "text" },
+        "price": { "selector": "[data-testid=\"kib-product-price\"]", "type": "text" },
+        "rating": { "selector": ".kib-product-rating__label", "type": "text" }
+      }
+    }
+  },
+  "_notes": {
+    "price": "Price text may be duplicated like '$79.99 Chewy Price$79.99' — parse the first dollar amount",
+    "rating": "The .kib-product-rating__label element text or aria-label contains 'Rated X.X out of 5 stars'"
+  }
+}

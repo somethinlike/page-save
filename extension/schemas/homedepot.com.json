@@ -1,0 +1,19 @@
+{
+  "domain": "homedepot.com",
+  "version": "1",
+  "description": "Home Depot product search results",
+  "pages": {
+    "search": {
+      "urlPattern": "/s/",
+      "description": "Search results listing page",
+      "container": ".product-pod",
+      "fields": {
+        "title": { "selector": "[data-testid=\"product-header\"]", "type": "text" },
+        "price": { "selector": ".price", "type": "text" }
+      }
+    }
+  },
+  "_notes": {
+    "price": "Price is split across multiple child elements (dollars, cents, unit). The .price selector concatenates all inner text, producing something like '$99.00'. May include per-unit pricing."
+  }
+}

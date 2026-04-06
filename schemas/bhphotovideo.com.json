@@ -1,0 +1,28 @@
+{
+  "domain": "bhphotovideo.com",
+  "version": "1",
+  "status": "experimental",
+  "description": "B&H Photo product search results (experimental — no reliable data-testid or semantic selectors found during probing)",
+  "pages": {
+    "search": {
+      "urlPattern": "/c/search?q=",
+      "description": "Search results page",
+      "container": "a[href*=\"/c/product/\"]",
+      "fields": {
+        "title": { "selector": "span", "type": "text" }
+      }
+    },
+    "browse": {
+      "urlPattern": "/c/browse/",
+      "description": "Category browse page",
+      "container": "a[href*=\"/c/product/\"]",
+      "fields": {
+        "title": { "selector": "span", "type": "text" }
+      }
+    }
+  },
+  "_notes": {
+    "domStructure": "B&H's DOM had no data-selenium, data-testid, or semantic class names on product card containers during probing. Product links (a[href*='/c/product/']) are the most reliable anchor. Parent cards contain title and price as plain text but lack distinguishing selectors for individual fields.",
+    "fallback": "Raw text fallback is recommended — structured extraction will be limited to title only"
+  }
+}

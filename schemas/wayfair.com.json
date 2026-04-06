@@ -1,0 +1,21 @@
+{
+  "domain": "wayfair.com",
+  "version": "1",
+  "status": "experimental",
+  "description": "Wayfair product search results (experimental — container selectors based on data-hb-id attributes which may change)",
+  "pages": {
+    "search": {
+      "urlPattern": "/keyword.php?keyword=",
+      "description": "Search results listing page",
+      "container": "a[href*=\"/pdp/\"]",
+      "fields": {
+        "title": { "selector": "span", "type": "text" },
+        "rating": { "selector": "[aria-label*=\"Rated\"]", "type": "attribute", "attribute": "aria-label" }
+      }
+    }
+  },
+  "_notes": {
+    "domStructure": "Products found via a[href*='/pdp/'] links. Cards use [data-hb-id='BoxV3'] containers but these may change. Title and price are in the link text. Rating is available via aria-label on star elements.",
+    "fallback": "Structured extraction is limited — raw text fallback recommended for full data"
+  }
+}

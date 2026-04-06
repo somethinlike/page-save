@@ -1,0 +1,21 @@
+{
+  "domain": "costco.com",
+  "version": "1",
+  "status": "experimental",
+  "description": "Costco product search results (experimental — MUI-based DOM, containers may be unreliable)",
+  "pages": {
+    "search": {
+      "urlPattern": "/s?keyword=",
+      "description": "Search results listing page",
+      "container": "a[href*=\".product.\"]",
+      "fields": {
+        "title": { "selector": "span", "type": "text" },
+        "price": { "selector": "span", "type": "textAll" }
+      }
+    }
+  },
+  "_notes": {
+    "domStructure": "Costco uses MUI components with generated class names. MuiCard-root returned 0 matches during probing. Product links (a[href*='.product.']) are the most reliable anchor. Title and price are in sibling spans within parent MuiBox-root divs. The textAll on span captures all text fragments which include title, price like '$16.99', and review count like '(573)'. Post-processing required to separate fields.",
+    "fallback": "If container returns 0 matches or fields are empty, raw text fallback is recommended"
+  }
+}

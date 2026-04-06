@@ -48,6 +48,250 @@ const BUILTIN_SCHEMAS = [
       },
     },
   },
+  {
+    domain: 'walmart.com',
+    version: '1',
+    description: 'Walmart product search results',
+    pages: {
+      search: {
+        urlPattern: '/search?q=',
+        description: 'Search results listing page',
+        container: '[data-item-id]',
+        fields: {
+          itemId: { selector: '@data-item-id', type: 'attribute' },
+          title: { selector: '[data-automation-id="product-title"]', type: 'text' },
+          price: { selector: '[data-automation-id="product-price"]', type: 'text' },
+          reviewCount: { selector: '[data-testid="product-reviews"]', type: 'text' },
+          ratingAndReviews: { selector: '[data-testid="product-ratings"]', type: 'text' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'ebay.com',
+    version: '1',
+    description: 'eBay product search results',
+    pages: {
+      search: {
+        urlPattern: '/sch/',
+        description: 'Search results listing page',
+        container: '.s-card',
+        fields: {
+          title: { selector: '.s-card__title', type: 'text' },
+          price: { selector: '.s-card__price', type: 'text' },
+          condition: { selector: '.s-card__subtitle-row .su-styled-text', type: 'text' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'target.com',
+    version: '1',
+    status: 'experimental',
+    description: 'Target product search results (experimental — uses :has() selector, React portal DOM structure)',
+    pages: {
+      search: {
+        urlPattern: '/s?searchTerm=',
+        description: 'Search results listing page',
+        container: 'li:has([data-test="productCardVariantMini"])',
+        fields: {
+          title: { selector: '[data-test="productCardVariantMiniTitle"] a', type: 'text' },
+          price: { selector: '[data-test="@web/Price/PriceAndPromoMinimal"]', type: 'text' },
+          rating: { selector: '[data-test="ratings"]', type: 'text' },
+          reviews: { selector: '[data-test="rating-count"]', type: 'text' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'bestbuy.com',
+    version: '1',
+    description: 'Best Buy product search results',
+    pages: {
+      search: {
+        urlPattern: '/site/searchpage.jsp',
+        description: 'Search results listing page',
+        container: '.product-list-item',
+        fields: {
+          title: { selector: 'a.product-list-item-link', type: 'text' },
+          price: { selector: '.priceView-customer-price span', type: 'text' },
+          ratingText: { selector: '.c-reviews', type: 'text' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'newegg.com',
+    version: '1',
+    description: 'Newegg product search results',
+    pages: {
+      search: {
+        urlPattern: '/p/pl?d=',
+        description: 'Search results listing page',
+        container: '.item-cell',
+        fields: {
+          title: { selector: '.item-title', type: 'text' },
+          price: { selector: '.price-current', type: 'text' },
+          shipping: { selector: '.price-ship', type: 'text' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'homedepot.com',
+    version: '1',
+    description: 'Home Depot product search results',
+    pages: {
+      search: {
+        urlPattern: '/s/',
+        description: 'Search results listing page',
+        container: '.product-pod',
+        fields: {
+          title: { selector: '[data-testid="product-header"]', type: 'text' },
+          price: { selector: '.price', type: 'text' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'costco.com',
+    version: '1',
+    status: 'experimental',
+    description: 'Costco product search results (experimental — MUI-based DOM, containers may be unreliable)',
+    pages: {
+      search: {
+        urlPattern: '/s?keyword=',
+        description: 'Search results listing page',
+        container: 'a[href*=".product."]',
+        fields: {
+          title: { selector: 'span', type: 'text' },
+          price: { selector: 'span', type: 'textAll' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'etsy.com',
+    version: '1',
+    status: 'experimental',
+    description: 'Etsy product search results (experimental/unverified — CAPTCHA blocked DOM probing, selectors based on historical knowledge)',
+    pages: {
+      search: {
+        urlPattern: '/search?q=',
+        description: 'Search results listing page',
+        container: '[data-listing-id]',
+        fields: {
+          listingId: { selector: '@data-listing-id', type: 'attribute' },
+          title: { selector: 'h3', type: 'text' },
+          price: { selector: '.currency-value', type: 'text' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'microcenter.com',
+    version: '1',
+    description: 'Micro Center product search results',
+    pages: {
+      search: {
+        urlPattern: '/search/search_results.aspx',
+        description: 'Search results listing page',
+        container: '.product_wrapper',
+        fields: {
+          title: { selector: '.productClickItemV2', type: 'attribute', attribute: 'data-name' },
+          price: { selector: '.price > span', type: 'text' },
+          sku: { selector: '.sku', type: 'text' },
+          rating: { selector: '.rating', type: 'text' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'bhphotovideo.com',
+    version: '1',
+    status: 'experimental',
+    description: 'B&H Photo product search results (experimental — no reliable data-testid or semantic selectors found during probing)',
+    pages: {
+      search: {
+        urlPattern: '/c/search?q=',
+        description: 'Search results page',
+        container: 'a[href*="/c/product/"]',
+        fields: {
+          title: { selector: 'span', type: 'text' },
+        },
+      },
+      browse: {
+        urlPattern: '/c/browse/',
+        description: 'Category browse page',
+        container: 'a[href*="/c/product/"]',
+        fields: {
+          title: { selector: 'span', type: 'text' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'chewy.com',
+    version: '1',
+    description: 'Chewy product search and category browse results',
+    pages: {
+      search: {
+        urlPattern: '/s?query=',
+        description: 'Search results listing page',
+        container: '.kib-product-card',
+        fields: {
+          title: { selector: '.kib-product-title__text', type: 'text' },
+          price: { selector: '[data-testid="kib-product-price"]', type: 'text' },
+          rating: { selector: '.kib-product-rating__label', type: 'text' },
+        },
+      },
+      category: {
+        urlPattern: '/b/',
+        description: 'Category browse page',
+        container: '.kib-product-card',
+        fields: {
+          title: { selector: '.kib-product-title__text', type: 'text' },
+          price: { selector: '[data-testid="kib-product-price"]', type: 'text' },
+          rating: { selector: '.kib-product-rating__label', type: 'text' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'iherb.com',
+    version: '1',
+    description: 'iHerb product search results',
+    pages: {
+      search: {
+        urlPattern: '/search?kw=',
+        description: 'Search results listing page',
+        container: '.product-cell',
+        fields: {
+          title: { selector: '[data-ga-product-name]', type: 'attribute', attribute: 'data-ga-product-name' },
+          brand: { selector: '[data-ga-product-brand]', type: 'attribute', attribute: 'data-ga-product-brand' },
+          price: { selector: '.price', type: 'text' },
+          reviewCount: { selector: '.rating-count', type: 'text' },
+        },
+      },
+    },
+  },
+  {
+    domain: 'wayfair.com',
+    version: '1',
+    status: 'experimental',
+    description: 'Wayfair product search results (experimental — container selectors based on data-hb-id attributes which may change)',
+    pages: {
+      search: {
+        urlPattern: '/keyword.php?keyword=',
+        description: 'Search results listing page',
+        container: 'a[href*="/pdp/"]',
+        fields: {
+          title: { selector: 'span', type: 'text' },
+          rating: { selector: '[aria-label*="Rated"]', type: 'attribute', attribute: 'aria-label' },
+        },
+      },
+    },
+  },
 ];
 
 /**

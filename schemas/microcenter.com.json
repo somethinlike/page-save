@@ -1,0 +1,22 @@
+{
+  "domain": "microcenter.com",
+  "version": "1",
+  "description": "Micro Center product search results",
+  "pages": {
+    "search": {
+      "urlPattern": "/search/search_results.aspx",
+      "description": "Search results listing page",
+      "container": ".product_wrapper",
+      "fields": {
+        "title": { "selector": ".productClickItemV2", "type": "attribute", "attribute": "data-name" },
+        "price": { "selector": ".price > span", "type": "text" },
+        "sku": { "selector": ".sku", "type": "text" },
+        "rating": { "selector": ".rating", "type": "text" }
+      }
+    }
+  },
+  "_notes": {
+    "price": "Text includes prefix 'Our price' followed by newline and dollar amount like '$349.99'. Parse the numeric value.",
+    "rating": "Rating text may be mixed with stock information — extract the numeric rating value"
+  }
+}

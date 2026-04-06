@@ -1,0 +1,22 @@
+{
+  "domain": "iherb.com",
+  "version": "1",
+  "description": "iHerb product search results",
+  "pages": {
+    "search": {
+      "urlPattern": "/search?kw=",
+      "description": "Search results listing page",
+      "container": ".product-cell",
+      "fields": {
+        "title": { "selector": "[data-ga-product-name]", "type": "attribute", "attribute": "data-ga-product-name" },
+        "brand": { "selector": "[data-ga-product-brand]", "type": "attribute", "attribute": "data-ga-product-brand" },
+        "price": { "selector": ".price", "type": "text" },
+        "reviewCount": { "selector": ".rating-count", "type": "text" }
+      }
+    }
+  },
+  "_notes": {
+    "reviewCount": "Text is a plain number like '31,497' — may include comma formatting",
+    "price": "Extracted from card text — first $XX.XX pattern. The .price selector may need adjustment if iHerb uses a different class."
+  }
+}

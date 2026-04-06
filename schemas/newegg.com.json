@@ -1,0 +1,17 @@
+{
+  "domain": "newegg.com",
+  "version": "1",
+  "description": "Newegg product search results",
+  "pages": {
+    "search": {
+      "urlPattern": "/p/pl?d=",
+      "description": "Search results listing page",
+      "container": ".item-cell",
+      "fields": {
+        "title": { "selector": ".item-title", "type": "text" },
+        "price": { "selector": ".price-current", "type": "text" },
+        "shipping": { "selector": ".price-ship", "type": "text" }
+      }
+    }
+  }
+}

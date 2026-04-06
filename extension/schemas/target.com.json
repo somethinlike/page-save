@@ -1,0 +1,23 @@
+{
+  "domain": "target.com",
+  "version": "1",
+  "status": "experimental",
+  "description": "Target product search results (experimental — uses :has() selector, React portal DOM structure)",
+  "pages": {
+    "search": {
+      "urlPattern": "/s?searchTerm=",
+      "description": "Search results listing page",
+      "container": "li:has([data-test=\"productCardVariantMini\"])",
+      "fields": {
+        "title": { "selector": "[data-test=\"productCardVariantMiniTitle\"] a", "type": "text" },
+        "price": { "selector": "[data-test=\"@web/Price/PriceAndPromoMinimal\"]", "type": "text" },
+        "rating": { "selector": "[data-test=\"ratings\"]", "type": "text" },
+        "reviews": { "selector": "[data-test=\"rating-count\"]", "type": "text" }
+      }
+    }
+  },
+  "_notes": {
+    "reactPortals": "Target uses React portals — product card content is rendered outside the grid wrapper DOM. The :has() selector requires modern Chrome (105+). If container returns 0 matches, fall back to raw text extraction.",
+    "price": "data-test value includes the @ symbol literally — this is Target's internal naming convention"
+  }
+}
