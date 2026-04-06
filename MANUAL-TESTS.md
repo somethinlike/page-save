@@ -1,9 +1,9 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.04.01
+**Updated:** 2026.04.06
 
 ## Prerequisites
-- Chrome with extension loaded (Developer mode, Load unpacked from `extension/`)
-- Node.js server running: `npm run serve`
+- Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
+- Node.js server: `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/server.ts serve`
 - Extension badge should not show errors
 
 ---
@@ -11,7 +11,7 @@
 ## 1. Setup & Connectivity
 
 ### 1.1 Server Start
-- [ ] Run `npm run serve` — should print "Server listening on port 7224"
+- [ ] Run the serve command — should print "Server listening on port 7224"
 - [ ] No errors on startup
 
 ### 1.2 Extension Load
@@ -23,6 +23,7 @@
 ### 1.3 Extension Connects
 - [ ] With server running, inspect service worker (click "service worker" link on extension card)
 - [ ] Console shows "[page-save] Connected to bridge server"
+- [ ] Console shows "[extractors] Loaded built-in schema: amazon.com v2" (and 13 others)
 - [ ] Server terminal shows "Chrome extension connected"
 
 ### 1.4 Reconnection
@@ -36,103 +37,191 @@
 
 ### 2.1 Basic Tab Listing
 - [ ] Open 3+ tabs (Wikipedia, Reddit, any other)
-- [ ] Run `npm run tabs` — should print table with ID, Title, URL columns
+- [ ] Run `page-save tabs` — should print table with ID, Title, URL columns
 - [ ] All open tabs appear (chrome:// tabs are filtered out)
 - [ ] Tab IDs are numeric
 
 ---
 
-## 3. Save Page
+## 3. Save Page (Legacy MHTML)
 
 ### 3.1 Save by URL Pattern
 - [ ] Open a Wikipedia article
-- [ ] Run `npm run save -- --tab wikipedia`
+- [ ] Run `page-save save --tab wikipedia`
 - [ ] Should print "Saved: C:\Users\somet\Documents\saved-pages\<title>-<timestamp>.mhtml"
 - [ ] File exists at that path
-- [ ] Open the .mhtml file in Chrome — should render the Wikipedia article with images
+- [ ] Open the .mhtml file in Chrome — should render the article with images
 
 ### 3.2 Save Protected Site (Reddit)
 - [ ] Open a Reddit post with comments (logged in)
-- [ ] Run `npm run save -- --tab reddit`
+- [ ] Run `page-save save --tab reddit`
 - [ ] MHTML file is saved successfully
 - [ ] Open in Chrome — verify comments and authenticated content are present
 
 ### 3.3 Save Active Tab (No --tab Flag)
 - [ ] Click on a specific tab to make it active
-- [ ] Run `npm run save`
+- [ ] Run `page-save save`
 - [ ] Should save the currently active tab
-- [ ] Verify correct tab was saved by checking title in output
 
-### 3.4 Save with Custom Output Path
-- [ ] Run `npm run save -- --tab wikipedia --out C:\Users\somet\Documents`
-- [ ] File saved to the specified directory
-
-### 3.5 Multiple Tabs Match Pattern
+### 3.4 Multiple Tabs Match Pattern
 - [ ] Open two Reddit tabs
-- [ ] Run `npm run save -- --tab reddit`
+- [ ] Run `page-save save --tab reddit`
 - [ ] Should show a warning about multiple matches
 - [ ] Should use the first match and save successfully
 
 ---
 
-## 4. Extract Text
+## 4. Extract Text (Legacy)
 
 ### 4.1 Text from Normal Site
 - [ ] Open a Wikipedia article
-- [ ] Run `npm run text -- --tab wikipedia`
+- [ ] Run `page-save text --tab wikipedia`
 - [ ] Should print article text to stdout (no HTML tags)
-- [ ] Text is readable and complete
 
 ### 4.2 Text from Protected Site
 - [ ] Open a Reddit post
-- [ ] Run `npm run text -- --tab reddit`
+- [ ] Run `page-save text --tab reddit`
 - [ ] Should print post content and comments as plain text
-- [ ] No errors about CSP or content scripts
 
 ---
 
-## 5. Keyboard Shortcut
+## 5. Structured Extraction (v2)
 
-### 5.1 Alt+S Save
+### 5.1 Single Tab — Amazon Search
+- [ ] Open an Amazon search results page (e.g., search for "creatine")
+- [ ] Run `page-save extract --tab amazon`
+- [ ] Should print "Session saved: ...sessions/YYYY-MM-DD_HHmm"
+- [ ] Should print "Schema: amazon.com/search — N items"
+- [ ] Session folder contains `reduced/amazon.com-search-1.md`
+- [ ] Markdown file has table with: asin, price, prime, rating, reviewCount, title
+- [ ] All fields populated (not "—" for every row)
+- [ ] Title shows full product name, not just brand
+
+### 5.2 Batch — All Amazon Tabs
+- [ ] Open 3+ Amazon search result pages
+- [ ] Run `page-save extract-all --domain amazon`
+- [ ] Should print total count with structured/raw breakdown
+- [ ] Session folder has one .md file per page in `reduced/`
+- [ ] `manifest.json` lists all pages with type "structured"
+
+### 5.3 Raw Fallback — Unknown Domain
+- [ ] Open a page from a site without a schema (e.g., any small e-commerce site)
+- [ ] Run `page-save extract --tab <pattern>`
+- [ ] Should save to `raw/` folder with full text
+- [ ] `GUIDANCE.md` should appear in the `raw/` folder
+
+### 5.4 Mixed Batch — Amazon + Unknown
+- [ ] Open Amazon tabs AND a non-schema site tab
+- [ ] Run `page-save extract-all` (no --domain filter)
+- [ ] Session should have files in both `reduced/` and `raw/`
+- [ ] `manifest.json` shows correct type for each page
+
+### 5.5 Session Folder Structure
+- [ ] After any extraction, verify folder: `saved-pages/sessions/YYYY-MM-DD_HHmm/`
+- [ ] Contains `manifest.json`, `reduced/`, `raw/`
+- [ ] First session ever creates `saved-pages/README.md` (AI guidance master file)
+- [ ] Sessions with raw pages have `raw/GUIDANCE.md`
+
+### 5.6 Walmart Search
+- [ ] Open Walmart search results
+- [ ] Run `page-save extract --tab walmart`
+- [ ] Verify structured extraction with title, price, reviewCount fields
+
+### 5.7 eBay Search
+- [ ] Open eBay search results
+- [ ] Run `page-save extract --tab ebay`
+- [ ] Verify structured extraction with title, price, condition fields
+
+### 5.8 Best Buy Search
+- [ ] Open Best Buy search results
+- [ ] Run `page-save extract --tab bestbuy`
+- [ ] Verify structured extraction with title and price
+
+### 5.9 Newegg Search
+- [ ] Open Newegg search results
+- [ ] Run `page-save extract --tab newegg`
+- [ ] Verify structured extraction with title and price
+
+---
+
+## 6. Chrome Sidebar UI
+
+### 6.1 Open Sidebar
+- [ ] Click the Page Save extension icon in the toolbar
+- [ ] Side panel opens showing tab list
+
+### 6.2 Tab Grouping
+- [ ] Open tabs from multiple domains (Amazon, Walmart, eBay, etc.)
+- [ ] Sidebar groups tabs by domain
+- [ ] Domains sorted by tab count (most first)
+- [ ] Each domain shows schema badge: green "Schema" or yellow "Raw"
+
+### 6.3 Selection
+- [ ] Click a tab row checkbox — selects it
+- [ ] Click domain header checkbox — selects all tabs in that domain
+- [ ] "Select All" button selects everything
+- [ ] "Deselect All" clears everything
+- [ ] Save button shows count: "Save Selected (N)"
+
+### 6.4 Batch Save from Sidebar
+- [ ] Select multiple tabs across domains
+- [ ] Click "Save Selected"
+- [ ] Progress indicator appears
+- [ ] Completion shows session path with structured/raw count
+- [ ] Selection clears after save
+- [ ] Session folder created with correct files
+
+### 6.5 Connection Status
+- [ ] With server running: status shows "Connected" (green)
+- [ ] Stop server: status shows "Server offline" or "Disconnected" (red)
+- [ ] Restart server: status updates on next "Refresh"
+
+---
+
+## 7. Keyboard Shortcut
+
+### 7.1 Alt+S Save
 - [ ] Focus a browser tab with content
 - [ ] Press Alt+S
 - [ ] Extension badge briefly shows "..." then "OK"
 - [ ] Server terminal shows "Shortcut save: <path>"
-- [ ] File exists at the logged path
+- [ ] File exists at the logged path (MHTML, not session folder)
 
 ---
 
-## 6. Error Cases
+## 8. Error Cases
 
-### 6.1 No Matching Tab
-- [ ] Run `npm run save -- --tab nonexistent-site-xyz`
+### 8.1 No Matching Tab
+- [ ] Run `page-save save --tab nonexistent-site-xyz`
 - [ ] Should show "No tab matching" error with list of open tabs
 - [ ] Exit code 1
 
-### 6.2 Chrome:// Page
+### 8.2 Chrome:// Page
 - [ ] Make chrome://extensions the active tab
-- [ ] Run `npm run save`
+- [ ] Run `page-save save`
 - [ ] Should show error about restricted page types
 
-### 6.3 Extension Not Connected
+### 8.3 Extension Not Connected
 - [ ] Disable the extension in chrome://extensions
-- [ ] Run `npm run tabs`
-- [ ] Should show "Chrome extension not connected" error within 2 seconds
+- [ ] Run `page-save tabs`
+- [ ] Should show "Chrome extension not connected" error
 - [ ] Exit code 1
 
-### 6.4 Server Not Running
+### 8.4 Server Not Running
 - [ ] Stop the server
-- [ ] Run `npm run tabs`
+- [ ] Run `page-save tabs`
 - [ ] Should auto-start the server and complete the command
-- [ ] OR show clear error about how to start manually
 
 ---
 
-## 7. Claude Integration
+## 9. AI Integration
 
-### 7.1 End-to-End Workflow
-- [ ] In a Claude Code session, have Claude run the tabs command via Bash
-- [ ] Claude can parse the tab listing output
-- [ ] Have Claude save a Reddit page and read the MHTML file
-- [ ] Claude can extract and discuss the content from the saved file
-- [ ] Have Claude use the text command and work directly with the output
+### 9.1 Claude Code End-to-End
+- [ ] Have Claude run `extract-all --domain amazon` via Bash
+- [ ] Claude reads the session's `reduced/*.md` files
+- [ ] Claude can answer product comparison questions from the extracted data
+
+### 9.2 AI Readability
+- [ ] Point any AI at `saved-pages/` and ask it to summarize the latest session
+- [ ] AI reads `README.md` first, then session contents
+- [ ] AI can parse the markdown tables correctly
