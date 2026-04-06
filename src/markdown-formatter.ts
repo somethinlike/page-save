@@ -1,7 +1,7 @@
 import type { StructuredResult, RawResult } from './types.ts';
 
 /**
- * Format a timestamp for display in markdown headers.
+ * Format a timestamp for display in headers.
  */
 function formatTimestamp(): string {
   const now = new Date();
@@ -19,25 +19,12 @@ function formatTimestamp(): string {
 }
 
 /**
- * Escape pipe characters in markdown table cells.
- */
-function escapeCell(value: unknown): string {
-  if (value === null || value === undefined) return '—';
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  if (Array.isArray(value)) return value.join('; ');
-  return String(value).replace(/\|/g, '\\|').trim();
-}
-
-/**
  * Strip tracking parameters from URLs, keeping only the meaningful path.
- * Amazon: /dp/ASIN → amazon.com/dp/ASIN
- * Others: strip query params except essential ones (q, keyword, searchTerm, etc.)
  */
 function cleanSourceUrl(url: string, domain: string): string {
   try {
     const parsed = new URL(url);
 
-    // Amazon: just show /dp/ASIN or /s?k=term
     if (domain === 'amazon.com') {
       const dpMatch = parsed.pathname.match(/\/dp\/([A-Z0-9]{10})/);
       if (dpMatch) return `amazon.com/dp/${dpMatch[1]}`;
@@ -45,7 +32,6 @@ function cleanSourceUrl(url: string, domain: string): string {
       if (searchParam) return `amazon.com/s?k=${searchParam}`;
     }
 
-    // For other domains, keep hostname + path, strip most query params
     const keepParams = ['q', 'k', 'keyword', 'searchTerm', 'query', 'kw', 'Ntt', 'd', 'st'];
     const cleanParams = new URLSearchParams();
     for (const key of keepParams) {
@@ -59,9 +45,54 @@ function cleanSourceUrl(url: string, domain: string): string {
   }
 }
 
+// --- Compact Field Representations ---
+
+/** Short column header names — saves tokens on every row */
+const HEADER_MAP: Record<string, string> = {
+  reviewCount: 'reviews',
+  ratingText: 'rating',
+  ratingAndReviews: 'rating',
+  listingId: 'id',
+  itemId: 'id',
+  shipping: 'ship',
+  condition: 'cond',
+};
+
+/** Fields to drop when a derivable equivalent exists in the same row */
+const REDUNDANT_FIELDS: Record<string, string[]> = {
+  // If 'asin' exists, 'url' is derivable (amazon.com/dp/{asin})
+  asin: ['url'],
+};
+
 /**
- * Format a structured extraction result as markdown.
- * Uses a table for repeating items (search results), key-value pairs for single items.
+ * Format a cell value compactly.
+ */
+function formatCell(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'boolean') return value ? 'Y' : 'N';
+  if (Array.isArray(value)) return value.join('; ');
+  return String(value).trim();
+}
+
+/**
+ * Determine which fields to drop from a row based on redundancy rules.
+ */
+function getRedundantFields(fields: string[]): Set<string> {
+  const drop = new Set<string>();
+  for (const [present, redundant] of Object.entries(REDUNDANT_FIELDS)) {
+    if (fields.includes(present)) {
+      for (const r of redundant) {
+        if (fields.includes(r)) drop.add(r);
+      }
+    }
+  }
+  return drop;
+}
+
+/**
+ * Format a structured extraction result.
+ * Uses TSV for repeating items (search results) — more token-efficient than markdown tables.
+ * Uses compact key-value pairs for single items (product detail pages).
  */
 export function formatStructuredMarkdown(result: StructuredResult): string {
   const lines: string[] = [];
@@ -76,37 +107,43 @@ export function formatStructuredMarkdown(result: StructuredResult): string {
   const { data } = result;
 
   if (data.error) {
-    lines.push(`**Extraction error:** ${data.error}`);
+    lines.push(`Error: ${data.error}`);
     return lines.join('\n');
   }
 
   if (data.items && data.items.length > 0) {
-    // Table format for repeating items
-    const fields = Object.keys(data.items[0]);
+    // TSV format for repeating items — much more compact than markdown tables
+    const allFields = Object.keys(data.items[0]);
+    const redundant = getRedundantFields(allFields);
+    const fields = allFields.filter(f => !redundant.has(f));
 
-    // Header row
-    lines.push(`| # | ${fields.join(' | ')} |`);
-    lines.push(`|---|${fields.map(() => '---').join('|')}|`);
+    // Header row with compact names
+    const headers = fields.map(f => HEADER_MAP[f] || f);
+    lines.push(headers.join('\t'));
 
     // Data rows
-    for (let i = 0; i < data.items.length; i++) {
-      const item = data.items[i];
-      const cells = fields.map(f => escapeCell(item[f]));
-      lines.push(`| ${i + 1} | ${cells.join(' | ')} |`);
+    for (const item of data.items) {
+      const cells = fields.map(f => formatCell(item[f]));
+      lines.push(cells.join('\t'));
     }
 
     lines.push('');
-    lines.push(`Total: ${data.count} items`);
+    lines.push(`${data.count} items`);
   } else if (data.item) {
-    // Key-value format for single items
+    // Compact key-value for single items
+    const allFields = Object.keys(data.item);
+    const redundant = getRedundantFields(allFields);
+
     for (const [key, value] of Object.entries(data.item)) {
+      if (redundant.has(key)) continue;
+      const header = HEADER_MAP[key] || key;
       if (Array.isArray(value) && value.length > 0) {
-        lines.push(`**${key}:**`);
+        lines.push(`${header}:`);
         for (const v of value) {
           lines.push(`- ${v}`);
         }
       } else if (value !== null && value !== undefined) {
-        lines.push(`**${key}:** ${escapeCell(value)}`);
+        lines.push(`${header}: ${formatCell(value)}`);
       }
     }
   } else {

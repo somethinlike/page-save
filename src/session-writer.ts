@@ -153,6 +153,64 @@ function ensureMasterReadme(): void {
   }
 }
 
+// --- Cross-Page Deduplication ---
+// Removes duplicate items across search result pages. Same product appearing
+// on page 1 and page 3 only needs to appear once. Identified by unique key
+// fields (asin, listingId, itemId, sku, or title as fallback).
+
+/** Fields that can serve as unique identifiers for dedup, in priority order */
+const DEDUP_KEY_FIELDS = ['asin', 'listingId', 'itemId', 'sku'];
+
+/**
+ * Get a dedup key for an item. Returns the first non-null unique identifier,
+ * or the title as fallback.
+ */
+function getDedupKey(item: Record<string, unknown>): string | null {
+  for (const field of DEDUP_KEY_FIELDS) {
+    const val = item[field];
+    if (typeof val === 'string' && val.length > 0) return `${field}:${val}`;
+  }
+  // Fallback to title if no ID field exists
+  const title = item.title;
+  if (typeof title === 'string' && title.length > 0) return `title:${title}`;
+  return null;
+}
+
+/**
+ * Deduplicate items across all search result pages.
+ * Product detail pages (single item) are never deduped.
+ * Mutates the results in place — removes duplicate rows from data.items arrays.
+ * Returns the number of duplicates removed.
+ */
+function deduplicateResults(results: ExtractionResult[]): number {
+  const seen = new Set<string>();
+  let removed = 0;
+
+  for (const result of results) {
+    if (result.type !== 'structured') continue;
+    const { data } = result;
+
+    // Only dedup repeating-item pages (search results), not single-item pages
+    if (!data.items) continue;
+
+    const deduped: Record<string, unknown>[] = [];
+    for (const item of data.items) {
+      const key = getDedupKey(item);
+      if (key && seen.has(key)) {
+        removed++;
+        continue;
+      }
+      if (key) seen.add(key);
+      deduped.push(item);
+    }
+
+    data.items = deduped;
+    data.count = deduped.length;
+  }
+
+  return removed;
+}
+
 // --- Symbol Table (Interning) ---
 // Trades local CPU cycles for API token savings by replacing repeated
 // long strings with short ~XX references. Zero information loss —
@@ -282,7 +340,10 @@ export function writeSession(results: ExtractionResult[]): string {
   ensureMasterReadme();
   const session = createSession();
 
-  // Build symbol table and apply interning before writing files
+  // 1. Deduplicate across pages (same product on multiple search pages → keep first)
+  const dupsRemoved = deduplicateResults(results);
+
+  // 2. Build symbol table and apply interning
   const symbolTable = buildSymbolTable(results);
   applySymbols(results, symbolTable);
   writeRefsFile(session, symbolTable);
