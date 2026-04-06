@@ -363,13 +363,9 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
   try {
     socket = await connectToServer(PORT);
   } catch {
-    console.log('[page-save] Server not running. Starting...');
-    const started = await tryAutoStartServer();
-    if (!started) {
-      console.error('Error: Could not start page-save server on port 7224. Run: npm run serve');
-      process.exit(1);
-    }
-    socket = await connectToServer(PORT);
+    console.error('Error: page-save server not running on port 7224.');
+    console.error('Start it manually: page-save serve');
+    process.exit(1);
   }
 
   const actionMap: Record<string, string> = {

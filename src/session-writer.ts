@@ -153,6 +153,127 @@ function ensureMasterReadme(): void {
   }
 }
 
+// --- Symbol Table (Interning) ---
+// Trades local CPU cycles for API token savings by replacing repeated
+// long strings with short ~XX references. Zero information loss —
+// full values stored in refs.txt.
+
+interface SymbolTable {
+  /** symbol → original value */
+  entries: Map<string, string>;
+  /** original value → symbol (reverse lookup for replacement) */
+  reverse: Map<string, string>;
+}
+
+/** Fields eligible for interning in structured results */
+const INTERNABLE_FIELDS = ['title', 'url', 'brand'];
+
+/** Minimum string length to consider for interning */
+const MIN_INTERN_LENGTH = 20;
+
+/** Minimum occurrence count to trigger interning */
+const MIN_INTERN_COUNT = 2;
+
+/**
+ * Scan all structured results and build a symbol table for repeated values.
+ * Only interns values that appear 2+ times and are longer than 20 chars.
+ */
+function buildSymbolTable(results: ExtractionResult[]): SymbolTable {
+  // Count occurrences of each internable value
+  const counts = new Map<string, number>();
+
+  for (const result of results) {
+    if (result.type !== 'structured') continue;
+    const { data } = result;
+
+    const items = data.items || (data.item ? [data.item] : []);
+    for (const item of items) {
+      for (const field of INTERNABLE_FIELDS) {
+        const val = item[field];
+        if (typeof val === 'string' && val.length >= MIN_INTERN_LENGTH) {
+          counts.set(val, (counts.get(val) || 0) + 1);
+        }
+      }
+    }
+  }
+
+  // Assign symbols to values that meet the threshold
+  const entries = new Map<string, string>();
+  const reverse = new Map<string, string>();
+
+  const prefixCounters: Record<string, number> = { T: 0, U: 0, B: 0 };
+
+  // Sort by count descending so most-repeated values get lowest numbers
+  const candidates = [...counts.entries()]
+    .filter(([_, count]) => count >= MIN_INTERN_COUNT)
+    .sort((a, b) => b[1] - a[1]);
+
+  for (const [value] of candidates) {
+    // Determine prefix based on what the value looks like
+    let prefix: string;
+    if (value.includes('/dp/') || value.includes('.com/') || value.startsWith('http')) {
+      prefix = 'U';
+    } else if (value.length < 40 && !value.includes(',')) {
+      prefix = 'B'; // short, no commas = likely brand name
+    } else {
+      prefix = 'T'; // long text = likely title
+    }
+
+    prefixCounters[prefix]++;
+    const symbol = `~${prefix}${prefixCounters[prefix]}`;
+    entries.set(symbol, value);
+    reverse.set(value, symbol);
+  }
+
+  return { entries, reverse };
+}
+
+/**
+ * Replace internable field values in extraction results with their symbols.
+ * Mutates the results in place.
+ */
+function applySymbols(results: ExtractionResult[], table: SymbolTable): void {
+  if (table.reverse.size === 0) return;
+
+  for (const result of results) {
+    if (result.type !== 'structured') continue;
+    const { data } = result;
+
+    const items = data.items || (data.item ? [data.item] : []);
+    for (const item of items) {
+      for (const field of INTERNABLE_FIELDS) {
+        const val = item[field];
+        if (typeof val === 'string') {
+          const symbol = table.reverse.get(val);
+          if (symbol) {
+            item[field] = symbol;
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Write refs.txt to the session directory.
+ */
+function writeRefsFile(session: SessionInfo, table: SymbolTable): void {
+  if (table.entries.size === 0) return;
+
+  const lines: string[] = [
+    '# Symbol Table — interned references for token reduction',
+    '# Format: ~PREFIX_NUMBER=original_value',
+    '# ~T = title, ~U = URL, ~B = brand',
+    '',
+  ];
+
+  for (const [symbol, value] of table.entries) {
+    lines.push(`${symbol}=${value}`);
+  }
+
+  writeFileSync(join(session.dir, 'refs.txt'), lines.join('\n') + '\n', 'utf-8');
+}
+
 /**
  * Process an array of extraction results into a session folder.
  * Returns the session directory path.
@@ -160,6 +281,12 @@ function ensureMasterReadme(): void {
 export function writeSession(results: ExtractionResult[]): string {
   ensureMasterReadme();
   const session = createSession();
+
+  // Build symbol table and apply interning before writing files
+  const symbolTable = buildSymbolTable(results);
+  applySymbols(results, symbolTable);
+  writeRefsFile(session, symbolTable);
+
   const files: string[] = [];
 
   let structuredIndex = 0;

@@ -2,6 +2,8 @@
 
 These pages did not match any known extraction schema. The full page text is preserved as-is for you to analyze.
 
+**Note:** If you see values starting with `~` (e.g., `~T1`, `~U3`), these are interned references. Look them up in `refs.txt` in the session root folder.
+
 ## What to extract
 
 When processing raw pages, look for:

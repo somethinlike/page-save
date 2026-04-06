@@ -17,6 +17,7 @@ saved-pages/
 ├── sessions/
 │   └── YYYY-MM-DD_HHmm/  ← One folder per save session
 │       ├── manifest.json  ← Index of all pages in this session
+│       ├── refs.txt       ← Symbol table (interned references)
 │       ├── reduced/       ← Pages with schema-based extraction (structured, minimal)
 │       │   └── *.md       ← Markdown with tables or key-value product data
 │       └── raw/           ← Pages without a matching schema (full text dump)
@@ -39,6 +40,16 @@ A **reduced** file was extracted using a domain-specific schema (e.g., `amazon.c
 A **raw** file is the full `document.body.innerText` of a page that had no matching schema. It includes everything — nav bars, sidebars, footers. You (the AI) should extract the relevant data following the instructions in `GUIDANCE.md`.
 
 If you encounter multiple raw pages from the same domain with a consistent structure, consider proposing a new schema. See `GUIDANCE.md` for the schema format.
+
+## Interned references (~symbols)
+
+Values starting with `~` (tilde) in the markdown files are **interned references** — short symbols that replace long, repeated strings to reduce token usage. The full values are stored in `refs.txt` in the session root.
+
+Prefixes: `~T` = product title, `~U` = URL, `~B` = brand name.
+
+Example: `~T1` in a markdown table means "look up ~T1 in refs.txt to get the full product title." Only dereference when you actually need the full value — for comparison or summarization, the symbol itself is sufficient as a unique identifier.
+
+If a session has no `refs.txt`, no interning was applied (all values are inline).
 
 ## Schemas
 
