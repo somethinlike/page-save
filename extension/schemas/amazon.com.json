@@ -9,7 +9,7 @@
       "container": "[data-component-type='s-search-result']",
       "fields": {
         "asin": { "selector": "@data-asin", "type": "attribute" },
-        "title": { "selector": "h2 span", "type": "text" },
+        "title": { "selector": ".a-text-normal", "type": "text" },
         "price": { "selector": ".a-price .a-offscreen", "type": "text" },
         "rating": { "selector": ".a-icon-alt", "type": "text" },
         "reviewCount": { "selector": "span.s-underline-text", "type": "text" },
