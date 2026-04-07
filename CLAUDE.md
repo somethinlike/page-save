@@ -26,7 +26,7 @@ Chrome Sidebar UI          CLI (Claude Code)
 
 ### Start the server
 ```bash
-C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/server.ts serve
+C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/cli.ts serve
 ```
 
 ### CLI Commands
@@ -47,7 +47,7 @@ page-save extract --tab <id|pattern>
 page-save extract-all --domain amazon.com
 ```
 
-(Replace `page-save` with `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/server.ts`)
+(Replace `page-save` with `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/cli.ts`)
 
 ### Chrome Sidebar
 1. Click the page-save extension icon → side panel opens
@@ -106,10 +106,12 @@ saved-pages/
 ## Key Files
 | File | Purpose |
 |------|---------|
-| `src/server.ts` | WebSocket server + CLI entry point |
+| `src/cli.ts` | Entry point / traffic cop (arg parsing, CLI mode, routing) |
+| `src/ws-handler.ts` | WebSocket server domain logic (connections, extension bridge, command dispatch) |
 | `src/types.ts` | Message types, constants |
 | `src/session-writer.ts` | Session folder creation, reduced/raw routing |
-| `src/markdown-formatter.ts` | Structured data → markdown tables |
+| `src/markdown-formatter.ts` | Structured data → markdown tables (machine-verified) |
+| `src/markdown-formatter.test.ts` | Vitest suite for formatter (9 tests) |
 | `src/file-writer.ts` | MHTML file writing (legacy) |
 | `extension/service-worker.js` | WebSocket client, Chrome API handlers, side panel messaging |
 | `extension/extractors.js` | Schema registry, DOM extraction engine |

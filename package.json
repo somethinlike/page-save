@@ -33,16 +33,19 @@
   },
   "author": "Ryan Wills <somethinlike@gmail.com>",
   "scripts": {
-    "serve": "node --experimental-strip-types src/server.ts serve",
-    "tabs": "node --experimental-strip-types src/server.ts tabs",
-    "save": "node --experimental-strip-types src/server.ts save",
-    "text": "node --experimental-strip-types src/server.ts text"
+    "serve": "node --experimental-strip-types src/cli.ts serve",
+    "tabs": "node --experimental-strip-types src/cli.ts tabs",
+    "save": "node --experimental-strip-types src/cli.ts save",
+    "text": "node --experimental-strip-types src/cli.ts text",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/ws": "^8.5.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.2"
   }
 }

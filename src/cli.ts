@@ -1,0 +1,168 @@
+import { WebSocket } from 'ws';
+import { spawn } from 'node:child_process';
+import { PORT } from './types.ts';
+import type { TabInfo } from './types.ts';
+import { startServer } from './ws-handler.ts';
+
+// --- Argument Parsing ---
+
+function parseArgs(argv: string[]): { action: string; tab?: string; output?: string; domain?: string } {
+  const args = argv.slice(2);
+  const action = args[0] || 'serve';
+  let tab: string | undefined;
+  let output: string | undefined;
+  let domain: string | undefined;
+
+  for (let i = 1; i < args.length; i++) {
+    if (args[i] === '--tab' && args[i + 1]) {
+      tab = args[i + 1];
+      i++;
+    } else if (args[i] === '--out' && args[i + 1]) {
+      output = args[i + 1];
+      i++;
+    } else if (args[i] === '--domain' && args[i + 1]) {
+      domain = args[i + 1];
+      i++;
+    }
+  }
+
+  return { action, tab, output, domain };
+}
+
+// --- CLI Mode ---
+
+async function connectToServer(port: number): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(`ws://localhost:${port}`);
+    socket.on('open', () => resolve(socket));
+    socket.on('error', (err) => reject(err));
+  });
+}
+
+async function tryAutoStartServer(): Promise<boolean> {
+  const serverScript = new URL('./cli.ts', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+  const child = spawn(process.execPath, ['--experimental-strip-types', serverScript, 'serve'], {
+    detached: true,
+    stdio: 'ignore',
+  });
+  child.unref();
+
+  for (let i = 0; i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    try {
+      const testSocket = await connectToServer(PORT);
+      testSocket.close();
+      return true;
+    } catch {
+      // Not ready yet
+    }
+  }
+  return false;
+}
+
+async function runCli(action: string, tab?: string, output?: string, domain?: string): Promise<void> {
+  let socket: WebSocket;
+  try {
+    socket = await connectToServer(PORT);
+  } catch {
+    console.error('Error: page-save server not running on port 7224.');
+    console.error('Start it manually: page-save serve');
+    process.exit(1);
+  }
+
+  const actionMap: Record<string, string> = {
+    save: 'save-page',
+    text: 'get-text',
+    tabs: 'list-tabs',
+    extract: 'get-structured',
+    'extract-all': 'extract-all',
+  };
+
+  const command: Record<string, unknown> = {
+    type: 'cli-command',
+    action: actionMap[action] || action,
+    tab,
+    output,
+    domain,
+  };
+
+  socket.send(JSON.stringify(command));
+
+  socket.on('message', (raw) => {
+    const msg = JSON.parse(raw.toString());
+
+    if (msg.warning) {
+      console.error(`Warning: ${msg.warning}`);
+    }
+
+    if (msg.error) {
+      console.error(`Error: ${msg.error}`);
+      socket.close();
+      process.exit(1);
+    }
+
+    if (msg.sessionDir) {
+      console.log(`Session saved: ${msg.sessionDir}`);
+      if (msg.count !== undefined) {
+        console.log(`  Total: ${msg.count} page(s) — ${msg.structured || 0} structured, ${msg.raw || 0} raw`);
+      }
+      if (msg.result) {
+        const r = msg.result;
+        if (r.type === 'structured' && r.data?.items) {
+          console.log(`  Schema: ${r.domain}/${r.pageType} — ${r.data.count} items`);
+        } else if (r.type === 'structured' && r.data?.item) {
+          console.log(`  Schema: ${r.domain}/${r.pageType} — single item`);
+        } else if (r.type === 'raw') {
+          console.log(`  Raw text: ${r.text?.length || 0} chars from ${r.domain}`);
+        }
+      }
+    } else if (msg.path) {
+      console.log(`Saved: ${msg.path}`);
+    } else if (msg.text !== undefined) {
+      console.log(msg.text);
+    } else if (msg.result?.tabs) {
+      const tabs = msg.result.tabs as TabInfo[];
+      console.log('  ID  | Title                                    | URL');
+      console.log('------+------------------------------------------+----------------------------------------');
+      for (const t of tabs) {
+        const id = String(t.tabId).padStart(4);
+        const title = t.title.slice(0, 40).padEnd(40);
+        const url = t.url.slice(0, 40);
+        console.log(`${id}  | ${title} | ${url}`);
+      }
+    } else {
+      console.log(JSON.stringify(msg, null, 2));
+    }
+
+    socket.close();
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    console.error('Error: Timed out waiting for response.');
+    socket.close();
+    process.exit(1);
+  }, 20000);
+}
+
+// --- Entry Point ---
+
+const { action, tab, output, domain } = parseArgs(process.argv);
+
+if (action === 'serve') {
+  startServer();
+} else if (['tabs', 'save', 'text', 'extract', 'extract-all'].includes(action)) {
+  runCli(action, tab, output, domain).catch((err) => {
+    console.error(`Error: ${err.message || err}`);
+    process.exit(1);
+  });
+} else {
+  console.log(`Usage:
+  page-save serve                                    Start WebSocket server
+  page-save tabs                                     List all open Chrome tabs
+  page-save save [--tab <id|pattern>] [--out <path>] Save page as MHTML
+  page-save text [--tab <id|pattern>]                Extract page text
+  page-save extract [--tab <id|pattern>]             Structured extraction (single tab)
+  page-save extract-all [--domain <pattern>]         Batch structured extraction`);
+  process.exit(1);
+}
