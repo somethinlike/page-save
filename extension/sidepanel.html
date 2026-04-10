@@ -20,6 +20,19 @@
 
   <div id="tab-list"></div>
 
+  <!-- Preview pane (Phase 10) — shown after extraction, before saving -->
+  <div id="preview-pane" class="hidden">
+    <div id="preview-header">
+      <h2>Preview Extraction</h2>
+      <span id="preview-count"></span>
+    </div>
+    <div id="preview-list"></div>
+    <div id="preview-actions">
+      <button id="btn-preview-save" class="btn-primary">Save Selected</button>
+      <button id="btn-preview-discard" class="btn-secondary">Discard</button>
+    </div>
+  </div>
+
   <footer>
     <button id="btn-save" class="btn-primary" disabled>Save Selected (0)</button>
     <div id="progress" class="hidden">

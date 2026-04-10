@@ -10,6 +10,8 @@
 let allTabs = [];        // TabInfo[] from service worker
 let selectedIds = new Set(); // Set<tabId>
 let schemasLoaded = [];  // domain strings that have schemas
+let previewResults = []; // ExtractionResult[] for preview
+let previewIncluded = new Set(); // Set<index> of included items
 
 // --- DOM refs ---
 
@@ -24,6 +26,11 @@ const progressFill = document.getElementById('progress-fill');
 const progressText = document.getElementById('progress-text');
 const lastSessionEl = document.getElementById('last-session');
 const sessionInfoEl = document.getElementById('session-info');
+const previewPane = document.getElementById('preview-pane');
+const previewList = document.getElementById('preview-list');
+const previewCount = document.getElementById('preview-count');
+const btnPreviewSave = document.getElementById('btn-preview-save');
+const btnPreviewDiscard = document.getElementById('btn-preview-discard');
 
 // --- Communication with service worker ---
 
@@ -206,56 +213,182 @@ function updateSaveButton() {
   btnSave.disabled = count === 0;
 }
 
-// --- Save action ---
+// --- Save action (now routes through preview) ---
 
 async function saveSelected() {
   const tabIds = Array.from(selectedIds);
   if (tabIds.length === 0) return;
 
   btnSave.disabled = true;
-  btnSave.textContent = 'Saving...';
+  btnSave.textContent = 'Extracting...';
   progressEl.classList.remove('hidden');
   progressFill.style.width = '0%';
   progressText.textContent = `Extracting ${tabIds.length} page(s)...`;
 
   try {
-    // Simulate progress while waiting (extraction is fast but writing takes a moment)
     progressFill.style.width = '30%';
 
+    // Extract via service worker but get results back for preview
     const result = await sendMessage({
-      type: 'batch-extract',
+      type: 'preview-extract',
       tabIds,
     });
 
     progressFill.style.width = '100%';
+    progressEl.classList.add('hidden');
 
     if (result?.error) {
       progressText.textContent = `Error: ${result.error}`;
-    } else if (result?.sessionDir) {
-      progressText.textContent = 'Done!';
-      lastSessionEl.classList.remove('hidden');
-      sessionInfoEl.textContent = `${result.structured || 0} structured, ${result.raw || 0} raw → ${result.sessionDir}`;
+      progressEl.classList.remove('hidden');
+      setTimeout(() => { btnSave.disabled = false; updateSaveButton(); }, 1500);
+      return;
+    }
 
-      // Clear selection after save
-      selectedIds.clear();
-      renderTabs();
-      updateSaveButton();
-    } else {
-      progressText.textContent = 'Saved (no session info returned)';
+    if (result?.results) {
+      showPreview(result.results);
     }
   } catch (err) {
     progressText.textContent = `Error: ${err.message}`;
+    setTimeout(() => { btnSave.disabled = false; updateSaveButton(); }, 1500);
+  }
+}
+
+// --- Preview Mode ---
+
+function showPreview(results) {
+  previewResults = results;
+  previewIncluded = new Set(results.map((_, i) => i));
+
+  // Hide tab list, show preview
+  tabList.classList.add('hidden');
+  document.getElementById('controls').classList.add('hidden');
+  document.querySelector('footer').classList.add('hidden');
+  previewPane.classList.remove('hidden');
+
+  renderPreview();
+}
+
+function hidePreview() {
+  previewResults = [];
+  previewIncluded.clear();
+
+  previewPane.classList.add('hidden');
+  tabList.classList.remove('hidden');
+  document.getElementById('controls').classList.remove('hidden');
+  document.querySelector('footer').classList.remove('hidden');
+
+  btnSave.disabled = false;
+  updateSaveButton();
+}
+
+function renderPreview() {
+  previewList.innerHTML = '';
+  const included = previewIncluded.size;
+  const total = previewResults.length;
+  previewCount.textContent = `${included}/${total} included`;
+
+  for (let i = 0; i < previewResults.length; i++) {
+    const result = previewResults[i];
+    const isIncluded = previewIncluded.has(i);
+
+    const item = document.createElement('div');
+    item.className = `preview-item${isIncluded ? '' : ' excluded'}`;
+
+    const title = result.title || result.domain || 'untitled';
+    const type = result.type === 'structured' ? result.pageType : 'raw';
+    const itemCount = result.data?.items ? `${result.data.items.length} items` :
+                      result.data?.item ? '1 item' :
+                      result.text ? `${result.text.length} chars` : '';
+
+    item.innerHTML = `
+      <div class="preview-item-header">
+        <input type="checkbox" data-idx="${i}" ${isIncluded ? 'checked' : ''}>
+        <span class="preview-item-title" title="${result.url || ''}">${title}</span>
+        <span class="preview-item-meta">${type} ${itemCount}</span>
+      </div>
+      <div class="preview-item-content">${getPreviewContent(result)}</div>
+    `;
+
+    const checkbox = item.querySelector('input[type="checkbox"]');
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        previewIncluded.add(i);
+        item.classList.remove('excluded');
+      } else {
+        previewIncluded.delete(i);
+        item.classList.add('excluded');
+      }
+      previewCount.textContent = `${previewIncluded.size}/${total} included`;
+    });
+
+    const header = item.querySelector('.preview-item-header');
+    header.addEventListener('click', (e) => {
+      if (e.target === checkbox) return;
+      checkbox.checked = !checkbox.checked;
+      checkbox.dispatchEvent(new Event('change'));
+    });
+
+    previewList.appendChild(item);
+  }
+}
+
+function getPreviewContent(result) {
+  if (result.type === 'structured' && result.data?.items) {
+    const sample = result.data.items.slice(0, 3);
+    return sample.map(item => {
+      const fields = Object.entries(item)
+        .filter(([_, v]) => v !== null && v !== false)
+        .map(([k, v]) => `${k}: ${typeof v === 'string' ? v.slice(0, 50) : v}`)
+        .join(' | ');
+      return fields;
+    }).join('\n');
+  }
+  if (result.type === 'structured' && result.data?.item) {
+    return Object.entries(result.data.item)
+      .filter(([_, v]) => v !== null && v !== false)
+      .map(([k, v]) => `${k}: ${typeof v === 'string' ? v.slice(0, 80) : v}`)
+      .join('\n');
+  }
+  if (result.type === 'raw' && result.text) {
+    return result.text.slice(0, 300) + (result.text.length > 300 ? '...' : '');
+  }
+  return '(no content)';
+}
+
+async function savePreview() {
+  const filtered = previewResults.filter((_, i) => previewIncluded.has(i));
+  if (filtered.length === 0) {
+    hidePreview();
+    return;
   }
 
-  // Re-enable after a beat
-  setTimeout(() => {
-    btnSave.disabled = selectedIds.size === 0;
+  btnPreviewSave.disabled = true;
+  btnPreviewSave.textContent = 'Saving...';
+
+  try {
+    const result = await sendMessage({
+      type: 'batch-extract-save',
+      results: filtered,
+    });
+
+    hidePreview();
+
+    if (result?.sessionDir) {
+      lastSessionEl.classList.remove('hidden');
+      sessionInfoEl.textContent = `${result.structured || 0} structured, ${result.raw || 0} raw → ${result.sessionDir}`;
+    }
+
+    selectedIds.clear();
+    renderTabs();
     updateSaveButton();
-  }, 1500);
+  } catch (err) {
+    btnPreviewSave.textContent = `Error: ${err.message}`;
+  }
 
   setTimeout(() => {
-    progressEl.classList.add('hidden');
-  }, 4000);
+    btnPreviewSave.disabled = false;
+    btnPreviewSave.textContent = 'Save Selected';
+  }, 2000);
 }
 
 // --- Event listeners ---
@@ -280,6 +413,8 @@ btnDeselectAll.addEventListener('click', () => {
 });
 
 btnSave.addEventListener('click', saveSelected);
+btnPreviewSave.addEventListener('click', savePreview);
+btnPreviewDiscard.addEventListener('click', hidePreview);
 
 // --- Init ---
 

@@ -417,8 +417,97 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  if (msg.type === 'preview-extract') {
+    // Extract but return results to sidebar for preview (don't save yet)
+    handlePreviewExtract(msg.tabIds)
+      .then((result) => sendResponse(result))
+      .catch((err) => sendResponse({ error: err.message || String(err) }));
+    return true;
+  }
+
+  if (msg.type === 'batch-extract-save') {
+    // Save pre-filtered results (from preview confirm)
+    handleSaveFilteredResults(msg.results)
+      .then((result) => sendResponse(result))
+      .catch((err) => sendResponse({ error: err.message || String(err) }));
+    return true;
+  }
+
   return false;
 });
+
+/**
+ * Extract data from tabs and return results for preview (no saving).
+ */
+async function handlePreviewExtract(tabIds) {
+  if (!tabIds || tabIds.length === 0) {
+    return { error: 'No tabs selected' };
+  }
+
+  const CONCURRENCY = 5;
+  const results = [];
+  for (let i = 0; i < tabIds.length; i += CONCURRENCY) {
+    const batch = tabIds.slice(i, i + CONCURRENCY);
+    const batchResults = await Promise.all(
+      batch.map(async (tid) => {
+        try {
+          const tab = await chrome.tabs.get(tid);
+          const result = await globalThis.extractors.extractStructured(tid, tab.url);
+          result.title = tab.title || 'untitled';
+          result.tabId = tid;
+          return result;
+        } catch (err) {
+          return { tabId: tid, type: 'error', error: err.message || String(err) };
+        }
+      })
+    );
+    results.push(...batchResults);
+  }
+
+  return { results };
+}
+
+/**
+ * Save pre-filtered extraction results (from preview confirm).
+ */
+async function handleSaveFilteredResults(results) {
+  if (!results || results.length === 0) {
+    return { error: 'No results to save' };
+  }
+
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    return { error: 'Node.js server not connected. Start the page-save server.' };
+  }
+
+  return new Promise((resolve) => {
+    const id = crypto.randomUUID();
+    const timeout = setTimeout(() => {
+      resolve({ error: 'Server did not respond within 30 seconds.' });
+    }, 30000);
+
+    const handler = (event) => {
+      let response;
+      try { response = JSON.parse(event.data); } catch { return; }
+      if (response.id !== id) return;
+
+      ws.removeEventListener('message', handler);
+      clearTimeout(timeout);
+
+      if (response.error) {
+        resolve({ error: response.error });
+      } else {
+        resolve(response.result || response);
+      }
+    };
+    ws.addEventListener('message', handler);
+
+    ws.send(JSON.stringify({
+      type: 'panel-save-session',
+      id,
+      results,
+    }));
+  });
+}
 
 /**
  * Handle batch extraction triggered from the side panel.
