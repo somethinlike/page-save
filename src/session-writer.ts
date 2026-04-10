@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { SAVE_DIR } from './types.ts';
 import { formatStructuredMarkdown, formatRawMarkdown } from './markdown-formatter.ts';
+import { extractWithDefuddle } from './defuddle-extractor.ts';
 import type { ExtractionResult, StructuredResult, RawResult, PageConfidence, FieldConfidence } from './types.ts';
 
 const SESSIONS_DIR = join(SAVE_DIR, 'sessions');
@@ -71,12 +72,38 @@ function writeStructured(session: SessionInfo, result: StructuredResult, index: 
 
 /**
  * Write a raw text result to the raw/ directory.
+ * If HTML is available, uses Defuddle for clean article extraction.
  */
-function writeRaw(session: SessionInfo, result: RawResult, index: number): string {
+async function writeRaw(session: SessionInfo, result: RawResult, index: number): Promise<string> {
   const filename = sanitizeFilename(
     `${result.domain}-${index + 1}.md`
   );
   const filepath = join(session.rawDir, filename);
+
+  // Try Defuddle extraction if HTML is available
+  if (result.html) {
+    try {
+      const defuddled = await extractWithDefuddle(result.html, result.url);
+      if (defuddled.content && defuddled.wordCount > 50) {
+        // Defuddle produced meaningful content — use it
+        const header = [
+          `# ${defuddled.title || result.title}`,
+          `- Source: ${result.url}`,
+          defuddled.author ? `- Author: ${defuddled.author}` : '',
+          defuddled.description ? `- Description: ${defuddled.description}` : '',
+          `- Words: ${defuddled.wordCount}`,
+          '',
+        ].filter(Boolean).join('\n');
+
+        writeFileSync(filepath, header + '\n' + defuddled.content + '\n', 'utf-8');
+        return filepath;
+      }
+    } catch {
+      // Defuddle failed — fall through to raw text
+    }
+  }
+
+  // Fallback: plain text output
   const markdown = formatRawMarkdown(result);
   writeFileSync(filepath, markdown, 'utf-8');
   return filepath;
@@ -423,7 +450,7 @@ function computeConfidence(results: ExtractionResult[]): PageConfidence[] {
  * Process an array of extraction results into a session folder.
  * Returns the session directory path.
  */
-export function writeSession(results: ExtractionResult[]): string {
+export async function writeSession(results: ExtractionResult[]): Promise<string> {
   ensureMasterReadme();
   const session = createSession();
 
@@ -449,7 +476,7 @@ export function writeSession(results: ExtractionResult[]): string {
       const path = writeStructured(session, result, structuredIndex++);
       files.push(path);
     } else if (result.type === 'raw') {
-      const path = writeRaw(session, result, rawIndex++);
+      const path = await writeRaw(session, result, rawIndex++);
       files.push(path);
       hasRaw = true;
     } else {

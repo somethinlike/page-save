@@ -716,20 +716,24 @@ async function extractStructured(tabId, url) {
     };
   }
 
-  // No schema — fall back to raw innerText
+  // No schema — fall back to raw text + HTML for Defuddle processing
   const results = await chrome.scripting.executeScript({
     target: { tabId },
-    func: () => document.body.innerText,
+    func: () => ({
+      text: document.body.innerText,
+      html: document.documentElement.outerHTML,
+    }),
     world: 'ISOLATED',
   });
 
-  const text = results?.[0]?.result || '';
+  const rawData = results?.[0]?.result || { text: '', html: '' };
 
   return {
     type: 'raw',
     domain: new URL(url).hostname,
     url,
-    text,
+    text: rawData.text || '',
+    html: rawData.html || '',
   };
 }
 

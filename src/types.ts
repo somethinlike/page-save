@@ -58,6 +58,7 @@ export interface RawResult {
   title: string;
   tabId?: number;
   text: string;
+  html?: string;
 }
 
 export interface ErrorResult {

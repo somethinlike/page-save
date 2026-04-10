@@ -41,6 +41,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "defuddle": "^0.16.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {

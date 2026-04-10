@@ -73,7 +73,7 @@ async function handleCliCommand(
     if ('error' in response) { respond({ error: response.error }); return; }
 
     const batchResult = response.result as BatchResult;
-    const sessionDir = writeSession(batchResult.results as ExtractionResult[]);
+    const sessionDir = await writeSession(batchResult.results as ExtractionResult[]);
     respond({
       sessionDir,
       count: batchResult.count,
@@ -186,7 +186,7 @@ async function handleCliCommand(
     if ('error' in response) { respond({ error: response.error }); return; }
 
     const batchResult = response.result as BatchResult;
-    const sessionDir = writeSession(batchResult.results as ExtractionResult[]);
+    const sessionDir = await writeSession(batchResult.results as ExtractionResult[]);
     respond({
       sessionDir,
       count: batchResult.count,
@@ -236,7 +236,7 @@ async function handleCliCommand(
     }
 
     const batchResult = batchResponse.result as BatchResult;
-    const sessionDir = writeSession(batchResult.results as ExtractionResult[]);
+    const sessionDir = await writeSession(batchResult.results as ExtractionResult[]);
     respond({
       sessionDir,
       count: batchResult.count,
@@ -285,7 +285,7 @@ async function handleCliCommand(
     if ('error' in response) { respond({ error: response.error }); return; }
 
     const result = response.result as ExtractionResult;
-    const sessionDir = writeSession([result]);
+    const sessionDir = await writeSession([result]);
     respond({ sessionDir, result, ...(warning && { warning }) });
     return;
   }
@@ -363,7 +363,7 @@ export function startServer(): void {
   wss.on('connection', (socket) => {
     let isExtension = false;
 
-    socket.on('message', (raw) => {
+    socket.on('message', async (raw) => {
       let msg: Record<string, unknown>;
       try {
         msg = JSON.parse(raw.toString());
@@ -391,7 +391,7 @@ export function startServer(): void {
       if (msg.type === 'panel-save-session' && msg.id && msg.results) {
         try {
           const results = msg.results as ExtractionResult[];
-          const sessionDir = writeSession(results);
+          const sessionDir = await writeSession(results);
           const structured = results.filter((r: ExtractionResult) => r.type === 'structured').length;
           const rawCount = results.filter((r: ExtractionResult) => r.type === 'raw').length;
           console.log(`[page-save] Panel save: ${sessionDir} (${structured} structured, ${rawCount} raw)`);
