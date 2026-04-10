@@ -25,8 +25,9 @@ interface DraftSchema {
 /**
  * Derive a URL pattern from a full URL.
  * Extracts the path up to the first query param or meaningful segment.
+ * @internal exported for testing
  */
-function deriveUrlPattern(url: string): string {
+export function deriveUrlPattern(url: string): string {
   try {
     const parsed = new URL(url);
     const path = parsed.pathname;
@@ -51,8 +52,9 @@ function deriveUrlPattern(url: string): string {
 
 /**
  * Guess the page type from the URL and probe context.
+ * @internal exported for testing
  */
-function guessPageType(url: string): string {
+export function guessPageType(url: string): string {
   const lower = url.toLowerCase();
   if (lower.includes('search') || lower.includes('/s?') || lower.includes('query=') || lower.includes('keyword=')) {
     return 'search';
@@ -85,8 +87,9 @@ function deduplicateFieldNames(fields: { name: string; selector: string; type: s
 /**
  * Score a candidate container based on field quality and count.
  * Higher is better.
+ * @internal exported for testing
  */
-function scoreCandidate(candidate: DomProbeCandidate): number {
+export function scoreCandidate(candidate: DomProbeCandidate): number {
   let score = 0;
 
   // More fields = better

@@ -378,8 +378,9 @@ function writeRefsFile(session: SessionInfo, table: SymbolTable): void {
 /**
  * Compute per-field confidence scores for structured extraction results.
  * Groups by domain+pageType, then counts populated vs null for each field.
+ * @internal exported for testing
  */
-function computeConfidence(results: ExtractionResult[]): PageConfidence[] {
+export function computeConfidence(results: ExtractionResult[]): PageConfidence[] {
   // Group structured results by domain+pageType
   const groups = new Map<string, StructuredResult[]>();
 
@@ -640,8 +641,9 @@ function loadPreviousSessionItems(sessionDir: string): Record<string, unknown>[]
 /**
  * Parse TSV items from a markdown extraction file.
  * Finds the TSV table section and parses header + rows.
+ * @internal exported for testing
  */
-function parseTsvFromMarkdown(content: string): Record<string, unknown>[] {
+export function parseTsvFromMarkdown(content: string): Record<string, unknown>[] {
   const lines = content.split('\n');
   const items: Record<string, unknown>[] = [];
 
@@ -680,8 +682,9 @@ function parseTsvFromMarkdown(content: string): Record<string, unknown>[] {
 /**
  * Apply delta annotations to extraction results by comparing against previous items.
  * Adds a `__delta` field to each item: 'NEW', 'CHG', or '' (unchanged).
+ * @internal exported for testing
  */
-function applyDeltaAnnotations(results: ExtractionResult[], prevItems: Record<string, unknown>[]): void {
+export function applyDeltaAnnotations(results: ExtractionResult[], prevItems: Record<string, unknown>[]): void {
   // Build a lookup of current items
   const allCurrentItems: Record<string, unknown>[] = [];
   for (const result of results) {

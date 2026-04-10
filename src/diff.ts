@@ -8,6 +8,18 @@
 import type { DiffResult, DiffChange } from './types.ts';
 
 /**
+ * Normalize a value for diff comparison.
+ * null, undefined, and '' are all treated as "missing" (empty string).
+ * Arrays and objects are JSON-stringified.
+ * Everything else is stringified via String().
+ */
+function normalizeForCompare(val: unknown): string {
+  if (val === null || val === undefined || val === '') return '';
+  if (typeof val === 'object') return JSON.stringify(val);
+  return String(val);
+}
+
+/**
  * Get a unique key for an item. Uses common ID fields, falls back to title.
  */
 function getItemKey(item: Record<string, unknown>): string | null {
@@ -91,9 +103,10 @@ export function diffSingleItem(
     const prevVal = prev[field];
     const currVal = curr[field];
 
-    // Normalize for comparison: stringify arrays/objects
-    const prevStr = typeof prevVal === 'object' ? JSON.stringify(prevVal) : String(prevVal ?? '');
-    const currStr = typeof currVal === 'object' ? JSON.stringify(currVal) : String(currVal ?? '');
+    // Normalize for comparison. Treat null/undefined/'' as equivalent
+    // (missing field is missing, regardless of representation).
+    const prevStr = normalizeForCompare(prevVal);
+    const currStr = normalizeForCompare(currVal);
 
     if (prevStr !== currStr) {
       changes.push({ field, prev: prevVal, curr: currVal });

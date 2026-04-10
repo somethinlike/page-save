@@ -42,8 +42,9 @@ export function extractVideoId(url: string): string | null {
 
 /**
  * Parse YouTube's timedtext XML into timestamped plain text.
+ * @internal exported for testing
  */
-function parseTimedText(xml: string): string {
+export function parseTimedText(xml: string): string {
   const lines: string[] = [];
   // Match <text start="X" dur="Y">content</text>
   const regex = /<text\s+start="([^"]+)"[^>]*>([\s\S]*?)<\/text>/g;
@@ -74,8 +75,9 @@ function parseTimedText(xml: string): string {
 /**
  * Fetch caption tracks from a YouTube page's HTML.
  * YouTube embeds caption data in the page's initial data JSON.
+ * @internal exported for testing
  */
-function extractCaptionTracks(pageHtml: string): CaptionTrack[] {
+export function extractCaptionTracks(pageHtml: string): CaptionTrack[] {
   // Look for the captions data in ytInitialPlayerResponse
   const match = pageHtml.match(/"captions":\s*(\{.*?"captionTracks":\s*\[.*?\].*?\})/s);
   if (!match) return [];
@@ -92,8 +94,9 @@ function extractCaptionTracks(pageHtml: string): CaptionTrack[] {
 
 /**
  * Extract video metadata from YouTube page HTML.
+ * @internal exported for testing
  */
-function extractVideoMeta(pageHtml: string): { title: string; channel: string; duration: string } {
+export function extractVideoMeta(pageHtml: string): { title: string; channel: string; duration: string } {
   let title = '';
   let channel = '';
   let duration = '';
