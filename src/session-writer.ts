@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { SAVE_DIR } from './types.ts';
 import { formatStructuredMarkdown, formatRawMarkdown } from './markdown-formatter.ts';
-import type { ExtractionResult, StructuredResult, RawResult } from './types.ts';
+import type { ExtractionResult, StructuredResult, RawResult, PageConfidence, FieldConfidence } from './types.ts';
 
 const SESSIONS_DIR = join(SAVE_DIR, 'sessions');
 
@@ -116,8 +116,13 @@ function writeGuidance(session: SessionInfo): void {
 /**
  * Write a session manifest listing all saved pages.
  */
-function writeManifest(session: SessionInfo, results: ExtractionResult[], files: string[]): void {
-  const manifest = {
+function writeManifest(
+  session: SessionInfo,
+  results: ExtractionResult[],
+  files: string[],
+  confidence: PageConfidence[],
+): void {
+  const manifest: Record<string, unknown> = {
     timestamp: session.timestamp,
     totalPages: results.length,
     reduced: results.filter(r => r.type === 'structured').length,
@@ -131,6 +136,10 @@ function writeManifest(session: SessionInfo, results: ExtractionResult[], files:
       file: files[i] || null,
     })),
   };
+
+  if (confidence.length > 0) {
+    manifest.confidence = confidence;
+  }
 
   writeFileSync(
     join(session.dir, 'manifest.json'),
@@ -332,6 +341,84 @@ function writeRefsFile(session: SessionInfo, table: SymbolTable): void {
   writeFileSync(join(session.dir, 'refs.txt'), lines.join('\n') + '\n', 'utf-8');
 }
 
+// --- Confidence Scoring ---
+// Per-field population rates for structured results. Surfaces broken selectors
+// instantly — when a field starts returning nulls, the confidence rate drops.
+
+/**
+ * Compute per-field confidence scores for structured extraction results.
+ * Groups by domain+pageType, then counts populated vs null for each field.
+ */
+function computeConfidence(results: ExtractionResult[]): PageConfidence[] {
+  // Group structured results by domain+pageType
+  const groups = new Map<string, StructuredResult[]>();
+
+  for (const result of results) {
+    if (result.type !== 'structured') continue;
+    const key = `${result.domain}::${result.pageType}`;
+    const group = groups.get(key);
+    if (group) group.push(result);
+    else groups.set(key, [result]);
+  }
+
+  const confidence: PageConfidence[] = [];
+
+  for (const [key, group] of groups) {
+    const [domain, pageType] = key.split('::');
+
+    // Collect all items across pages in this group
+    const allItems: Record<string, unknown>[] = [];
+    for (const result of group) {
+      const { data } = result;
+      if (data.items) allItems.push(...data.items);
+      else if (data.item) allItems.push(data.item);
+    }
+
+    if (allItems.length === 0) continue;
+
+    // Discover all fields from the items
+    const fieldNames = new Set<string>();
+    for (const item of allItems) {
+      for (const key of Object.keys(item)) {
+        fieldNames.add(key);
+      }
+    }
+
+    // Compute per-field population rate
+    const total = allItems.length;
+    const fields: FieldConfidence[] = [];
+
+    for (const field of fieldNames) {
+      let populated = 0;
+      for (const item of allItems) {
+        const val = item[field];
+        if (val !== null && val !== undefined && val !== '') {
+          populated++;
+        }
+      }
+      fields.push({
+        field,
+        total,
+        populated,
+        rate: Math.round((populated / total) * 1000) / 1000,
+      });
+    }
+
+    // Sort fields: lowest rate first (broken selectors surface at top)
+    fields.sort((a, b) => a.rate - b.rate);
+
+    const totalPopulated = fields.reduce((sum, f) => sum + f.populated, 0);
+    const totalPossible = fields.reduce((sum, f) => sum + f.total, 0);
+    const overallRate = totalPossible > 0
+      ? Math.round((totalPopulated / totalPossible) * 1000) / 1000
+      : 0;
+
+    confidence.push({ domain, pageType, fields, overallRate });
+  }
+
+  return confidence;
+}
+
 /**
  * Process an array of extraction results into a session folder.
  * Returns the session directory path.
@@ -343,7 +430,10 @@ export function writeSession(results: ExtractionResult[]): string {
   // 1. Deduplicate across pages (same product on multiple search pages → keep first)
   const dupsRemoved = deduplicateResults(results);
 
-  // 2. Build symbol table and apply interning
+  // 2. Compute confidence scores (after dedup, before interning mutates values)
+  const confidence = computeConfidence(results);
+
+  // 3. Build symbol table and apply interning
   const symbolTable = buildSymbolTable(results);
   applySymbols(results, symbolTable);
   writeRefsFile(session, symbolTable);
@@ -371,7 +461,7 @@ export function writeSession(results: ExtractionResult[]): string {
     writeGuidance(session);
   }
 
-  writeManifest(session, results, files);
+  writeManifest(session, results, files, confidence);
 
   return session.dir;
 }

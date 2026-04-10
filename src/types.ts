@@ -92,5 +92,21 @@ export interface CliCommand {
   output?: string;
 }
 
+// --- Confidence scoring types ---
+
+export interface FieldConfidence {
+  field: string;
+  total: number;
+  populated: number;
+  rate: number;
+}
+
+export interface PageConfidence {
+  domain: string;
+  pageType: string;
+  fields: FieldConfidence[];
+  overallRate: number;
+}
+
 export const PORT = 7224;
 export const SAVE_DIR = 'C:\\Users\\somet\\Documents\\saved-pages';
