@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.04.09
+**Updated:** 2026.04.09 (Phases 1-11 complete)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -295,14 +295,105 @@
 
 ---
 
-## 14. AI Integration
+---
 
-### 14.1 Claude Code End-to-End
+## 15. YouTube Transcript (Phase 6)
+
+### 15.1 Extract Transcript
+- [ ] Open a YouTube video with captions
+- [ ] Run `page-save youtube --tab youtube`
+- [ ] Session folder has `reduced/youtube.com-{videoId}.md`
+- [ ] File has video metadata (title, channel, duration, language)
+- [ ] Timestamped transcript lines present
+
+### 15.2 No Captions
+- [ ] Open a YouTube video without captions
+- [ ] Run `page-save youtube --tab youtube`
+- [ ] Should show "(No captions available for this video)"
+
+---
+
+## 16. MCP Server (Phase 7)
+
+### 16.1 MCP Tools Available
+- [ ] Configure `page-save-mcp` in Claude Desktop settings
+- [ ] Verify tools appear: list_tabs, extract, extract_all, extract_pages, batch_urls, schema_suggest, youtube_transcript
+- [ ] Call `list_tabs` — should return open Chrome tabs
+- [ ] Call `extract` with a tab pattern — should create session
+
+---
+
+## 17. Price Watch (Phase 8)
+
+### 17.1 Create Watch
+- [ ] Run `page-save watch-add --url https://amazon.com/dp/B00E9M4XFI`
+- [ ] Should print watch ID and URL
+- [ ] Config file exists in `saved-pages/watches/{id}/config.json`
+
+### 17.2 List Watches
+- [ ] Run `page-save watch-list`
+- [ ] Should show the watch created above
+
+### 17.3 Run Watch
+- [ ] Run `page-save watch-run --all`
+- [ ] First run: "First snapshot" message, snapshot saved
+- [ ] Run again: diff shows UNCHANGED (or changes if price changed)
+
+---
+
+## 18. Session Accumulation (Phase 9)
+
+### 18.1 Session Lifecycle
+- [ ] Run `page-save session-start` — should print session ID
+- [ ] Run `page-save session-status` — should show active session
+- [ ] Run `page-save session-add --tab <page1>` — should show page count
+- [ ] Navigate to different page
+- [ ] Run `page-save session-add --tab <page2>` — page count increments
+- [ ] Run `page-save session-finalize` — session written to disk with both pages
+- [ ] Verify manifest has both pages
+
+### 18.2 Error: Double Start
+- [ ] Start a session
+- [ ] Try `page-save session-start` again — should error "already open"
+
+---
+
+## 19. Sidebar Preview (Phase 10)
+
+### 19.1 Preview Flow
+- [ ] Open sidebar, select tabs
+- [ ] Click "Save Selected" — preview pane appears (not saved yet)
+- [ ] Preview shows extracted content per item
+- [ ] Uncheck an item — it dims out
+- [ ] Click "Save Selected" in preview — only checked items saved
+- [ ] Session folder reflects the filtered selection
+
+### 19.2 Discard
+- [ ] Open preview with extracted content
+- [ ] Click "Discard" — returns to tab list without saving
+- [ ] No session folder created
+
+---
+
+## 20. Delta Mode (Phase 11)
+
+### 20.1 Delta Annotations
+- [ ] Extract Amazon search: `page-save extract-all --domain amazon`
+- [ ] Note the session directory path
+- [ ] Wait or change tab content
+- [ ] Re-extract with delta: `page-save extract-all --domain amazon --prev <session-dir>`
+- [ ] Output has `delta` column: NEW for new items, CHG for changed, empty for unchanged
+
+---
+
+## 21. AI Integration
+
+### 21.1 Claude Code End-to-End
 - [ ] Have Claude run `extract-all --domain amazon` via Bash
 - [ ] Claude reads the session's `reduced/*.md` files
 - [ ] Claude can answer product comparison questions from the extracted data
 
-### 14.2 AI Readability
+### 21.2 AI Readability
 - [ ] Point any AI at `saved-pages/` and ask it to summarize the latest session
 - [ ] AI reads `README.md` first, then session contents
 - [ ] AI can parse the markdown tables correctly

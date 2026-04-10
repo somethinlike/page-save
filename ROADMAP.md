@@ -145,7 +145,7 @@ page-save batch --urls "https://amazon.com/dp/B00E9M4XFI,https://amazon.com/dp/B
 
 ---
 
-## Phase 6: YouTube Subtitle Extraction
+## Phase 6: YouTube Subtitle Extraction ✅ DONE (2026-04-09)
 
 **Value:** YouTube is one of the most common research sources. Extracting subtitles as clean text makes video content AI-consumable without manual transcription.
 
@@ -175,7 +175,7 @@ page-save batch --urls "https://amazon.com/dp/B00E9M4XFI,https://amazon.com/dp/B
 
 ---
 
-## Phase 7: MCP Server Integration
+## Phase 7: MCP Server Integration ✅ DONE (2026-04-09)
 
 **Value:** Page-save tools appear natively in Claude Desktop, Claude Code, and any MCP client. No Bash wrapping, structured params/responses.
 
@@ -201,7 +201,7 @@ Claude Desktop ──stdio──► MCP Server ──ws://7224──► Node.js 
 
 ---
 
-## Phase 8: Monitoring / Price Watch
+## Phase 8: Monitoring / Price Watch ✅ DONE (2026-04-09)
 
 **Value:** "Watch this product and alert me when the price drops." Huge for comparison shopping. Pairs with scheduled tasks.
 
@@ -224,7 +224,7 @@ page-save watch-list
 
 ---
 
-## Phase 9: Multi-Page Session Accumulation
+## Phase 9: Multi-Page Session Accumulation ✅ DONE (2026-04-09)
 
 **Value:** Currently each extraction creates a new session. Researchers often navigate across multiple pages (article → references → related work) before they have a complete picture. Accumulation mode lets users build up a session incrementally, then finalize it as one coherent package.
 
@@ -248,7 +248,7 @@ page-save session-status                   # Show active session info
 
 ---
 
-## Phase 10: Sidebar Preview/Edit Before Save
+## Phase 10: Sidebar Preview/Edit Before Save ✅ DONE (2026-04-09)
 
 **Value:** Users can't currently review extracted content before it's written to disk. A preview step lets users trim irrelevant sections, verify extraction quality, and catch schema errors before the data hits the AI pipeline.
 
@@ -264,7 +264,7 @@ page-save session-status                   # Show active session info
 
 ---
 
-## Phase 11: Incremental Extraction (Delta Mode)
+## Phase 11: Incremental Extraction (Delta Mode) ✅ DONE (2026-04-09)
 
 **Value:** On repeat searches, only show new or changed items. Saves tokens when monitoring a market over time.
 

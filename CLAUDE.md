@@ -55,6 +55,24 @@ page-save batch --urls "https://amazon.com/dp/B00E9M4XFI,https://amazon.com/dp/B
 
 # Schema suggest — probe DOM and generate a draft schema
 page-save schema-suggest --tab <id|pattern> [--save]
+
+# YouTube transcript extraction
+page-save youtube --tab <id|pattern>
+
+# Session accumulation — build a session incrementally
+page-save session-start
+page-save session-add --tab <id|pattern>
+page-save session-finalize
+page-save session-status
+
+# Price watch / monitoring
+page-save watch-add --url <url> [--fields price,rating]
+page-save watch-list
+page-save watch-run [--id <watchId> | --all]
+
+# Delta mode — compare against previous session
+page-save extract-all --domain amazon --prev <session-dir>
+page-save extract-pages --tab amazon --prev <session-dir>
 ```
 
 (Replace `page-save` with `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/cli.ts`)
@@ -125,6 +143,10 @@ saved-pages/
 | `src/file-writer.ts` | MHTML file writing (legacy) |
 | `src/schema-suggest.ts` | DOM probe → draft schema generation |
 | `src/defuddle-extractor.ts` | Clean article extraction via Defuddle for raw fallback |
+| `src/youtube-extractor.ts` | YouTube subtitle/caption extraction |
+| `src/mcp-server.ts` | MCP server entry point (stdio transport) |
+| `src/diff.ts` | Item diffing for watch/delta features |
+| `src/watch.ts` | Price watch CRUD and snapshot management |
 | `extension/service-worker.js` | WebSocket client, Chrome API handlers, side panel messaging |
 | `extension/extractors.js` | Schema registry, DOM extraction engine |
 | `extension/sidepanel.html/js/css` | Chrome Side Panel UI |
