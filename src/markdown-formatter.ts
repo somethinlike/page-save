@@ -115,15 +115,20 @@ export function formatStructuredMarkdown(result: StructuredResult): string {
     // TSV format for repeating items — much more compact than markdown tables
     const allFields = Object.keys(data.items[0]);
     const redundant = getRedundantFields(allFields);
-    const fields = allFields.filter(f => !redundant.has(f));
+    const fields = allFields.filter(f => !redundant.has(f) && f !== '__delta');
+
+    // Check if delta annotations are present
+    const hasDelta = data.items.some(item => '__delta' in item);
 
     // Header row with compact names
     const headers = fields.map(f => HEADER_MAP[f] || f);
+    if (hasDelta) headers.unshift('delta');
     lines.push(headers.join('\t'));
 
     // Data rows
     for (const item of data.items) {
       const cells = fields.map(f => formatCell(item[f]));
+      if (hasDelta) cells.unshift(formatCell(item.__delta));
       lines.push(cells.join('\t'));
     }
 

@@ -20,6 +20,7 @@ interface CliArgs {
   fields?: string[];
   watchId?: string;
   all?: boolean;
+  prev?: string;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -36,6 +37,7 @@ function parseArgs(argv: string[]): CliArgs {
   let fields: string[] | undefined;
   let watchId: string | undefined;
   let all = false;
+  let prev: string | undefined;
 
   for (let i = 1; i < args.length; i++) {
     if (args[i] === '--tab' && args[i + 1]) {
@@ -69,10 +71,13 @@ function parseArgs(argv: string[]): CliArgs {
       i++;
     } else if (args[i] === '--all') {
       all = true;
+    } else if ((args[i] === '--prev' || args[i] === '--delta') && args[i + 1]) {
+      prev = args[i + 1];
+      i++;
     }
   }
 
-  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all };
+  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all, prev };
 }
 
 // --- CLI Mode ---
@@ -162,6 +167,7 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
     fields: cliArgs.fields,
     watchId: cliArgs.watchId,
     all: cliArgs.all,
+    prev: cliArgs.prev,
   };
 
   socket.send(JSON.stringify(command));

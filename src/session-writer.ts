@@ -1,8 +1,9 @@
-import { mkdirSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, copyFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SAVE_DIR } from './types.ts';
 import { formatStructuredMarkdown, formatRawMarkdown } from './markdown-formatter.ts';
 import { extractWithDefuddle } from './defuddle-extractor.ts';
+import { diffItems } from './diff.ts';
 import type { YoutubeResult } from './youtube-extractor.ts';
 import { formatYoutubeMarkdown } from './youtube-extractor.ts';
 import type { ExtractionResult, StructuredResult, RawResult, PageConfidence, FieldConfidence } from './types.ts';
@@ -606,6 +607,142 @@ export function getSessionStatus(): { active: boolean; sessionId?: string; pageC
     pageCount: activeSession.pages.length,
     startedAt: activeSession.startedAt,
   };
+}
+
+// --- Delta Mode ---
+// Compare current extraction against a previous session's items.
+// Annotate items with delta status: NEW, CHG, or empty (unchanged).
+
+/**
+ * Load items from a previous session directory for delta comparison.
+ */
+function loadPreviousSessionItems(sessionDir: string): Record<string, unknown>[] {
+  const manifestPath = join(sessionDir, 'manifest.json');
+  if (!existsSync(manifestPath)) return [];
+
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+  const items: Record<string, unknown>[] = [];
+
+  // Read reduced/ files and parse TSV tables back into items
+  const reducedDir = join(sessionDir, 'reduced');
+  if (!existsSync(reducedDir)) return [];
+
+  const files = readdirSync(reducedDir).filter(f => f.endsWith('.md'));
+  for (const file of files) {
+    const content = readFileSync(join(reducedDir, file), 'utf-8');
+    const tsvItems = parseTsvFromMarkdown(content);
+    items.push(...tsvItems);
+  }
+
+  return items;
+}
+
+/**
+ * Parse TSV items from a markdown extraction file.
+ * Finds the TSV table section and parses header + rows.
+ */
+function parseTsvFromMarkdown(content: string): Record<string, unknown>[] {
+  const lines = content.split('\n');
+  const items: Record<string, unknown>[] = [];
+
+  // Find the TSV block: header row followed by data rows
+  // Skip metadata lines (start with #, Extracted:, Source:, or empty)
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line || line.startsWith('#') || line.startsWith('Extracted:') || line.startsWith('Source:')) continue;
+    if (line.includes('\t') && !line.match(/^\d+ items$/)) {
+      headerIdx = i;
+      break;
+    }
+  }
+
+  if (headerIdx === -1) return [];
+
+  const headers = lines[headerIdx].split('\t').map(h => h.trim());
+
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line || !line.includes('\t')) break;
+    if (line.match(/^\d+ items$/)) break;
+
+    const cells = line.split('\t');
+    const item: Record<string, unknown> = {};
+    for (let j = 0; j < headers.length; j++) {
+      item[headers[j]] = cells[j]?.trim() || '';
+    }
+    items.push(item);
+  }
+
+  return items;
+}
+
+/**
+ * Apply delta annotations to extraction results by comparing against previous items.
+ * Adds a `__delta` field to each item: 'NEW', 'CHG', or '' (unchanged).
+ */
+function applyDeltaAnnotations(results: ExtractionResult[], prevItems: Record<string, unknown>[]): void {
+  // Build a lookup of current items
+  const allCurrentItems: Record<string, unknown>[] = [];
+  for (const result of results) {
+    if (result.type !== 'structured') continue;
+    const { data } = result;
+    if (data.items) allCurrentItems.push(...data.items);
+    else if (data.item) allCurrentItems.push(data.item);
+  }
+
+  const diff = diffItems(prevItems, allCurrentItems);
+
+  // Build lookup sets for fast annotation
+  const addedKeys = new Set<string>();
+  for (const item of diff.added) {
+    const key = getItemDeltaKey(item);
+    if (key) addedKeys.add(key);
+  }
+
+  const changedKeys = new Set<string>();
+  for (const { item } of diff.changed) {
+    const key = getItemDeltaKey(item);
+    if (key) changedKeys.add(key);
+  }
+
+  // Annotate items in place
+  for (const result of results) {
+    if (result.type !== 'structured') continue;
+    const items = result.data.items || (result.data.item ? [result.data.item] : []);
+    for (const item of items) {
+      const key = getItemDeltaKey(item);
+      if (!key) continue;
+      if (addedKeys.has(key)) {
+        item.__delta = 'NEW';
+      } else if (changedKeys.has(key)) {
+        item.__delta = 'CHG';
+      } else {
+        item.__delta = '';
+      }
+    }
+  }
+}
+
+function getItemDeltaKey(item: Record<string, unknown>): string | null {
+  for (const field of ['asin', 'listingId', 'itemId', 'sku']) {
+    const val = item[field];
+    if (typeof val === 'string' && val.length > 0) return val;
+  }
+  const title = item.title;
+  if (typeof title === 'string' && title.length > 0) return `title:${title}`;
+  return null;
+}
+
+/**
+ * Write a session with delta annotations against a previous session.
+ */
+export async function writeSessionWithDelta(results: ExtractionResult[], prevSessionDir: string): Promise<string> {
+  const prevItems = loadPreviousSessionItems(prevSessionDir);
+  if (prevItems.length > 0) {
+    applyDeltaAnnotations(results, prevItems);
+  }
+  return writeSession(results);
 }
 
 export function writeYoutubeSession(result: YoutubeResult): string {

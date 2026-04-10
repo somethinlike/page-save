@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { PORT } from './types.ts';
 import type { WsRequest, WsResponse, TabInfo, SavePageResult, GetTextResult, ExtractionResult, BatchResult, DomProbeResult, YoutubeHtmlResult } from './types.ts';
 import { writeMhtml } from './file-writer.ts';
-import { writeSession, writeYoutubeSession, openSession, appendToSession, finalizeSession, getSessionStatus } from './session-writer.ts';
+import { writeSession, writeSessionWithDelta, writeYoutubeSession, openSession, appendToSession, finalizeSession, getSessionStatus } from './session-writer.ts';
 import { generateSchema, formatSchemaSummary, saveSchema } from './schema-suggest.ts';
 import { extractSubtitles } from './youtube-extractor.ts';
 import { createWatch, listWatches, processWatchResult } from './watch.ts';
@@ -392,12 +392,17 @@ async function handleCliCommand(
     if ('error' in response) { respond({ error: response.error }); return; }
 
     const batchResult = response.result as BatchResult;
-    const sessionDir = await writeSession(batchResult.results as ExtractionResult[]);
+    const extractionResults = batchResult.results as ExtractionResult[];
+    const prevSession = msg.prev as string | undefined;
+    const sessionDir = prevSession
+      ? await writeSessionWithDelta(extractionResults, prevSession)
+      : await writeSession(extractionResults);
     respond({
       sessionDir,
       count: batchResult.count,
       structured: batchResult.results.filter((r: ExtractionResult) => r.type === 'structured').length,
       raw: batchResult.results.filter((r: ExtractionResult) => r.type === 'raw').length,
+      delta: !!prevSession,
       ...(warning && { warning }),
     });
     return;
@@ -442,12 +447,17 @@ async function handleCliCommand(
     }
 
     const batchResult = batchResponse.result as BatchResult;
-    const sessionDir = await writeSession(batchResult.results as ExtractionResult[]);
+    const extractionResults = batchResult.results as ExtractionResult[];
+    const prevSession = msg.prev as string | undefined;
+    const sessionDir = prevSession
+      ? await writeSessionWithDelta(extractionResults, prevSession)
+      : await writeSession(extractionResults);
     respond({
       sessionDir,
       count: batchResult.count,
       structured: batchResult.results.filter((r: ExtractionResult) => r.type === 'structured').length,
       raw: batchResult.results.filter((r: ExtractionResult) => r.type === 'raw').length,
+      delta: !!prevSession,
     });
     return;
   }
