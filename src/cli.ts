@@ -107,6 +107,7 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
     'extract-pages': 'extract-pages',
     'schema-suggest': 'schema-suggest',
     batch: 'batch',
+    youtube: 'youtube',
   };
 
   // Resolve batch URLs from --file or --urls
@@ -148,7 +149,14 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
       process.exit(1);
     }
 
-    if (msg.summary) {
+    if (msg.videoId) {
+      // YouTube extraction result
+      console.log(`Session saved: ${msg.sessionDir}`);
+      console.log(`  Video: ${msg.title}`);
+      console.log(`  Channel: ${msg.channel}`);
+      console.log(`  Duration: ${msg.duration}`);
+      console.log(`  Language: ${msg.language}`);
+    } else if (msg.summary) {
       // schema-suggest result
       console.log(msg.summary);
       if (msg.savedPath) {
@@ -216,7 +224,7 @@ const cliArgs = parseArgs(process.argv);
 
 if (cliArgs.action === 'serve') {
   startServer();
-} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest', 'batch'].includes(cliArgs.action)) {
+} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest', 'batch', 'youtube'].includes(cliArgs.action)) {
   runCli(cliArgs).catch((err) => {
     console.error(`Error: ${err.message || err}`);
     process.exit(1);
@@ -231,6 +239,7 @@ if (cliArgs.action === 'serve') {
   page-save extract-all [--domain <pattern>]                   Batch structured extraction
   page-save extract-pages [--tab <id|pattern>] [--max-pages N] Paginated extraction (follow next links)
   page-save schema-suggest [--tab <id|pattern>] [--save]       Probe DOM and suggest a schema
-  page-save batch --file <urls.txt> | --urls <url1,url2,...>   Batch extraction from URL list`);
+  page-save batch --file <urls.txt> | --urls <url1,url2,...>   Batch extraction from URL list
+  page-save youtube [--tab <id|pattern>]                       Extract YouTube video transcript`);
   process.exit(1);
 }

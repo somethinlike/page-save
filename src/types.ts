@@ -2,7 +2,7 @@
 
 export interface WsRequest {
   id: string;
-  action: 'list-tabs' | 'save-page' | 'get-text' | 'get-structured' | 'get-structured-batch' | 'get-structured-paginated' | 'probe-dom' | 'batch-urls';
+  action: 'list-tabs' | 'save-page' | 'get-text' | 'get-structured' | 'get-structured-batch' | 'get-structured-paginated' | 'probe-dom' | 'batch-urls' | 'get-youtube-html';
   tabId?: number;
   tabIds?: number[];
   maxPages?: number;
@@ -67,6 +67,13 @@ export interface ErrorResult {
   error: string;
 }
 
+export interface YoutubeHtmlResult {
+  type: 'youtube-html';
+  url: string;
+  title: string;
+  html: string;
+}
+
 export type ExtractionResult = StructuredResult | RawResult | ErrorResult;
 
 export interface BatchResult {
@@ -78,7 +85,7 @@ export interface BatchResult {
 
 export interface WsResponseSuccess {
   id: string;
-  result: TabListResult | SavePageResult | GetTextResult | StructuredResult | RawResult | BatchResult | DomProbeResult;
+  result: TabListResult | SavePageResult | GetTextResult | StructuredResult | RawResult | BatchResult | DomProbeResult | YoutubeHtmlResult;
 }
 
 export interface WsResponseError {

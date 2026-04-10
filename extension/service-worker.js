@@ -113,6 +113,9 @@ async function handleMessage(msg) {
       case 'batch-urls':
         await handleBatchUrls(id, msg.urls);
         break;
+      case 'get-youtube-html':
+        await handleGetYoutubeHtml(id, tabId);
+        break;
       default:
         send({ id, error: `Unknown action: ${action}` });
     }
@@ -192,6 +195,30 @@ async function handleGetStructured(id, tabId) {
   result.title = tab.title || 'untitled';
 
   send({ id, result });
+}
+
+async function handleGetYoutubeHtml(id, tabId) {
+  const resolvedId = await resolveTabId(tabId);
+  const tab = await chrome.tabs.get(resolvedId);
+
+  // Capture the full page HTML (contains caption track data in ytInitialPlayerResponse)
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: resolvedId },
+    func: () => document.documentElement.outerHTML,
+    world: 'ISOLATED',
+  });
+
+  const html = results?.[0]?.result || '';
+
+  send({
+    id,
+    result: {
+      type: 'youtube-html',
+      url: tab.url || '',
+      title: tab.title || 'untitled',
+      html,
+    },
+  });
 }
 
 async function handleBatchUrls(id, urls) {

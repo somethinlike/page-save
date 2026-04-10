@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { SAVE_DIR } from './types.ts';
 import { formatStructuredMarkdown, formatRawMarkdown } from './markdown-formatter.ts';
 import { extractWithDefuddle } from './defuddle-extractor.ts';
+import type { YoutubeResult } from './youtube-extractor.ts';
+import { formatYoutubeMarkdown } from './youtube-extractor.ts';
 import type { ExtractionResult, StructuredResult, RawResult, PageConfidence, FieldConfidence } from './types.ts';
 
 const SESSIONS_DIR = join(SAVE_DIR, 'sessions');
@@ -489,6 +491,43 @@ export async function writeSession(results: ExtractionResult[]): Promise<string>
   }
 
   writeManifest(session, results, files, confidence);
+
+  return session.dir;
+}
+
+/**
+ * Write a YouTube transcript extraction to its own session.
+ */
+export function writeYoutubeSession(result: YoutubeResult): string {
+  ensureMasterReadme();
+  const session = createSession();
+
+  const filename = sanitizeFilename(`youtube.com-${result.videoId}.md`);
+  const filepath = join(session.reducedDir, filename);
+  const markdown = formatYoutubeMarkdown(result);
+  writeFileSync(filepath, markdown, 'utf-8');
+
+  // Write manifest
+  const manifest = {
+    timestamp: session.timestamp,
+    totalPages: 1,
+    reduced: 1,
+    raw: 0,
+    errors: 0,
+    pages: [{
+      type: 'youtube',
+      domain: 'youtube.com',
+      url: result.url,
+      title: result.title,
+      file: filepath,
+    }],
+  };
+
+  writeFileSync(
+    join(session.dir, 'manifest.json'),
+    JSON.stringify(manifest, null, 2),
+    'utf-8'
+  );
 
   return session.dir;
 }
