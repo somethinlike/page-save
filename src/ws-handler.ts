@@ -52,6 +52,61 @@ async function handleCliCommand(
   const output = msg.output as string | undefined;
   const domain = msg.domain as string | undefined;
 
+  // --- extract-pages: paginated extraction from a single tab ---
+  if (action === 'extract-pages') {
+    let resolvedTabId: number | undefined;
+    let warning: string | undefined;
+    const maxPages = (msg.maxPages as number) || 10;
+
+    if (tab !== undefined) {
+      const numericId = Number(tab);
+      if (!Number.isNaN(numericId) && String(numericId) === tab) {
+        resolvedTabId = numericId;
+      } else {
+        const tabsResponse = await sendToExtension(extensionSocket, pendingRequests, {
+          id: randomUUID(),
+          action: 'list-tabs',
+        });
+        if ('error' in tabsResponse) { respond({ error: tabsResponse.error }); return; }
+        const tabs = (tabsResponse.result as { tabs: TabInfo[] }).tabs;
+        const pattern = tab.toLowerCase();
+        const matches = tabs.filter((t) => t.url.toLowerCase().includes(pattern) || t.title.toLowerCase().includes(pattern));
+        if (matches.length === 0) {
+          const tabList = tabs.map((t) => `  ${t.tabId} | ${t.title.slice(0, 40)} | ${t.url}`).join('\n');
+          respond({ error: `No tab matching '${tab}'. Open tabs:\n${tabList}` });
+          return;
+        }
+        if (matches.length > 1) {
+          warning = `${matches.length} tabs match '${tab}'. Using: ${matches[0].title} (${matches[0].url})`;
+        }
+        resolvedTabId = matches[0].tabId;
+      }
+    }
+
+    const request: WsRequest = {
+      id: randomUUID(),
+      action: 'get-structured-paginated',
+      tabId: resolvedTabId ?? -1,
+      maxPages,
+    };
+
+    // Timeout scales with page count: 15s per page + 5s buffer
+    const timeoutMs = maxPages * 15000 + 5000;
+    const response = await sendToExtension(extensionSocket, pendingRequests, request, timeoutMs);
+    if ('error' in response) { respond({ error: response.error }); return; }
+
+    const batchResult = response.result as BatchResult;
+    const sessionDir = writeSession(batchResult.results as ExtractionResult[]);
+    respond({
+      sessionDir,
+      count: batchResult.count,
+      structured: batchResult.results.filter((r: ExtractionResult) => r.type === 'structured').length,
+      raw: batchResult.results.filter((r: ExtractionResult) => r.type === 'raw').length,
+      ...(warning && { warning }),
+    });
+    return;
+  }
+
   // --- extract-all: batch structured extraction by domain ---
   if (action === 'extract-all') {
     const tabsResponse = await sendToExtension(extensionSocket, pendingRequests, {

@@ -2,9 +2,10 @@
 
 export interface WsRequest {
   id: string;
-  action: 'list-tabs' | 'save-page' | 'get-text' | 'get-structured' | 'get-structured-batch';
+  action: 'list-tabs' | 'save-page' | 'get-text' | 'get-structured' | 'get-structured-batch' | 'get-structured-paginated';
   tabId?: number;
   tabIds?: number[];
+  maxPages?: number;
 }
 
 export interface TabInfo {

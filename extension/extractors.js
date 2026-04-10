@@ -32,6 +32,11 @@ const BUILTIN_SCHEMAS = [
           reviewCount: { selector: 'span.s-underline-text', type: 'text' },
           prime: { selector: 'i.a-icon-prime', type: 'exists' },
         },
+        pagination: {
+          selector: '.s-pagination-next',
+          maxPages: 10,
+          waitStrategy: 'navigation',
+        },
       },
       product: {
         urlPattern: '/dp/',
@@ -728,6 +733,127 @@ async function extractStructured(tabId, url) {
   };
 }
 
+// --- Pagination: auto-follow "next" links across search result pages ---
+
+/**
+ * Extract structured data from a tab, following pagination links automatically.
+ * Returns an array of extraction results — one per page.
+ *
+ * @param {number} tabId
+ * @param {string} url - Starting URL
+ * @param {number} maxPages - Maximum pages to extract (default 10)
+ * @returns {Promise<object[]>} Array of extraction results
+ */
+async function extractWithPagination(tabId, url, maxPages = 10) {
+  const results = [];
+
+  const match = matchSchema(url);
+  if (!match) {
+    // No schema — can't paginate without knowing the "next" selector
+    const single = await extractStructured(tabId, url);
+    return [single];
+  }
+
+  const { schema, page, pageType } = match;
+  if (!page.pagination) {
+    // Schema exists but no pagination config — extract single page
+    const single = await extractStructured(tabId, url);
+    return [single];
+  }
+
+  const { selector: nextSelector, waitStrategy } = page.pagination;
+
+  for (let pageNum = 0; pageNum < maxPages; pageNum++) {
+    // Get current tab state
+    const tab = await chrome.tabs.get(tabId);
+    const currentUrl = tab.url;
+
+    // Extract current page
+    const result = await extractStructured(tabId, currentUrl);
+    result.title = tab.title || 'untitled';
+    results.push(result);
+
+    // If extraction failed or returned no items, stop
+    if (result.type !== 'structured' || result.data?.error) break;
+    if (result.data?.items && result.data.items.length === 0) break;
+
+    // Last page? Don't try to find "next"
+    if (pageNum >= maxPages - 1) break;
+
+    // Find the "next" link
+    const nextResult = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return null;
+        // Get href if it's a link, or null if it's a disabled/hidden element
+        if (el.tagName === 'A' && el.href) return el.href;
+        if (el.classList.contains('s-pagination-disabled')) return null;
+        if (el.getAttribute('aria-disabled') === 'true') return null;
+        // For buttons/spans that act as pagination, try clicking
+        return '__CLICK__';
+      },
+      args: [nextSelector],
+      world: 'ISOLATED',
+    });
+
+    const nextAction = nextResult?.[0]?.result;
+    if (!nextAction) break; // No next link found — we're on the last page
+
+    if (waitStrategy === 'mutation') {
+      // SPA: click the element and wait for DOM changes
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: (sel) => {
+          const el = document.querySelector(sel);
+          if (el) el.click();
+        },
+        args: [nextSelector],
+        world: 'ISOLATED',
+      });
+
+      // Wait for DOM to update (poll for container count change)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } else {
+      // Navigation: click or navigate to URL and wait for full page load
+      if (nextAction === '__CLICK__') {
+        // Click the element and wait for navigation
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          func: (sel) => {
+            const el = document.querySelector(sel);
+            if (el) el.click();
+          },
+          args: [nextSelector],
+          world: 'ISOLATED',
+        });
+        // Wait for navigation to complete
+        await new Promise((resolve) => {
+          const listener = (tid, info) => {
+            if (tid === tabId && info.status === 'complete') {
+              chrome.tabs.onUpdated.removeListener(listener);
+              resolve();
+            }
+          };
+          chrome.tabs.onUpdated.addListener(listener);
+          setTimeout(() => {
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }, 15000);
+        });
+      } else {
+        // Direct URL navigation
+        await navigateAndWait(tabId, nextAction);
+      }
+    }
+
+    // Brief settle delay for dynamic content
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  return results;
+}
+
 // Export for service-worker.js
 // (Service workers can't use ES modules in Chrome extensions,
 // so we use importScripts and attach to globalThis)
@@ -735,5 +861,6 @@ globalThis.extractors = {
   loadSchemas,
   matchSchema,
   extractStructured,
+  extractWithPagination,
   schemaRegistry,
 };

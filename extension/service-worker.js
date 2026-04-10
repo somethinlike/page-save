@@ -104,6 +104,9 @@ async function handleMessage(msg) {
       case 'get-structured-batch':
         await handleGetStructuredBatch(id, msg.tabIds);
         break;
+      case 'get-structured-paginated':
+        await handleGetStructuredPaginated(id, tabId, msg.maxPages);
+        break;
       default:
         send({ id, error: `Unknown action: ${action}` });
     }
@@ -183,6 +186,13 @@ async function handleGetStructured(id, tabId) {
   result.title = tab.title || 'untitled';
 
   send({ id, result });
+}
+
+async function handleGetStructuredPaginated(id, tabId, maxPages) {
+  const resolvedId = await resolveTabId(tabId);
+  const tab = await chrome.tabs.get(resolvedId);
+  const results = await globalThis.extractors.extractWithPagination(resolvedId, tab.url, maxPages || 10);
+  send({ id, result: { results, count: results.length } });
 }
 
 async function handleGetStructuredBatch(id, tabIds) {

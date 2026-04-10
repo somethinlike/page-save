@@ -6,12 +6,13 @@ import { startServer } from './ws-handler.ts';
 
 // --- Argument Parsing ---
 
-function parseArgs(argv: string[]): { action: string; tab?: string; output?: string; domain?: string } {
+function parseArgs(argv: string[]): { action: string; tab?: string; output?: string; domain?: string; maxPages?: number } {
   const args = argv.slice(2);
   const action = args[0] || 'serve';
   let tab: string | undefined;
   let output: string | undefined;
   let domain: string | undefined;
+  let maxPages: number | undefined;
 
   for (let i = 1; i < args.length; i++) {
     if (args[i] === '--tab' && args[i + 1]) {
@@ -23,10 +24,13 @@ function parseArgs(argv: string[]): { action: string; tab?: string; output?: str
     } else if (args[i] === '--domain' && args[i + 1]) {
       domain = args[i + 1];
       i++;
+    } else if (args[i] === '--max-pages' && args[i + 1]) {
+      maxPages = parseInt(args[i + 1], 10);
+      i++;
     }
   }
 
-  return { action, tab, output, domain };
+  return { action, tab, output, domain, maxPages };
 }
 
 // --- CLI Mode ---
@@ -60,7 +64,7 @@ async function tryAutoStartServer(): Promise<boolean> {
   return false;
 }
 
-async function runCli(action: string, tab?: string, output?: string, domain?: string): Promise<void> {
+async function runCli(action: string, tab?: string, output?: string, domain?: string, maxPages?: number): Promise<void> {
   let socket: WebSocket;
   try {
     socket = await connectToServer(PORT);
@@ -76,6 +80,7 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
     tabs: 'list-tabs',
     extract: 'get-structured',
     'extract-all': 'extract-all',
+    'extract-pages': 'extract-pages',
   };
 
   const command: Record<string, unknown> = {
@@ -84,6 +89,7 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
     tab,
     output,
     domain,
+    maxPages,
   };
 
   socket.send(JSON.stringify(command));
@@ -138,31 +144,37 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
     process.exit(0);
   });
 
+  // Paginated extraction needs longer timeout: 15s per page + buffer
+  const cliTimeout = action === 'extract-pages'
+    ? (maxPages || 10) * 15000 + 10000
+    : 20000;
+
   setTimeout(() => {
     console.error('Error: Timed out waiting for response.');
     socket.close();
     process.exit(1);
-  }, 20000);
+  }, cliTimeout);
 }
 
 // --- Entry Point ---
 
-const { action, tab, output, domain } = parseArgs(process.argv);
+const { action, tab, output, domain, maxPages } = parseArgs(process.argv);
 
 if (action === 'serve') {
   startServer();
-} else if (['tabs', 'save', 'text', 'extract', 'extract-all'].includes(action)) {
-  runCli(action, tab, output, domain).catch((err) => {
+} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages'].includes(action)) {
+  runCli(action, tab, output, domain, maxPages).catch((err) => {
     console.error(`Error: ${err.message || err}`);
     process.exit(1);
   });
 } else {
   console.log(`Usage:
-  page-save serve                                    Start WebSocket server
-  page-save tabs                                     List all open Chrome tabs
-  page-save save [--tab <id|pattern>] [--out <path>] Save page as MHTML
-  page-save text [--tab <id|pattern>]                Extract page text
-  page-save extract [--tab <id|pattern>]             Structured extraction (single tab)
-  page-save extract-all [--domain <pattern>]         Batch structured extraction`);
+  page-save serve                                              Start WebSocket server
+  page-save tabs                                               List all open Chrome tabs
+  page-save save [--tab <id|pattern>] [--out <path>]           Save page as MHTML
+  page-save text [--tab <id|pattern>]                          Extract page text
+  page-save extract [--tab <id|pattern>]                       Structured extraction (single tab)
+  page-save extract-all [--domain <pattern>]                   Batch structured extraction
+  page-save extract-pages [--tab <id|pattern>] [--max-pages N] Paginated extraction (follow next links)`);
   process.exit(1);
 }
