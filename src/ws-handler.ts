@@ -11,16 +11,19 @@ interface PendingRequest {
   timeout: ReturnType<typeof setTimeout>;
 }
 
+const DEFAULT_TIMEOUT_MS = 15000;
+
 function sendToExtension(
   extensionSocket: WebSocket,
   pendingRequests: Map<string, PendingRequest>,
   request: WsRequest,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ): Promise<WsResponse> {
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       pendingRequests.delete(request.id);
-      resolve({ id: request.id, error: 'Extension did not respond within 15 seconds.' });
-    }, 15000);
+      resolve({ id: request.id, error: `Extension did not respond within ${Math.round(timeoutMs / 1000)} seconds.` });
+    }, timeoutMs);
 
     pendingRequests.set(request.id, { resolve, timeout });
     extensionSocket.send(JSON.stringify(request));
