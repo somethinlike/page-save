@@ -53,6 +53,36 @@ async function handleCliCommand(
   const output = msg.output as string | undefined;
   const domain = msg.domain as string | undefined;
 
+  // --- batch: extract from a list of URLs via background tabs ---
+  if (action === 'batch') {
+    const urls = msg.urls as string[] | undefined;
+    if (!urls || urls.length === 0) {
+      respond({ error: 'No URLs provided. Use --urls or --file.' });
+      return;
+    }
+
+    const request: WsRequest = {
+      id: randomUUID(),
+      action: 'batch-urls',
+      urls,
+    };
+
+    // 20s per URL + 5s buffer
+    const timeoutMs = urls.length * 20000 + 5000;
+    const response = await sendToExtension(extensionSocket, pendingRequests, request, timeoutMs);
+    if ('error' in response) { respond({ error: response.error }); return; }
+
+    const batchResult = response.result as BatchResult;
+    const sessionDir = writeSession(batchResult.results as ExtractionResult[]);
+    respond({
+      sessionDir,
+      count: batchResult.count,
+      structured: batchResult.results.filter((r: ExtractionResult) => r.type === 'structured').length,
+      raw: batchResult.results.filter((r: ExtractionResult) => r.type === 'raw').length,
+    });
+    return;
+  }
+
   // --- schema-suggest: probe a page's DOM and generate a draft schema ---
   if (action === 'schema-suggest') {
     let resolvedTabId: number | undefined;

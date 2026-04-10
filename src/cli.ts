@@ -1,12 +1,24 @@
 import { WebSocket } from 'ws';
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { PORT } from './types.ts';
 import type { TabInfo } from './types.ts';
 import { startServer } from './ws-handler.ts';
 
 // --- Argument Parsing ---
 
-function parseArgs(argv: string[]): { action: string; tab?: string; output?: string; domain?: string; maxPages?: number; save?: boolean } {
+interface CliArgs {
+  action: string;
+  tab?: string;
+  output?: string;
+  domain?: string;
+  maxPages?: number;
+  save?: boolean;
+  urls?: string[];
+  file?: string;
+}
+
+function parseArgs(argv: string[]): CliArgs {
   const args = argv.slice(2);
   const action = args[0] || 'serve';
   let tab: string | undefined;
@@ -14,6 +26,8 @@ function parseArgs(argv: string[]): { action: string; tab?: string; output?: str
   let domain: string | undefined;
   let maxPages: number | undefined;
   let save = false;
+  let urls: string[] | undefined;
+  let file: string | undefined;
 
   for (let i = 1; i < args.length; i++) {
     if (args[i] === '--tab' && args[i + 1]) {
@@ -30,10 +44,16 @@ function parseArgs(argv: string[]): { action: string; tab?: string; output?: str
       i++;
     } else if (args[i] === '--save') {
       save = true;
+    } else if (args[i] === '--urls' && args[i + 1]) {
+      urls = args[i + 1].split(',').map(u => u.trim()).filter(Boolean);
+      i++;
+    } else if (args[i] === '--file' && args[i + 1]) {
+      file = args[i + 1];
+      i++;
     }
   }
 
-  return { action, tab, output, domain, maxPages, save };
+  return { action, tab, output, domain, maxPages, save, urls, file };
 }
 
 // --- CLI Mode ---
@@ -67,7 +87,8 @@ async function tryAutoStartServer(): Promise<boolean> {
   return false;
 }
 
-async function runCli(action: string, tab?: string, output?: string, domain?: string, maxPages?: number, save?: boolean): Promise<void> {
+async function runCli(cliArgs: CliArgs): Promise<void> {
+  const { action, tab, output, domain, maxPages, save } = cliArgs;
   let socket: WebSocket;
   try {
     socket = await connectToServer(PORT);
@@ -85,7 +106,21 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
     'extract-all': 'extract-all',
     'extract-pages': 'extract-pages',
     'schema-suggest': 'schema-suggest',
+    batch: 'batch',
   };
+
+  // Resolve batch URLs from --file or --urls
+  let batchUrls = cliArgs.urls;
+  if (action === 'batch' && !batchUrls && cliArgs.file) {
+    try {
+      const content = readFileSync(cliArgs.file, 'utf-8');
+      batchUrls = content.split('\n').map(l => l.trim()).filter(l => l && l.startsWith('http'));
+    } catch (err) {
+      console.error(`Error reading URL file: ${(err as Error).message}`);
+      socket.close();
+      process.exit(1);
+    }
+  }
 
   const command: Record<string, unknown> = {
     type: 'cli-command',
@@ -95,6 +130,7 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
     domain,
     maxPages,
     save,
+    urls: batchUrls,
   };
 
   socket.send(JSON.stringify(command));
@@ -159,10 +195,13 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
     process.exit(0);
   });
 
-  // Paginated extraction needs longer timeout: 15s per page + buffer
-  const cliTimeout = action === 'extract-pages'
-    ? (maxPages || 10) * 15000 + 10000
-    : 20000;
+  // Scale CLI timeout for long-running commands
+  let cliTimeout = 20000;
+  if (action === 'extract-pages') {
+    cliTimeout = (maxPages || 10) * 15000 + 10000;
+  } else if (action === 'batch' && batchUrls) {
+    cliTimeout = batchUrls.length * 20000 + 10000;
+  }
 
   setTimeout(() => {
     console.error('Error: Timed out waiting for response.');
@@ -173,12 +212,12 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
 
 // --- Entry Point ---
 
-const { action, tab, output, domain, maxPages, save } = parseArgs(process.argv);
+const cliArgs = parseArgs(process.argv);
 
-if (action === 'serve') {
+if (cliArgs.action === 'serve') {
   startServer();
-} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest'].includes(action)) {
-  runCli(action, tab, output, domain, maxPages, save).catch((err) => {
+} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest', 'batch'].includes(cliArgs.action)) {
+  runCli(cliArgs).catch((err) => {
     console.error(`Error: ${err.message || err}`);
     process.exit(1);
   });
@@ -191,6 +230,7 @@ if (action === 'serve') {
   page-save extract [--tab <id|pattern>]                       Structured extraction (single tab)
   page-save extract-all [--domain <pattern>]                   Batch structured extraction
   page-save extract-pages [--tab <id|pattern>] [--max-pages N] Paginated extraction (follow next links)
-  page-save schema-suggest [--tab <id|pattern>] [--save]       Probe DOM and suggest a schema`);
+  page-save schema-suggest [--tab <id|pattern>] [--save]       Probe DOM and suggest a schema
+  page-save batch --file <urls.txt> | --urls <url1,url2,...>   Batch extraction from URL list`);
   process.exit(1);
 }

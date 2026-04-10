@@ -110,6 +110,9 @@ async function handleMessage(msg) {
       case 'probe-dom':
         await handleProbeDom(id, tabId);
         break;
+      case 'batch-urls':
+        await handleBatchUrls(id, msg.urls);
+        break;
       default:
         send({ id, error: `Unknown action: ${action}` });
     }
@@ -189,6 +192,66 @@ async function handleGetStructured(id, tabId) {
   result.title = tab.title || 'untitled';
 
   send({ id, result });
+}
+
+async function handleBatchUrls(id, urls) {
+  if (!Array.isArray(urls) || urls.length === 0) {
+    send({ id, error: 'urls must be a non-empty array' });
+    return;
+  }
+
+  const results = [];
+  const CONCURRENCY = 3;
+
+  for (let i = 0; i < urls.length; i += CONCURRENCY) {
+    const batch = urls.slice(i, i + CONCURRENCY);
+    const batchResults = await Promise.all(
+      batch.map(async (url) => {
+        let newTab;
+        try {
+          // Open background tab
+          newTab = await chrome.tabs.create({ url, active: false });
+
+          // Wait for page load
+          await new Promise((resolve) => {
+            const listener = (tid, info) => {
+              if (tid === newTab.id && info.status === 'complete') {
+                chrome.tabs.onUpdated.removeListener(listener);
+                resolve();
+              }
+            };
+            chrome.tabs.onUpdated.addListener(listener);
+            setTimeout(() => {
+              chrome.tabs.onUpdated.removeListener(listener);
+              resolve();
+            }, 20000);
+          });
+
+          // Brief settle for dynamic content
+          await new Promise(r => setTimeout(r, 1000));
+
+          // Extract
+          const result = await globalThis.extractors.extractStructured(newTab.id, url);
+          const tab = await chrome.tabs.get(newTab.id);
+          result.title = tab.title || 'untitled';
+
+          // Close tab
+          await chrome.tabs.remove(newTab.id);
+
+          return result;
+        } catch (err) {
+          // Try to clean up the tab
+          if (newTab?.id) {
+            try { await chrome.tabs.remove(newTab.id); } catch {}
+          }
+          return { type: 'error', url, error: err.message || String(err) };
+        }
+      })
+    );
+    results.push(...batchResults);
+  }
+
+  send({ id, result: { results, count: results.length } });
 }
 
 async function handleProbeDom(id, tabId) {
