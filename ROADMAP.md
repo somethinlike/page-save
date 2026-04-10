@@ -23,7 +23,7 @@ Phase 12 (More Schemas) ── parallel, ongoing, uses Phase 3
 
 ---
 
-## Phase 1: Confidence Scores Per Field
+## Phase 1: Confidence Scores Per Field ✅ DONE (2026-04-09)
 
 **Value:** Diagnose broken selectors instantly. When a schema starts returning nulls, confidence scores surface it without manual inspection.
 
@@ -50,7 +50,7 @@ Phase 12 (More Schemas) ── parallel, ongoing, uses Phase 3
 
 ---
 
-## Phase 2: Pagination Auto-Follow
+## Phase 2: Pagination Auto-Follow ✅ DONE (2026-04-09)
 
 **Value:** Eliminates the biggest UX friction — users currently open 7 search page tabs manually. One tab → all pages extracted.
 
@@ -79,7 +79,7 @@ Phase 12 (More Schemas) ── parallel, ongoing, uses Phase 3
 
 ---
 
-## Phase 3: Schema Suggest Command
+## Phase 3: Schema Suggest Command ✅ DONE (2026-04-09)
 
 **Value:** AI or user points at any page, gets a draft schema proposal. Accelerates schema creation from hours to seconds.
 
@@ -103,7 +103,7 @@ Phase 12 (More Schemas) ── parallel, ongoing, uses Phase 3
 
 ---
 
-## Phase 4: Batch URL Scraping
+## Phase 4: Batch URL Scraping ✅ DONE (2026-04-09)
 
 **Value:** Extract from a list of URLs without opening tabs manually. Enables scripted/automated extraction workflows. Prerequisite for monitoring.
 
@@ -124,7 +124,7 @@ page-save batch --urls "https://amazon.com/dp/B00E9M4XFI,https://amazon.com/dp/B
 
 ---
 
-## Phase 5: Defuddle Fallback Engine
+## Phase 5: Defuddle Fallback Engine ✅ DONE (2026-04-09)
 
 **Value:** Raw text extraction (`document.body.innerText`) produces noisy output — nav bars, ads, sidebars, footers all included. Defuddle extracts main article content only, dramatically improving quality for domains without schemas.
 
@@ -302,7 +302,7 @@ CHG    B00E9M4XFI  $18.97  ~T1      (was $20.97)
 
 ---
 
-## Cross-Cutting: Configurable Timeout
+## Cross-Cutting: Configurable Timeout ✅ DONE (2026-04-09)
 
 Required before Phase 2. Change `sendToExtension()` in `src/ws-handler.ts` to accept `timeoutMs` parameter (default 15000). Pagination, batch, and YouTube commands need longer timeouts proportional to page/content count.
 

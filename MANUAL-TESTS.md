@@ -1,9 +1,9 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.04.06
+**Updated:** 2026.04.09
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
-- Node.js server: `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/server.ts serve`
+- Node.js server: `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/cli.ts serve`
 - Extension badge should not show errors
 
 ---
@@ -214,14 +214,95 @@
 
 ---
 
-## 9. AI Integration
+## 9. Paginated Extraction (Phase 2)
 
-### 9.1 Claude Code End-to-End
+### 9.1 Amazon Search Pagination
+- [ ] Open a single Amazon search results tab
+- [ ] Run `page-save extract-pages --tab amazon --max-pages 3`
+- [ ] Should extract from 3 pages (auto-follows "Next" links)
+- [ ] Session folder has 3 structured .md files in `reduced/`
+- [ ] Cross-page dedup removes duplicate products
+- [ ] `manifest.json` shows all 3 pages
+
+### 9.2 Single Page (No Pagination)
+- [ ] Open an Amazon product page (not search)
+- [ ] Run `page-save extract-pages --tab amazon`
+- [ ] Should extract just the one page (product schema has no pagination config)
+
+### 9.3 Pagination on Non-Schema Site
+- [ ] Open a page with no schema
+- [ ] Run `page-save extract-pages --tab <pattern>`
+- [ ] Should fall back to single raw text extraction
+
+---
+
+## 10. Schema Suggest (Phase 3)
+
+### 10.1 Probe Unknown Domain
+- [ ] Open a site without a schema (e.g., any product listing page)
+- [ ] Run `page-save schema-suggest --tab <pattern>`
+- [ ] Should print a schema summary with container selector and field candidates
+- [ ] Should print raw JSON schema
+
+### 10.2 Save Draft Schema
+- [ ] Open a product listing page
+- [ ] Run `page-save schema-suggest --tab <pattern> --save`
+- [ ] Should save schema to `schemas/{domain}.json`
+- [ ] JSON file is valid and follows schema format
+
+---
+
+## 11. Batch URL Scraping (Phase 4)
+
+### 11.1 Batch from URL List
+- [ ] Create a text file with 3 Amazon product URLs (one per line)
+- [ ] Run `page-save batch --file urls.txt`
+- [ ] Background tabs open and close automatically
+- [ ] Session folder has 3 files in `reduced/`
+- [ ] Products extracted correctly
+
+### 11.2 Batch from Inline URLs
+- [ ] Run `page-save batch --urls "https://amazon.com/dp/B00E9M4XFI,https://amazon.com/dp/B00GL2HMES"`
+- [ ] Should extract from both URLs
+- [ ] Session shows 2 structured results
+
+---
+
+## 12. Defuddle Clean Extraction (Phase 5)
+
+### 12.1 Article Extraction
+- [ ] Open a news article or blog post (no schema)
+- [ ] Run `page-save extract --tab <pattern>`
+- [ ] Raw output should be clean markdown — NO nav bars, ads, sidebars
+- [ ] Has title, author, word count metadata at top
+- [ ] Content is the article body only
+
+### 12.2 Defuddle Fallback
+- [ ] Open a page that Defuddle can't parse well (e.g., a form-heavy SPA)
+- [ ] Run `page-save extract --tab <pattern>`
+- [ ] Should fall back to raw innerText output
+
+---
+
+## 13. Confidence Scores (Phase 1)
+
+### 13.1 Manifest Confidence Block
+- [ ] Extract Amazon search results (multiple tabs)
+- [ ] Open `manifest.json` in the session
+- [ ] Should have a `confidence` key with per-field rates
+- [ ] All Amazon search fields should have rate close to 1.0
+- [ ] Fields sorted by rate (lowest first — broken selectors surface at top)
+
+---
+
+## 14. AI Integration
+
+### 14.1 Claude Code End-to-End
 - [ ] Have Claude run `extract-all --domain amazon` via Bash
 - [ ] Claude reads the session's `reduced/*.md` files
 - [ ] Claude can answer product comparison questions from the extracted data
 
-### 9.2 AI Readability
+### 14.2 AI Readability
 - [ ] Point any AI at `saved-pages/` and ask it to summarize the latest session
 - [ ] AI reads `README.md` first, then session contents
 - [ ] AI can parse the markdown tables correctly

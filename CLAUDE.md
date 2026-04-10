@@ -45,6 +45,16 @@ page-save extract --tab <id|pattern>
 
 # Batch structured extraction — all tabs matching domain
 page-save extract-all --domain amazon.com
+
+# Paginated extraction — follow "next" links across search pages
+page-save extract-pages --tab <id|pattern> [--max-pages 10]
+
+# Batch URL extraction — extract from a list of URLs via background tabs
+page-save batch --file urls.txt
+page-save batch --urls "https://amazon.com/dp/B00E9M4XFI,https://amazon.com/dp/B00GL2HMES"
+
+# Schema suggest — probe DOM and generate a draft schema
+page-save schema-suggest --tab <id|pattern> [--save]
 ```
 
 (Replace `page-save` with `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/cli.ts`)
@@ -109,10 +119,12 @@ saved-pages/
 | `src/cli.ts` | Entry point / traffic cop (arg parsing, CLI mode, routing) |
 | `src/ws-handler.ts` | WebSocket server domain logic (connections, extension bridge, command dispatch) |
 | `src/types.ts` | Message types, constants |
-| `src/session-writer.ts` | Session folder creation, reduced/raw routing |
+| `src/session-writer.ts` | Session folder creation, reduced/raw routing, confidence scoring |
 | `src/markdown-formatter.ts` | Structured data → markdown tables (machine-verified) |
 | `src/markdown-formatter.test.ts` | Vitest suite for formatter (9 tests) |
 | `src/file-writer.ts` | MHTML file writing (legacy) |
+| `src/schema-suggest.ts` | DOM probe → draft schema generation |
+| `src/defuddle-extractor.ts` | Clean article extraction via Defuddle for raw fallback |
 | `extension/service-worker.js` | WebSocket client, Chrome API handlers, side panel messaging |
 | `extension/extractors.js` | Schema registry, DOM extraction engine |
 | `extension/sidepanel.html/js/css` | Chrome Side Panel UI |
