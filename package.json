@@ -5,7 +5,8 @@
   "license": "CC0-1.0",
   "description": "Give AI coding assistants the ability to save and read any browser tab — even sites that block automation. Chrome Extension + Node.js bridge.",
   "bin": {
-    "page-save": "./bin/page-save.js"
+    "page-save": "./bin/page-save.js",
+    "page-save-mcp": "./bin/page-save-mcp.js"
   },
   "files": [
     "src/",
@@ -37,10 +38,12 @@
     "tabs": "node --experimental-strip-types src/cli.ts tabs",
     "save": "node --experimental-strip-types src/cli.ts save",
     "text": "node --experimental-strip-types src/cli.ts text",
+    "mcp": "node --experimental-strip-types src/mcp-server.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "defuddle": "^0.16.0",
     "ws": "^8.18.0"
   },
