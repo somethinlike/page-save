@@ -1,26 +1,51 @@
 {
-  "version": 1,
-  "generatedAt": "2026-04-02T13:22:55.556Z",
+  "version": 2,
+  "generatedAt": "2026-04-08T16:10:51.210Z",
   "files": {
+    "extension/extractors.js": {
+      "filePath": "extension/extractors.js",
+      "mtimeMs": 1775503690807.5393,
+      "size": 23410
+    },
     "extension/service-worker.js": {
       "filePath": "extension/service-worker.js",
-      "mtimeMs": 1775130693515.471,
-      "size": 6585
+      "mtimeMs": 1775486191192.1833,
+      "size": 11210
+    },
+    "extension/sidepanel.js": {
+      "filePath": "extension/sidepanel.js",
+      "mtimeMs": 1775483726130.1514,
+      "size": 8146
+    },
+    "src/cli.ts": {
+      "filePath": "src/cli.ts",
+      "mtimeMs": 1775526897361.8242,
+      "size": 5221
     },
     "src/file-writer.ts": {
       "filePath": "src/file-writer.ts",
       "mtimeMs": 1775089702183.4673,
       "size": 1095
     },
-    "src/server.ts": {
-      "filePath": "src/server.ts",
-      "mtimeMs": 1775130462920.736,
-      "size": 10177
+    "src/markdown-formatter.ts": {
+      "filePath": "src/markdown-formatter.ts",
+      "mtimeMs": 1775501548227.044,
+      "size": 5138
+    },
+    "src/session-writer.ts": {
+      "filePath": "src/session-writer.ts",
+      "mtimeMs": 1775501580947.4424,
+      "size": 11526
     },
     "src/types.ts": {
       "filePath": "src/types.ts",
-      "mtimeMs": 1775089684435.9016,
-      "size": 956
+      "mtimeMs": 1775483503621.0603,
+      "size": 1858
+    },
+    "src/ws-handler.ts": {
+      "filePath": "src/ws-handler.ts",
+      "mtimeMs": 1775526873367.8142,
+      "size": 10346
     }
   }
 }

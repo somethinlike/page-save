@@ -1,18 +1,24 @@
 # Page-Save Competitive Feature Roadmap
 
 ## Context
-Competitive analysis of 8 scraping products (Thunderbit, Instant Data Scraper, Browse AI, Deep Scraper, Octoparse, PandaExtract, Simplescraper, Web Scraper) identified features that would strengthen page-save's position as an AI-optimized content preprocessor. None of these competitors optimize output for AI token consumption — page-save's core differentiator. These features add the UX polish and automation that users expect from mature scraping tools while keeping the AI-token-optimization focus.
+Competitive analysis of scraping products and AI-optimized content tools identified features that would strengthen page-save's position as an AI-optimized content preprocessor. None of these competitors optimize output for AI token consumption — page-save's core differentiator (symbol interning, reference tables, dedup, TSV formatting). These features add extraction quality, new content types, UX polish, and automation while keeping the AI-token-optimization focus.
+
+Key competitors analyzed: Thunderbit, Instant Data Scraper, Browse AI, Deep Scraper, Octoparse, PandaExtract, Simplescraper, Web Scraper, LLMFeeder, Markdownload, web2md, Obsidian Web Clipper, mcp-chrome, Defuddle, Firecrawl, Crawl4AI, markdownify-mcp.
 
 ## Dependency Graph
 ```
-Phase 1 (Confidence) ──── independent, zero risk
-Phase 2 (Pagination) ──── independent, enables Phase 4 patterns
-Phase 3 (Schema Suggest) ── independent
-Phase 4 (Batch URLs) ──── benefits from Phase 2 tab lifecycle patterns
-Phase 5 (MCP Server) ──── wraps Phases 1-4 as native AI tools
-Phase 6 (Price Watch) ──── requires Phase 4 (batch URL extraction)
-Phase 7 (Delta Mode) ──── requires Phase 6 (diff engine)
-Phase 8 (More Schemas) ── parallel, ongoing, uses Phase 3
+Phase 1  (Confidence) ──── independent, zero risk
+Phase 2  (Pagination) ──── independent, enables Phase 4 patterns
+Phase 3  (Schema Suggest) ── independent
+Phase 4  (Batch URLs) ──── benefits from Phase 2 tab lifecycle patterns
+Phase 5  (Defuddle) ─────── independent, improves raw fallback quality
+Phase 6  (YouTube) ──────── independent, new extractor type
+Phase 7  (MCP Server) ──── wraps Phases 1-6 as native AI tools
+Phase 8  (Price Watch) ──── requires Phase 4 (batch URL extraction)
+Phase 9  (Session Accum.) ── independent, workflow change
+Phase 10 (Preview/Edit) ── independent, pairs with Phase 9
+Phase 11 (Delta Mode) ──── requires Phase 8 (diff engine)
+Phase 12 (More Schemas) ── parallel, ongoing, uses Phase 3
 ```
 
 ---
@@ -118,7 +124,58 @@ page-save batch --urls "https://amazon.com/dp/B00E9M4XFI,https://amazon.com/dp/B
 
 ---
 
-## Phase 5: MCP Server Integration
+## Phase 5: Defuddle Fallback Engine
+
+**Value:** Raw text extraction (`document.body.innerText`) produces noisy output — nav bars, ads, sidebars, footers all included. Defuddle extracts main article content only, dramatically improving quality for domains without schemas.
+
+**What:** Replace the raw text fallback path with Defuddle-powered extraction. When no schema matches, send raw HTML to the Node.js server, parse with `linkedom` (lightweight DOM), run Defuddle, output clean markdown.
+
+**Why Node.js side, not extension side:** Defuddle requires a DOM. Service workers have no DOM. Injecting Defuddle's browser bundle into content scripts would require a build step. Running it server-side with `linkedom` avoids adding build complexity to the extension.
+
+**Files:**
+- `src/defuddle-extractor.ts` — NEW module. `extractWithDefuddle(html: string, url: string): string`. Parses HTML with `linkedom`, runs Defuddle with `{ markdown: true }`, returns clean content.
+- `src/session-writer.ts` — route raw results through Defuddle before writing to `raw/` folder
+- `src/types.ts` — extend `RawResult` with optional `html` field (extension sends HTML alongside text)
+- `extension/service-worker.js` — when no schema matches, capture `document.documentElement.outerHTML` in addition to `innerText`
+- `package.json` — add `defuddle` and `linkedom` dependencies
+
+**New dependencies:** `defuddle`, `linkedom`
+
+**No new CLI commands.** Transparent improvement to existing `extract`, `extract-all`, and sidebar save flows.
+
+---
+
+## Phase 6: YouTube Subtitle Extraction
+
+**Value:** YouTube is one of the most common research sources. Extracting subtitles as clean text makes video content AI-consumable without manual transcription.
+
+**What:** Detect YouTube tabs, extract video ID, fetch subtitles via YouTube's timedtext API, format as session markdown with video metadata.
+
+**Files:**
+- `src/youtube-extractor.ts` — NEW module. `extractSubtitles(videoId: string): Promise<YoutubeResult>`. Fetches timedtext XML, parses into plain text with timestamps. Falls back to auto-generated captions if manual captions unavailable.
+- `src/session-writer.ts` — add YouTube result type handling, route to `reduced/` folder with `youtube.com-{videoId}.md` naming
+- `src/types.ts` — add `YoutubeResult` interface: `{ videoId, title, channel, duration, language, transcript: string }`
+- `extension/service-worker.js` — detect YouTube URLs (`youtube.com/watch`, `youtu.be/`), extract video ID, send as new action `get-youtube-transcript`
+- `src/ws-handler.ts` — handle `get-youtube-transcript` action, call `extractSubtitles()`, return result
+
+**New dependency:** `youtube-caption-extractor` (or direct timedtext API fetch — evaluate at implementation time)
+
+**New CLI command:** `page-save youtube --tab <pattern>` (extracts transcript from a YouTube tab)
+
+**Output example:**
+```markdown
+# Video: How Transformers Work — 3Blue1Brown
+- Channel: 3Blue1Brown
+- Duration: 26:14
+- Language: en (auto-generated)
+
+[00:00] Let's talk about how transformer models actually work...
+[00:15] The key insight is the attention mechanism...
+```
+
+---
+
+## Phase 7: MCP Server Integration
 
 **Value:** Page-save tools appear natively in Claude Desktop, Claude Code, and any MCP client. No Bash wrapping, structured params/responses.
 
@@ -132,6 +189,7 @@ page-save batch --urls "https://amazon.com/dp/B00E9M4XFI,https://amazon.com/dp/B
   - `extract_pages` — params: `tab`, `maxPages`, returns session
   - `batch_urls` — params: `urls` (string[]), returns session
   - `schema_suggest` — params: `tab`, returns draft schema
+  - `youtube_transcript` — params: `tab` (string), returns transcript
 - `src/server.ts` — refactor client connection into reusable `sendCommand()` export
 - `bin/page-save-mcp.js` — shim entry point
 - `package.json` — add `@modelcontextprotocol/sdk` dependency, `mcp` script, bin entry
@@ -143,7 +201,7 @@ Claude Desktop ──stdio──► MCP Server ──ws://7224──► Node.js 
 
 ---
 
-## Phase 6: Monitoring / Price Watch
+## Phase 8: Monitoring / Price Watch
 
 **Value:** "Watch this product and alert me when the price drops." Huge for comparison shopping. Pairs with scheduled tasks.
 
@@ -162,18 +220,58 @@ page-save watch-run [--id <watchId> | --all]
 page-save watch-list
 ```
 
-**Depends on:** Phase 4 (uses `batch-urls` to extract single URL without manual tab).
+**Depends on:** Phase 4 (uses Batch URLs to extract single URL without manual tab).
 
 ---
 
-## Phase 7: Incremental Extraction (Delta Mode)
+## Phase 9: Multi-Page Session Accumulation
+
+**Value:** Currently each extraction creates a new session. Researchers often navigate across multiple pages (article → references → related work) before they have a complete picture. Accumulation mode lets users build up a session incrementally, then finalize it as one coherent package.
+
+**What:** New session lifecycle — open → add pages → finalize. Session stays open while the user navigates and triggers "add to session" for each relevant page. Manifest and refs.txt written at finalize.
+
+**Files:**
+- `src/session-writer.ts` — add `openSession(): string` (returns session ID), `appendToSession(sessionId, results)`, `finalizeSession(sessionId)`. Existing `writeSession()` becomes the "one-shot" path (still available).
+- `src/types.ts` — add `SessionState` interface: `{ id, dir, pages: ExtractionResult[], startedAt }`
+- `src/ws-handler.ts` — add `start-session`, `add-to-session`, `finalize-session` actions. Track active session in server state.
+- `extension/sidepanel.js` — add "Start Session" / "Add to Session" / "Finalize" UI states. Show active session indicator with accumulated page count.
+- `extension/sidepanel.html` — session control bar UI
+- `extension/sidepanel.css` — session state styling
+
+**New CLI commands:**
+```
+page-save session-start                    # Returns session ID
+page-save session-add --tab <pattern>      # Add extraction to active session
+page-save session-finalize                 # Write manifest, refs, close session
+page-save session-status                   # Show active session info
+```
+
+---
+
+## Phase 10: Sidebar Preview/Edit Before Save
+
+**Value:** Users can't currently review extracted content before it's written to disk. A preview step lets users trim irrelevant sections, verify extraction quality, and catch schema errors before the data hits the AI pipeline.
+
+**What:** After extraction but before writing, show the extracted content in the sidebar. Users review, toggle sections on/off, then confirm save.
+
+**Files:**
+- `extension/sidepanel.js` — add preview pane state. After extraction, render results as markdown preview instead of immediately sending to Node.js. Add per-section/per-item toggle checkboxes. "Save" button sends filtered results.
+- `extension/sidepanel.html` — preview pane markup with section toggles and save/discard buttons
+- `extension/sidepanel.css` — preview pane styling (markdown rendering, toggle states)
+- `extension/service-worker.js` — new `preview-extraction` action that returns results to sidebar instead of forwarding to server. Existing `get-structured` path unchanged for CLI usage.
+
+**No new CLI commands.** This is a sidebar-only UX enhancement. CLI extractions continue to write directly (no interactive preview needed when an AI is driving).
+
+---
+
+## Phase 11: Incremental Extraction (Delta Mode)
 
 **Value:** On repeat searches, only show new or changed items. Saves tokens when monitoring a market over time.
 
 **What:** Compare current extraction against a previous session, mark items as NEW/CHG/unchanged, optionally omit unchanged items.
 
 **Files:**
-- `src/diff.ts` (from Phase 6) — add `computeDelta(prevSessionDir, currentResults)`. Reads previous manifest + reduced files, matches by unique ID, returns delta annotations.
+- `src/diff.ts` (from Phase 8) — add `computeDelta(prevSessionDir, currentResults)`. Reads previous manifest + reduced files, matches by unique ID, returns delta annotations.
 - `src/session-writer.ts` — add optional `deltaMode` to `writeSession()`. Annotates items with delta status before formatting.
 - `src/markdown-formatter.ts` — when delta data present, prepend a `delta` column (NEW/CHG/empty)
 - `src/server.ts` — add `--delta` and `--prev <session>` flags to `extract-all` and `extract-pages`
@@ -188,7 +286,7 @@ CHG    B00E9M4XFI  $18.97  ~T1      (was $20.97)
 
 ---
 
-## Phase 8: More Schemas (Ongoing)
+## Phase 12: More Schemas (Ongoing)
 
 **Value:** More out-of-the-box coverage. Competitive tools ship with 40-469 templates.
 
@@ -206,7 +304,7 @@ CHG    B00E9M4XFI  $18.97  ~T1      (was $20.97)
 
 ## Cross-Cutting: Configurable Timeout
 
-Required before Phase 2. Change `sendToExtension()` in `src/server.ts` to accept `timeoutMs` parameter (default 15000). Pagination and batch commands need longer timeouts proportional to page count.
+Required before Phase 2. Change `sendToExtension()` in `src/ws-handler.ts` to accept `timeoutMs` parameter (default 15000). Pagination, batch, and YouTube commands need longer timeouts proportional to page/content count.
 
 ---
 
@@ -218,6 +316,11 @@ Each phase is independently testable:
 2. **Pagination:** Open one Amazon search tab → `extract-pages --tab amazon --max-pages 3` → verify 3 pages extracted from single tab
 3. **Schema Suggest:** Open any unsupported site → `schema-suggest --tab <pattern>` → verify valid JSON schema output
 4. **Batch URLs:** Create urls.txt with 3 Amazon product URLs → `batch --file urls.txt` → verify 3 product pages extracted
-5. **MCP:** Configure in Claude Desktop → verify tools appear → call `extract` tool → verify session created
-6. **Watch:** `watch-add --url <amazon-product>` → `watch-run --all` → verify snapshot saved → change tab price → `watch-run` → verify change detected
-7. **Delta:** Extract creatine search → wait → re-extract with `--delta` → verify NEW/CHG annotations
+5. **Defuddle:** Open a non-schema site (news article, blog post) → `extract --tab <pattern>` → verify raw/ output contains clean article content (no nav, ads, sidebars) instead of full innerText dump
+6. **YouTube:** Open a YouTube video with subtitles → `youtube --tab youtube` → verify transcript output with timestamps and video metadata
+7. **MCP:** Configure in Claude Desktop → verify tools appear (including `youtube_transcript`) → call `extract` tool → verify session created
+8. **Watch:** `watch-add --url <amazon-product>` → `watch-run --all` → verify snapshot saved → change tab price → `watch-run` → verify change detected
+9. **Session Accumulation:** `session-start` → `session-add --tab <page1>` → navigate → `session-add --tab <page2>` → `session-finalize` → verify single session with both pages, manifest written at finalize
+10. **Preview/Edit:** Open sidebar → select tabs → click "Save Selected" → verify preview pane appears with content → toggle off a section → click "Save" → verify saved content excludes toggled-off section
+11. **Delta:** Extract creatine search → wait → re-extract with `--delta` → verify NEW/CHG annotations
+12. **More Schemas:** Add new domain schema → extract → verify structured output matches schema fields
