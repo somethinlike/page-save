@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { PORT } from './types.ts';
 import type { WsRequest, WsResponse, TabInfo, SavePageResult, GetTextResult, ExtractionResult, BatchResult, DomProbeResult, YoutubeHtmlResult } from './types.ts';
 import { writeMhtml } from './file-writer.ts';
-import { writeSession, writeYoutubeSession } from './session-writer.ts';
+import { writeSession, writeYoutubeSession, openSession, appendToSession, finalizeSession, getSessionStatus } from './session-writer.ts';
 import { generateSchema, formatSchemaSummary, saveSchema } from './schema-suggest.ts';
 import { extractSubtitles } from './youtube-extractor.ts';
 import { createWatch, listWatches, processWatchResult } from './watch.ts';
@@ -54,6 +54,83 @@ async function handleCliCommand(
   const tab = msg.tab as string | undefined;
   const output = msg.output as string | undefined;
   const domain = msg.domain as string | undefined;
+
+  // --- session-start: open an accumulating session ---
+  if (action === 'session-start') {
+    try {
+      const sessionId = openSession();
+      respond({ sessionId, message: `Session ${sessionId} started. Use session-add to add pages.` });
+    } catch (err) {
+      respond({ error: (err as Error).message });
+    }
+    return;
+  }
+
+  // --- session-add: add extraction to the active session ---
+  if (action === 'session-add') {
+    let resolvedTabId: number | undefined;
+    let warning: string | undefined;
+
+    if (tab !== undefined) {
+      const numericId = Number(tab);
+      if (!Number.isNaN(numericId) && String(numericId) === tab) {
+        resolvedTabId = numericId;
+      } else {
+        const tabsResponse = await sendToExtension(extensionSocket, pendingRequests, {
+          id: randomUUID(),
+          action: 'list-tabs',
+        });
+        if ('error' in tabsResponse) { respond({ error: tabsResponse.error }); return; }
+        const tabs = (tabsResponse.result as { tabs: TabInfo[] }).tabs;
+        const pattern = tab.toLowerCase();
+        const matches = tabs.filter((t) => t.url.toLowerCase().includes(pattern) || t.title.toLowerCase().includes(pattern));
+        if (matches.length === 0) {
+          const tabList = tabs.map((t) => `  ${t.tabId} | ${t.title.slice(0, 40)} | ${t.url}`).join('\n');
+          respond({ error: `No tab matching '${tab}'. Open tabs:\n${tabList}` });
+          return;
+        }
+        if (matches.length > 1) {
+          warning = `${matches.length} tabs match '${tab}'. Using: ${matches[0].title} (${matches[0].url})`;
+        }
+        resolvedTabId = matches[0].tabId;
+      }
+    }
+
+    const request: WsRequest = {
+      id: randomUUID(),
+      action: 'get-structured',
+      tabId: resolvedTabId ?? -1,
+    };
+
+    const response = await sendToExtension(extensionSocket, pendingRequests, request);
+    if ('error' in response) { respond({ error: response.error }); return; }
+
+    const result = response.result as ExtractionResult;
+    try {
+      const status = appendToSession([result]);
+      respond({ ...status, ...(warning && { warning }) });
+    } catch (err) {
+      respond({ error: (err as Error).message });
+    }
+    return;
+  }
+
+  // --- session-finalize: write accumulated session to disk ---
+  if (action === 'session-finalize') {
+    try {
+      const sessionDir = await finalizeSession();
+      respond({ sessionDir, message: 'Session finalized.' });
+    } catch (err) {
+      respond({ error: (err as Error).message });
+    }
+    return;
+  }
+
+  // --- session-status: check active session ---
+  if (action === 'session-status') {
+    respond(getSessionStatus());
+    return;
+  }
 
   // --- watch-add: create a new watch configuration ---
   if (action === 'watch-add') {

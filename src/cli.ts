@@ -127,6 +127,10 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
     'schema-suggest': 'schema-suggest',
     batch: 'batch',
     youtube: 'youtube',
+    'session-start': 'session-start',
+    'session-add': 'session-add',
+    'session-finalize': 'session-finalize',
+    'session-status': 'session-status',
     'watch-add': 'watch-add',
     'watch-list': 'watch-list',
     'watch-run': 'watch-run',
@@ -276,7 +280,7 @@ const cliArgs = parseArgs(process.argv);
 
 if (cliArgs.action === 'serve') {
   startServer();
-} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest', 'batch', 'youtube', 'watch-add', 'watch-list', 'watch-run'].includes(cliArgs.action)) {
+} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest', 'batch', 'youtube', 'session-start', 'session-add', 'session-finalize', 'session-status', 'watch-add', 'watch-list', 'watch-run'].includes(cliArgs.action)) {
   runCli(cliArgs).catch((err) => {
     console.error(`Error: ${err.message || err}`);
     process.exit(1);
@@ -293,6 +297,10 @@ if (cliArgs.action === 'serve') {
   page-save schema-suggest [--tab <id|pattern>] [--save]       Probe DOM and suggest a schema
   page-save batch --file <urls.txt> | --urls <url1,url2,...>   Batch extraction from URL list
   page-save youtube [--tab <id|pattern>]                       Extract YouTube video transcript
+  page-save session-start                                      Start an accumulating session
+  page-save session-add --tab <id|pattern>                     Add extraction to active session
+  page-save session-finalize                                   Write and close active session
+  page-save session-status                                     Show active session info
   page-save watch-add --url <url> [--fields price,rating]      Create a price/content watch
   page-save watch-list                                         List all watches
   page-save watch-run [--id <watchId> | --all]                 Run watch(es) and diff`);

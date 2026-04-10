@@ -498,6 +498,116 @@ export async function writeSession(results: ExtractionResult[]): Promise<string>
 /**
  * Write a YouTube transcript extraction to its own session.
  */
+// --- Accumulation Mode ---
+// Open a session, add pages incrementally, finalize when done.
+
+interface AccumulatingSession {
+  info: SessionInfo;
+  pages: ExtractionResult[];
+  startedAt: string;
+}
+
+let activeSession: AccumulatingSession | null = null;
+
+/**
+ * Start a new accumulating session.
+ * Returns the session ID (timestamp).
+ */
+export function openSession(): string {
+  if (activeSession) {
+    throw new Error(`Session already open: ${activeSession.info.timestamp}. Finalize it first.`);
+  }
+
+  ensureMasterReadme();
+  const info = createSession();
+  activeSession = {
+    info,
+    pages: [],
+    startedAt: new Date().toISOString(),
+  };
+
+  return info.timestamp;
+}
+
+/**
+ * Add extraction results to the active accumulating session.
+ */
+export function appendToSession(results: ExtractionResult[]): { sessionId: string; pageCount: number } {
+  if (!activeSession) {
+    throw new Error('No active session. Run session-start first.');
+  }
+
+  activeSession.pages.push(...results);
+  return {
+    sessionId: activeSession.info.timestamp,
+    pageCount: activeSession.pages.length,
+  };
+}
+
+/**
+ * Finalize the active accumulating session.
+ * Runs dedup, confidence, interning, and writes all files.
+ */
+export async function finalizeSession(): Promise<string> {
+  if (!activeSession) {
+    throw new Error('No active session to finalize.');
+  }
+
+  const session = activeSession.info;
+  const results = activeSession.pages;
+  activeSession = null;
+
+  if (results.length === 0) {
+    return session.dir;
+  }
+
+  // Same pipeline as writeSession: dedup → confidence → interning → write
+  deduplicateResults(results);
+  const confidence = computeConfidence(results);
+  const symbolTable = buildSymbolTable(results);
+  applySymbols(results, symbolTable);
+  writeRefsFile(session, symbolTable);
+
+  const files: string[] = [];
+  let structuredIndex = 0;
+  let rawIndex = 0;
+  let hasRaw = false;
+
+  for (const result of results) {
+    if (result.type === 'structured') {
+      const path = writeStructured(session, result, structuredIndex++);
+      files.push(path);
+    } else if (result.type === 'raw') {
+      const path = await writeRaw(session, result, rawIndex++);
+      files.push(path);
+      hasRaw = true;
+    } else {
+      files.push('');
+    }
+  }
+
+  if (hasRaw) {
+    writeGuidance(session);
+  }
+
+  writeManifest(session, results, files, confidence);
+
+  return session.dir;
+}
+
+/**
+ * Get active session status.
+ */
+export function getSessionStatus(): { active: boolean; sessionId?: string; pageCount?: number; startedAt?: string } {
+  if (!activeSession) return { active: false };
+  return {
+    active: true,
+    sessionId: activeSession.info.timestamp,
+    pageCount: activeSession.pages.length,
+    startedAt: activeSession.startedAt,
+  };
+}
+
 export function writeYoutubeSession(result: YoutubeResult): string {
   ensureMasterReadme();
   const session = createSession();
