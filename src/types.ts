@@ -132,5 +132,27 @@ export interface DomProbeResult {
   candidates: DomProbeCandidate[];
 }
 
+// --- Watch / monitoring types ---
+
+export interface WatchConfig {
+  id: string;
+  url: string;
+  fields?: string[];
+  createdAt: string;
+}
+
+export interface DiffChange {
+  field: string;
+  prev: unknown;
+  curr: unknown;
+}
+
+export interface DiffResult {
+  added: Record<string, unknown>[];
+  removed: Record<string, unknown>[];
+  changed: { item: Record<string, unknown>; changes: DiffChange[] }[];
+  unchanged: number;
+}
+
 export const PORT = 7224;
 export const SAVE_DIR = 'C:\\Users\\somet\\Documents\\saved-pages';

@@ -16,6 +16,10 @@ interface CliArgs {
   save?: boolean;
   urls?: string[];
   file?: string;
+  url?: string;
+  fields?: string[];
+  watchId?: string;
+  all?: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -28,6 +32,10 @@ function parseArgs(argv: string[]): CliArgs {
   let save = false;
   let urls: string[] | undefined;
   let file: string | undefined;
+  let url: string | undefined;
+  let fields: string[] | undefined;
+  let watchId: string | undefined;
+  let all = false;
 
   for (let i = 1; i < args.length; i++) {
     if (args[i] === '--tab' && args[i + 1]) {
@@ -50,10 +58,21 @@ function parseArgs(argv: string[]): CliArgs {
     } else if (args[i] === '--file' && args[i + 1]) {
       file = args[i + 1];
       i++;
+    } else if (args[i] === '--url' && args[i + 1]) {
+      url = args[i + 1];
+      i++;
+    } else if (args[i] === '--fields' && args[i + 1]) {
+      fields = args[i + 1].split(',').map(f => f.trim()).filter(Boolean);
+      i++;
+    } else if (args[i] === '--id' && args[i + 1]) {
+      watchId = args[i + 1];
+      i++;
+    } else if (args[i] === '--all') {
+      all = true;
     }
   }
 
-  return { action, tab, output, domain, maxPages, save, urls, file };
+  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all };
 }
 
 // --- CLI Mode ---
@@ -108,6 +127,9 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
     'schema-suggest': 'schema-suggest',
     batch: 'batch',
     youtube: 'youtube',
+    'watch-add': 'watch-add',
+    'watch-list': 'watch-list',
+    'watch-run': 'watch-run',
   };
 
   // Resolve batch URLs from --file or --urls
@@ -132,6 +154,10 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
     maxPages,
     save,
     urls: batchUrls,
+    url: cliArgs.url,
+    fields: cliArgs.fields,
+    watchId: cliArgs.watchId,
+    all: cliArgs.all,
   };
 
   socket.send(JSON.stringify(command));
@@ -149,7 +175,31 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
       process.exit(1);
     }
 
-    if (msg.videoId) {
+    if (msg.watchId && !msg.results) {
+      // watch-add result
+      console.log(`Watch created: ${msg.watchId}`);
+      console.log(`  URL: ${msg.url}`);
+      if (msg.fields) console.log(`  Fields: ${msg.fields.join(', ')}`);
+    } else if (msg.watches !== undefined) {
+      // watch-list result
+      if (msg.count === 0) {
+        console.log('No watches configured.');
+      } else {
+        for (const w of msg.watches) {
+          console.log(`  ${w.id} | ${w.url} | ${w.fields?.join(',') || 'all fields'} | ${w.createdAt}`);
+        }
+      }
+    } else if (msg.results && Array.isArray(msg.results) && msg.results[0]?.watchId) {
+      // watch-run results
+      for (const r of msg.results) {
+        if (r.error) {
+          console.log(`  ${r.watchId}: ERROR — ${r.error}`);
+        } else {
+          console.log(`  ${r.watchId}: ${r.summary}`);
+          if (r.hasChanges) console.log(`    Changes detected!`);
+        }
+      }
+    } else if (msg.videoId) {
       // YouTube extraction result
       console.log(`Session saved: ${msg.sessionDir}`);
       console.log(`  Video: ${msg.title}`);
@@ -209,6 +259,8 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
     cliTimeout = (maxPages || 10) * 15000 + 10000;
   } else if (action === 'batch' && batchUrls) {
     cliTimeout = batchUrls.length * 20000 + 10000;
+  } else if (action === 'watch-run') {
+    cliTimeout = 60000; // watch runs can take a while
   }
 
   setTimeout(() => {
@@ -224,7 +276,7 @@ const cliArgs = parseArgs(process.argv);
 
 if (cliArgs.action === 'serve') {
   startServer();
-} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest', 'batch', 'youtube'].includes(cliArgs.action)) {
+} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest', 'batch', 'youtube', 'watch-add', 'watch-list', 'watch-run'].includes(cliArgs.action)) {
   runCli(cliArgs).catch((err) => {
     console.error(`Error: ${err.message || err}`);
     process.exit(1);
@@ -240,6 +292,9 @@ if (cliArgs.action === 'serve') {
   page-save extract-pages [--tab <id|pattern>] [--max-pages N] Paginated extraction (follow next links)
   page-save schema-suggest [--tab <id|pattern>] [--save]       Probe DOM and suggest a schema
   page-save batch --file <urls.txt> | --urls <url1,url2,...>   Batch extraction from URL list
-  page-save youtube [--tab <id|pattern>]                       Extract YouTube video transcript`);
+  page-save youtube [--tab <id|pattern>]                       Extract YouTube video transcript
+  page-save watch-add --url <url> [--fields price,rating]      Create a price/content watch
+  page-save watch-list                                         List all watches
+  page-save watch-run [--id <watchId> | --all]                 Run watch(es) and diff`);
   process.exit(1);
 }

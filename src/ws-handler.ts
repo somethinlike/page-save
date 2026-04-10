@@ -6,6 +6,7 @@ import { writeMhtml } from './file-writer.ts';
 import { writeSession, writeYoutubeSession } from './session-writer.ts';
 import { generateSchema, formatSchemaSummary, saveSchema } from './schema-suggest.ts';
 import { extractSubtitles } from './youtube-extractor.ts';
+import { createWatch, listWatches, processWatchResult } from './watch.ts';
 import { SAVE_DIR } from './types.ts';
 
 interface PendingRequest {
@@ -53,6 +54,78 @@ async function handleCliCommand(
   const tab = msg.tab as string | undefined;
   const output = msg.output as string | undefined;
   const domain = msg.domain as string | undefined;
+
+  // --- watch-add: create a new watch configuration ---
+  if (action === 'watch-add') {
+    const url = msg.url as string | undefined;
+    if (!url) {
+      respond({ error: 'No URL provided. Use --url.' });
+      return;
+    }
+    const fields = msg.fields as string[] | undefined;
+    const config = createWatch(url, fields);
+    respond({ watchId: config.id, url: config.url, fields: config.fields });
+    return;
+  }
+
+  // --- watch-list: list all watch configurations ---
+  if (action === 'watch-list') {
+    const watches = listWatches();
+    respond({ watches, count: watches.length });
+    return;
+  }
+
+  // --- watch-run: re-extract a watch target and diff against previous ---
+  if (action === 'watch-run') {
+    const watchId = msg.watchId as string | undefined;
+    const runAll = msg.all === true;
+
+    const watches = listWatches();
+    const targets = runAll ? watches : watches.filter(w => w.id === watchId);
+
+    if (targets.length === 0) {
+      respond({ error: watchId ? `Watch ${watchId} not found.` : 'No watches configured.' });
+      return;
+    }
+
+    const results = [];
+    for (const watch of targets) {
+      // Use batch-urls to extract the watch URL
+      const request: WsRequest = {
+        id: randomUUID(),
+        action: 'batch-urls',
+        urls: [watch.url],
+      };
+
+      const response = await sendToExtension(extensionSocket, pendingRequests, request, 30000);
+      if ('error' in response) {
+        results.push({ watchId: watch.id, error: (response as { error: string }).error });
+        continue;
+      }
+
+      const batchResult = response.result as BatchResult;
+      const extractionResults = batchResult.results as ExtractionResult[];
+
+      // Collect items from extraction results
+      const items: Record<string, unknown>[] = [];
+      for (const r of extractionResults) {
+        if (r.type === 'structured' && r.data) {
+          if (r.data.items) items.push(...r.data.items);
+          else if (r.data.item) items.push(r.data.item);
+        }
+      }
+
+      try {
+        const { diff, summary, snapshotPath } = processWatchResult(watch.id, items);
+        results.push({ watchId: watch.id, url: watch.url, summary, snapshotPath, hasChanges: diff !== null && (diff.added.length > 0 || diff.removed.length > 0 || diff.changed.length > 0) });
+      } catch (err) {
+        results.push({ watchId: watch.id, error: (err as Error).message });
+      }
+    }
+
+    respond({ results });
+    return;
+  }
 
   // --- youtube: extract transcript from a YouTube tab ---
   if (action === 'youtube') {
