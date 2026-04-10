@@ -1,9 +1,10 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { randomUUID } from 'node:crypto';
 import { PORT } from './types.ts';
-import type { WsRequest, WsResponse, TabInfo, SavePageResult, GetTextResult, ExtractionResult, BatchResult } from './types.ts';
+import type { WsRequest, WsResponse, TabInfo, SavePageResult, GetTextResult, ExtractionResult, BatchResult, DomProbeResult } from './types.ts';
 import { writeMhtml } from './file-writer.ts';
 import { writeSession } from './session-writer.ts';
+import { generateSchema, formatSchemaSummary, saveSchema } from './schema-suggest.ts';
 import { SAVE_DIR } from './types.ts';
 
 interface PendingRequest {
@@ -51,6 +52,65 @@ async function handleCliCommand(
   const tab = msg.tab as string | undefined;
   const output = msg.output as string | undefined;
   const domain = msg.domain as string | undefined;
+
+  // --- schema-suggest: probe a page's DOM and generate a draft schema ---
+  if (action === 'schema-suggest') {
+    let resolvedTabId: number | undefined;
+    let warning: string | undefined;
+    const shouldSave = msg.save === true;
+
+    if (tab !== undefined) {
+      const numericId = Number(tab);
+      if (!Number.isNaN(numericId) && String(numericId) === tab) {
+        resolvedTabId = numericId;
+      } else {
+        const tabsResponse = await sendToExtension(extensionSocket, pendingRequests, {
+          id: randomUUID(),
+          action: 'list-tabs',
+        });
+        if ('error' in tabsResponse) { respond({ error: tabsResponse.error }); return; }
+        const tabs = (tabsResponse.result as { tabs: TabInfo[] }).tabs;
+        const pattern = tab.toLowerCase();
+        const matches = tabs.filter((t) => t.url.toLowerCase().includes(pattern) || t.title.toLowerCase().includes(pattern));
+        if (matches.length === 0) {
+          const tabList = tabs.map((t) => `  ${t.tabId} | ${t.title.slice(0, 40)} | ${t.url}`).join('\n');
+          respond({ error: `No tab matching '${tab}'. Open tabs:\n${tabList}` });
+          return;
+        }
+        if (matches.length > 1) {
+          warning = `${matches.length} tabs match '${tab}'. Using: ${matches[0].title} (${matches[0].url})`;
+        }
+        resolvedTabId = matches[0].tabId;
+      }
+    }
+
+    const request: WsRequest = {
+      id: randomUUID(),
+      action: 'probe-dom',
+      tabId: resolvedTabId ?? -1,
+    };
+
+    const response = await sendToExtension(extensionSocket, pendingRequests, request);
+    if ('error' in response) { respond({ error: response.error }); return; }
+
+    const probeResult = response.result as DomProbeResult;
+    const schema = generateSchema(probeResult);
+    const summary = formatSchemaSummary(schema);
+
+    let savedPath: string | undefined;
+    if (shouldSave) {
+      const schemasDir = new URL('../schemas', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+      savedPath = saveSchema(schema, schemasDir);
+    }
+
+    respond({
+      schema,
+      summary,
+      ...(savedPath && { savedPath }),
+      ...(warning && { warning }),
+    });
+    return;
+  }
 
   // --- extract-pages: paginated extraction from a single tab ---
   if (action === 'extract-pages') {

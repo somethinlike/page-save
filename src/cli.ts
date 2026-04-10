@@ -6,13 +6,14 @@ import { startServer } from './ws-handler.ts';
 
 // --- Argument Parsing ---
 
-function parseArgs(argv: string[]): { action: string; tab?: string; output?: string; domain?: string; maxPages?: number } {
+function parseArgs(argv: string[]): { action: string; tab?: string; output?: string; domain?: string; maxPages?: number; save?: boolean } {
   const args = argv.slice(2);
   const action = args[0] || 'serve';
   let tab: string | undefined;
   let output: string | undefined;
   let domain: string | undefined;
   let maxPages: number | undefined;
+  let save = false;
 
   for (let i = 1; i < args.length; i++) {
     if (args[i] === '--tab' && args[i + 1]) {
@@ -27,10 +28,12 @@ function parseArgs(argv: string[]): { action: string; tab?: string; output?: str
     } else if (args[i] === '--max-pages' && args[i + 1]) {
       maxPages = parseInt(args[i + 1], 10);
       i++;
+    } else if (args[i] === '--save') {
+      save = true;
     }
   }
 
-  return { action, tab, output, domain, maxPages };
+  return { action, tab, output, domain, maxPages, save };
 }
 
 // --- CLI Mode ---
@@ -64,7 +67,7 @@ async function tryAutoStartServer(): Promise<boolean> {
   return false;
 }
 
-async function runCli(action: string, tab?: string, output?: string, domain?: string, maxPages?: number): Promise<void> {
+async function runCli(action: string, tab?: string, output?: string, domain?: string, maxPages?: number, save?: boolean): Promise<void> {
   let socket: WebSocket;
   try {
     socket = await connectToServer(PORT);
@@ -81,6 +84,7 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
     extract: 'get-structured',
     'extract-all': 'extract-all',
     'extract-pages': 'extract-pages',
+    'schema-suggest': 'schema-suggest',
   };
 
   const command: Record<string, unknown> = {
@@ -90,6 +94,7 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
     output,
     domain,
     maxPages,
+    save,
   };
 
   socket.send(JSON.stringify(command));
@@ -107,7 +112,17 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
       process.exit(1);
     }
 
-    if (msg.sessionDir) {
+    if (msg.summary) {
+      // schema-suggest result
+      console.log(msg.summary);
+      if (msg.savedPath) {
+        console.log(`\nSchema saved: ${msg.savedPath}`);
+      }
+      if (msg.schema) {
+        console.log('\n--- Raw JSON ---');
+        console.log(JSON.stringify(msg.schema, null, 2));
+      }
+    } else if (msg.sessionDir) {
       console.log(`Session saved: ${msg.sessionDir}`);
       if (msg.count !== undefined) {
         console.log(`  Total: ${msg.count} page(s) — ${msg.structured || 0} structured, ${msg.raw || 0} raw`);
@@ -158,12 +173,12 @@ async function runCli(action: string, tab?: string, output?: string, domain?: st
 
 // --- Entry Point ---
 
-const { action, tab, output, domain, maxPages } = parseArgs(process.argv);
+const { action, tab, output, domain, maxPages, save } = parseArgs(process.argv);
 
 if (action === 'serve') {
   startServer();
-} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages'].includes(action)) {
-  runCli(action, tab, output, domain, maxPages).catch((err) => {
+} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest'].includes(action)) {
+  runCli(action, tab, output, domain, maxPages, save).catch((err) => {
     console.error(`Error: ${err.message || err}`);
     process.exit(1);
   });
@@ -175,6 +190,7 @@ if (action === 'serve') {
   page-save text [--tab <id|pattern>]                          Extract page text
   page-save extract [--tab <id|pattern>]                       Structured extraction (single tab)
   page-save extract-all [--domain <pattern>]                   Batch structured extraction
-  page-save extract-pages [--tab <id|pattern>] [--max-pages N] Paginated extraction (follow next links)`);
+  page-save extract-pages [--tab <id|pattern>] [--max-pages N] Paginated extraction (follow next links)
+  page-save schema-suggest [--tab <id|pattern>] [--save]       Probe DOM and suggest a schema`);
   process.exit(1);
 }

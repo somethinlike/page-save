@@ -733,6 +733,115 @@ async function extractStructured(tabId, url) {
   };
 }
 
+// --- DOM Probing: discover repeating patterns for schema suggestion ---
+
+/**
+ * Probe a tab's DOM structure to identify repeating element patterns
+ * that could be extraction containers (product cards, list items, etc.).
+ *
+ * @param {number} tabId
+ * @returns {Promise<object>} Probe results with candidate containers and sample fields
+ */
+async function probeDomStructure(tabId) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      // Count frequency of tagName.className combinations
+      const selectorCounts = new Map();
+      const selectorElements = new Map();
+
+      for (const el of document.querySelectorAll('*')) {
+        // Skip tiny/invisible elements and common layout containers
+        if (el.children.length === 0 && !el.textContent?.trim()) continue;
+        if (['SCRIPT', 'STYLE', 'META', 'LINK', 'HEAD', 'BR', 'HR'].includes(el.tagName)) continue;
+
+        // Build a reasonably specific selector
+        let selector = el.tagName.toLowerCase();
+        if (el.className && typeof el.className === 'string') {
+          const classes = el.className.trim().split(/\s+/).filter(c => c.length > 0 && c.length < 40);
+          if (classes.length > 0 && classes.length <= 3) {
+            selector += '.' + classes.join('.');
+          }
+        }
+        // Data attributes often identify components
+        for (const attr of el.attributes) {
+          if (attr.name.startsWith('data-') && attr.name !== 'data-reactid' && attr.value.length < 30) {
+            selector = `[${attr.name}="${attr.value}"]`;
+            break;
+          }
+        }
+
+        selectorCounts.set(selector, (selectorCounts.get(selector) || 0) + 1);
+        if (!selectorElements.has(selector)) selectorElements.set(selector, []);
+        if (selectorElements.get(selector).length < 3) {
+          selectorElements.get(selector).push(el);
+        }
+      }
+
+      // Filter: keep selectors with 3+ occurrences (likely repeating items)
+      const candidates = [];
+      for (const [selector, count] of selectorCounts) {
+        if (count < 3 || count > 500) continue; // too few = not a list, too many = layout noise
+
+        const samples = selectorElements.get(selector) || [];
+        if (samples.length === 0) continue;
+
+        // Analyze the first sample element's children to find field candidates
+        const sampleFields = [];
+        const sample = samples[0];
+
+        // Look for text-bearing children
+        for (const child of sample.querySelectorAll('*')) {
+          const text = child.textContent?.trim();
+          if (!text || text.length < 2 || text.length > 200) continue;
+          if (child.children.length > 3) continue; // container, not a leaf field
+
+          let fieldSelector = child.tagName.toLowerCase();
+          if (child.className && typeof child.className === 'string') {
+            const cls = child.className.trim().split(/\s+/).filter(c => c.length > 0 && c.length < 40);
+            if (cls.length > 0 && cls.length <= 2) fieldSelector += '.' + cls.join('.');
+          }
+
+          // Guess field name from content patterns
+          let name = 'text';
+          if (/^\$[\d,.]+/.test(text) || /^[\d,.]+\s*$/.test(text)) name = 'price';
+          else if (/\d+(\.\d+)?\s*(out of|stars?|\/)/i.test(text)) name = 'rating';
+          else if (/^\d+[\d,]*\s*(reviews?|ratings?)/i.test(text)) name = 'reviewCount';
+          else if (child.tagName === 'A' || child.tagName === 'H1' || child.tagName === 'H2' || child.tagName === 'H3') name = 'title';
+
+          // Avoid duplicates
+          if (sampleFields.some(f => f.selector === fieldSelector)) continue;
+
+          sampleFields.push({
+            name,
+            selector: fieldSelector,
+            type: 'text',
+            sample: text.slice(0, 80),
+          });
+
+          if (sampleFields.length >= 8) break;
+        }
+
+        if (sampleFields.length === 0) continue;
+
+        candidates.push({ selector, count, sampleFields });
+      }
+
+      // Sort: prefer candidates with more fields and moderate count
+      candidates.sort((a, b) => {
+        const scoreA = a.sampleFields.length * 10 + Math.min(a.count, 50);
+        const scoreB = b.sampleFields.length * 10 + Math.min(b.count, 50);
+        return scoreB - scoreA;
+      });
+
+      return candidates.slice(0, 5); // Top 5 candidates
+    },
+    world: 'ISOLATED',
+  });
+
+  return results?.[0]?.result || [];
+}
+
 // --- Pagination: auto-follow "next" links across search result pages ---
 
 /**
@@ -862,5 +971,6 @@ globalThis.extractors = {
   matchSchema,
   extractStructured,
   extractWithPagination,
+  probeDomStructure,
   schemaRegistry,
 };

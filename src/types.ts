@@ -2,7 +2,7 @@
 
 export interface WsRequest {
   id: string;
-  action: 'list-tabs' | 'save-page' | 'get-text' | 'get-structured' | 'get-structured-batch' | 'get-structured-paginated';
+  action: 'list-tabs' | 'save-page' | 'get-text' | 'get-structured' | 'get-structured-batch' | 'get-structured-paginated' | 'probe-dom';
   tabId?: number;
   tabIds?: number[];
   maxPages?: number;
@@ -76,7 +76,7 @@ export interface BatchResult {
 
 export interface WsResponseSuccess {
   id: string;
-  result: TabListResult | SavePageResult | GetTextResult | StructuredResult | RawResult | BatchResult;
+  result: TabListResult | SavePageResult | GetTextResult | StructuredResult | RawResult | BatchResult | DomProbeResult;
 }
 
 export interface WsResponseError {
@@ -107,6 +107,20 @@ export interface PageConfidence {
   pageType: string;
   fields: FieldConfidence[];
   overallRate: number;
+}
+
+// --- DOM probing types (for schema-suggest) ---
+
+export interface DomProbeCandidate {
+  selector: string;
+  count: number;
+  sampleFields: { name: string; selector: string; type: 'text' | 'attribute'; sample: string }[];
+}
+
+export interface DomProbeResult {
+  url: string;
+  domain: string;
+  candidates: DomProbeCandidate[];
 }
 
 export const PORT = 7224;

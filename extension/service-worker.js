@@ -107,6 +107,9 @@ async function handleMessage(msg) {
       case 'get-structured-paginated':
         await handleGetStructuredPaginated(id, tabId, msg.maxPages);
         break;
+      case 'probe-dom':
+        await handleProbeDom(id, tabId);
+        break;
       default:
         send({ id, error: `Unknown action: ${action}` });
     }
@@ -186,6 +189,17 @@ async function handleGetStructured(id, tabId) {
   result.title = tab.title || 'untitled';
 
   send({ id, result });
+}
+
+async function handleProbeDom(id, tabId) {
+  const resolvedId = await resolveTabId(tabId);
+  const tab = await chrome.tabs.get(resolvedId);
+  const candidates = await globalThis.extractors.probeDomStructure(resolvedId);
+
+  let domain;
+  try { domain = new URL(tab.url).hostname; } catch { domain = 'unknown'; }
+
+  send({ id, result: { url: tab.url, domain, candidates } });
 }
 
 async function handleGetStructuredPaginated(id, tabId, maxPages) {
