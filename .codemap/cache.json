@@ -1,26 +1,36 @@
 {
   "version": 2,
-  "generatedAt": "2026-04-08T16:10:51.210Z",
+  "generatedAt": "2026-04-27T15:27:13.608Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
-      "mtimeMs": 1775503690807.5393,
-      "size": 23410
+      "mtimeMs": 1775781578322.4563,
+      "size": 32264
     },
     "extension/service-worker.js": {
       "filePath": "extension/service-worker.js",
-      "mtimeMs": 1775486191192.1833,
-      "size": 11210
+      "mtimeMs": 1775783318038.0308,
+      "size": 17321
     },
     "extension/sidepanel.js": {
       "filePath": "extension/sidepanel.js",
-      "mtimeMs": 1775483726130.1514,
-      "size": 8146
+      "mtimeMs": 1775783294897.1821,
+      "size": 12732
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",
-      "mtimeMs": 1775526897361.8242,
-      "size": 5221
+      "mtimeMs": 1775783485455.7334,
+      "size": 10872
+    },
+    "src/defuddle-extractor.ts": {
+      "filePath": "src/defuddle-extractor.ts",
+      "mtimeMs": 1775781708360.413,
+      "size": 961
+    },
+    "src/diff.ts": {
+      "filePath": "src/diff.ts",
+      "mtimeMs": 1775852088548.8909,
+      "size": 4543
     },
     "src/file-writer.ts": {
       "filePath": "src/file-writer.ts",
@@ -29,23 +39,43 @@
     },
     "src/markdown-formatter.ts": {
       "filePath": "src/markdown-formatter.ts",
-      "mtimeMs": 1775501548227.044,
-      "size": 5138
+      "mtimeMs": 1775783412234.9802,
+      "size": 5374
+    },
+    "src/mcp-server.ts": {
+      "filePath": "src/mcp-server.ts",
+      "mtimeMs": 1775782593134.55,
+      "size": 5256
+    },
+    "src/schema-suggest.ts": {
+      "filePath": "src/schema-suggest.ts",
+      "mtimeMs": 1775851846788.303,
+      "size": 5691
     },
     "src/session-writer.ts": {
       "filePath": "src/session-writer.ts",
-      "mtimeMs": 1775501580947.4424,
-      "size": 11526
+      "mtimeMs": 1775851821994.7837,
+      "size": 23661
     },
     "src/types.ts": {
       "filePath": "src/types.ts",
-      "mtimeMs": 1775483503621.0603,
-      "size": 1858
+      "mtimeMs": 1775782680497.1108,
+      "size": 3172
+    },
+    "src/watch.ts": {
+      "filePath": "src/watch.ts",
+      "mtimeMs": 1775782725447.6753,
+      "size": 4784
     },
     "src/ws-handler.ts": {
       "filePath": "src/ws-handler.ts",
-      "mtimeMs": 1775526873367.8142,
-      "size": 10346
+      "mtimeMs": 1775783463795.251,
+      "size": 24029
+    },
+    "src/youtube-extractor.ts": {
+      "filePath": "src/youtube-extractor.ts",
+      "mtimeMs": 1775851861355.4556,
+      "size": 6164
     }
   }
 }

@@ -2,7 +2,7 @@
 
 Give AI coding assistants the ability to save and read any browser tab — even sites that block automation tools like Reddit, Twitter, and LinkedIn.
 
-Built with care by [ESDF.gg](https://esdf.gg) and [The Open English Bible Ministry](https://oebministry.org).
+Built with care by [ESDF.gg](https://esdf.gg) and [The Open English Bible Ministry](https://logospraxis.church).
 
 *"'You shall love the Lord your God with all your heart and with all your soul and with all your mind.' This is the greatest and first commandment. And a second is like it: 'You shall love your neighbor as yourself.'"* — Matthew 22:37-39 (NRSVue)
 
