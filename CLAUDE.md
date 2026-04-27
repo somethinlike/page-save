@@ -43,6 +43,12 @@ page-save text --tab reddit
 # Structured extraction — single tab (uses schema if available)
 page-save extract --tab <id|pattern>
 
+# Variant-projected extraction (subset of fields from the matched schema)
+page-save extract --tab <id|pattern> --variant <name>
+
+# Force raw fallback (skip schema even when one matches)
+page-save extract --tab <id|pattern> --raw
+
 # Batch structured extraction — all tabs matching domain
 page-save extract-all --domain amazon.com
 

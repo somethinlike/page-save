@@ -54,6 +54,8 @@ async function handleCliCommand(
   const tab = msg.tab as string | undefined;
   const output = msg.output as string | undefined;
   const domain = msg.domain as string | undefined;
+  const variant = msg.variant as string | undefined;
+  const forceRaw = msg.forceRaw === true;
 
   // --- session-start: open an accumulating session ---
   if (action === 'session-start') {
@@ -100,6 +102,8 @@ async function handleCliCommand(
       id: randomUUID(),
       action: 'get-structured',
       tabId: resolvedTabId ?? -1,
+      variant,
+      forceRaw,
     };
 
     const response = await sendToExtension(extensionSocket, pendingRequests, request);
@@ -271,6 +275,8 @@ async function handleCliCommand(
       id: randomUUID(),
       action: 'batch-urls',
       urls,
+      variant,
+      forceRaw,
     };
 
     // 20s per URL + 5s buffer
@@ -384,6 +390,8 @@ async function handleCliCommand(
       action: 'get-structured-paginated',
       tabId: resolvedTabId ?? -1,
       maxPages,
+      variant,
+      forceRaw,
     };
 
     // Timeout scales with page count: 15s per page + 5s buffer
@@ -438,6 +446,8 @@ async function handleCliCommand(
       id: randomUUID(),
       action: 'get-structured-batch',
       tabIds: targetTabs.map((t) => t.tabId),
+      variant,
+      forceRaw,
     };
 
     const batchResponse = await sendToExtension(extensionSocket, pendingRequests, batchRequest);
@@ -495,6 +505,8 @@ async function handleCliCommand(
       id: randomUUID(),
       action: 'get-structured',
       tabId: resolvedTabId ?? -1,
+      variant,
+      forceRaw,
     };
 
     const response = await sendToExtension(extensionSocket, pendingRequests, request);

@@ -1,6 +1,6 @@
 {
   "domain": "amazon.com",
-  "version": "2",
+  "version": "3",
   "description": "Amazon product search results and detail pages",
   "pages": {
     "search": {
@@ -27,6 +27,20 @@
         "features": { "selector": "#feature-bullets ul li span.a-list-item", "type": "textAll" },
         "brand": { "selector": "#bylineInfo", "type": "text" }
       }
+    }
+  },
+  "variants": {
+    "titles": {
+      "description": "Product titles + IDs only — minimum tokens",
+      "fields": ["asin", "title"]
+    },
+    "prices": {
+      "description": "Titles + prices for cross-product price comparison",
+      "fields": ["asin", "title", "price"]
+    },
+    "rated": {
+      "description": "Adds rating + review count for quality filtering",
+      "fields": ["asin", "title", "price", "rating", "reviewCount"]
     }
   }
 }

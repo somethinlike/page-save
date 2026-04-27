@@ -286,6 +286,84 @@ CHG    B00E9M4XFI  $18.97  ~T1      (was $20.97)
 
 ---
 
+## Phase 13: Schema Variants ✅ DONE (2026-04-27)
+
+**Value:** Same domain, different extraction goals. Cooking-research browse needs raw text; price comparison needs `[asin, title, price]`; quality filtering needs ratings too. Selecting a variant per domain group lets the user opt into the minimum-tokens projection that fits the current task.
+
+**What:**
+- Schema gets an optional `variants` block: `{ name: { description, fields: [...], fieldOverrides? } }`
+- Variant = projection of the base page fields (subset of names; future: per-page selector overrides)
+- Sidebar dropdown per domain group: `Raw` (default), `Schema (full)`, then one entry per variant
+- Selection persists to `chrome.storage.local` keyed by canonical domain
+- CLI: `--variant <name>` projects fields; `--raw` (or `--variant raw`) forces raw fallback
+- Default everywhere is **Raw** (Ryan's call: opt-in to schemas, never auto-apply unrequested)
+
+**Files:**
+- `schemas/amazon.com.json` + `extension/schemas/amazon.com.json` + `BUILTIN_SCHEMAS` — added `titles`, `prices`, `rated` variants (also bumped to v3)
+- `extension/extractors.js` — `applyVariant(schema, pageType, basePage, name)` projector; `extractStructured` and `extractWithPagination` accept `{ variant, forceRaw }` options
+- `extension/service-worker.js` — every extraction handler accepts and forwards options; new `get-schema-info` message returns variants per domain for the dropdown
+- `extension/sidepanel.js` + `sidepanel.css` — dropdown replaces the `Schema/Raw` badge; `perTabOptions` map sent on `preview-extract`
+- `src/cli.ts` — `--variant <name>` and `--raw` flags
+- `src/ws-handler.ts` + `src/types.ts` — variant/forceRaw on every `get-structured*` and `batch-urls` request
+
+---
+
+## Phase 14: Server Launch From Extension Menu (Designed, Not Yet Implemented)
+
+**Problem:** A Chrome extension is sandboxed and cannot spawn a Node.js process directly. Today, the user must run `page-save serve` in a terminal *before* the extension can do anything. When the connection drops (server crash, machine reboot), the user has to drop into a terminal again. The status pill says "Disconnected" — but offers no recovery action.
+
+**Goal:** A "Start Server" button in the side panel that, when the WebSocket is offline, spawns the Node.js server in the background and reconnects automatically.
+
+**Approach: Chrome Native Messaging Host**
+
+Native messaging is Chrome's sanctioned escape hatch from the extension sandbox: an extension can invoke a registered native binary via `chrome.runtime.sendNativeMessage(host, message)`. The binary spawns the server as a detached child and reports back. This is exactly the use case native messaging was designed for (cf. 1Password, Bitwarden, KeePassXC).
+
+**Components:**
+
+1. **Native host launcher** (`bin/page-save-launcher.bat` on Windows; `.sh` on Unix)
+   - Reads a 4-byte length-prefixed JSON message from stdin
+   - On `{"action":"start"}`, spawns `node --experimental-strip-types src/cli.ts serve` detached, ignoring stdio so the parent (Chrome) can exit without orphaning the server
+   - On `{"action":"status"}`, attempts a TCP connect to `127.0.0.1:7224`; replies `{"running": true|false}`
+   - Writes a 4-byte length-prefixed JSON response to stdout
+
+2. **Native host manifest** (`bin/com.pagesave.launcher.json`)
+   ```json
+   {
+     "name": "com.pagesave.launcher",
+     "description": "Page Save server launcher",
+     "path": "<absolute path to launcher>",
+     "type": "stdio",
+     "allowed_origins": ["chrome-extension://<EXTENSION_ID>/"]
+   }
+   ```
+   - Windows: registered under `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher` with the manifest path as the default value (no admin needed)
+   - macOS/Linux: copied to `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/` or `~/.config/google-chrome/NativeMessagingHosts/`
+
+3. **Install command** (`page-save install-launcher`)
+   - Generates the manifest with the absolute launcher path
+   - Asks the user to paste their extension ID (printed in the side panel one-time on first run, or readable from `chrome://extensions`)
+   - Writes the manifest, registers it (registry on Windows, file copy on Unix)
+   - Idempotent — re-running updates the path/extension ID
+
+4. **Extension changes**
+   - `manifest.json`: add `"nativeMessaging"` permission
+   - `service-worker.js`: handle a `start-server` message; call `chrome.runtime.sendNativeMessage('com.pagesave.launcher', {action:'start'})`; after success, re-attempt `connect()` on the WebSocket
+   - `sidepanel.js`: when status is "Disconnected", show a "Start Server" button; on click, send the message and update the status
+
+**Edge cases:**
+- Server already running → launcher's status check returns `running: true`, button no-ops
+- Manifest not installed yet → `sendNativeMessage` errors; fall back to current behavior (manual instructions in the disconnected state)
+- Multiple Chrome profiles → each profile's extension has a different ID, so the manifest's `allowed_origins` may need multiple entries. The install command can accept a list.
+
+**Why not other approaches:**
+- *Custom URL scheme handler* (`pagesave://start`) — works but registering a protocol handler on Windows is also a registry write, no simpler than native messaging, and offers no return channel for status.
+- *Background scheduled task / service* — over-engineered; the user explicitly didn't want a daemon (per `feedback_friction_as_signal` — idleness should surface, not hide).
+- *Auto-start on Chrome launch* — same problem; the user wants explicit on-demand control.
+
+**Estimated scope:** ~150 LoC (launcher + install command + extension wiring) + manifest + tests. Targeted as a single-commit follow-up.
+
+---
+
 ## Phase 12: More Schemas (Ongoing)
 
 **Value:** More out-of-the-box coverage. Competitive tools ship with 40-469 templates.

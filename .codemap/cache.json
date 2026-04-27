@@ -1,26 +1,26 @@
 {
   "version": 2,
-  "generatedAt": "2026-04-27T15:27:13.608Z",
+  "generatedAt": "2026-04-27T17:45:46.481Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
-      "mtimeMs": 1775781578322.4563,
-      "size": 32264
+      "mtimeMs": 1777311425742.1008,
+      "size": 34629
     },
     "extension/service-worker.js": {
       "filePath": "extension/service-worker.js",
-      "mtimeMs": 1775783318038.0308,
-      "size": 17321
+      "mtimeMs": 1777311499095.15,
+      "size": 18638
     },
     "extension/sidepanel.js": {
       "filePath": "extension/sidepanel.js",
-      "mtimeMs": 1775783294897.1821,
-      "size": 12732
+      "mtimeMs": 1777311574415.5994,
+      "size": 16472
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",
-      "mtimeMs": 1775783485455.7334,
-      "size": 10872
+      "mtimeMs": 1777311639872.2144,
+      "size": 11383
     },
     "src/defuddle-extractor.ts": {
       "filePath": "src/defuddle-extractor.ts",
@@ -59,8 +59,8 @@
     },
     "src/types.ts": {
       "filePath": "src/types.ts",
-      "mtimeMs": 1775782680497.1108,
-      "size": 3172
+      "mtimeMs": 1777311659528.4702,
+      "size": 3313
     },
     "src/watch.ts": {
       "filePath": "src/watch.ts",
@@ -69,8 +69,8 @@
     },
     "src/ws-handler.ts": {
       "filePath": "src/ws-handler.ts",
-      "mtimeMs": 1775783463795.251,
-      "size": 24029
+      "mtimeMs": 1777311691734.7595,
+      "size": 24279
     },
     "src/youtube-extractor.ts": {
       "filePath": "src/youtube-extractor.ts",

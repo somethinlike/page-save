@@ -119,6 +119,33 @@ header h1 {
   color: #ffa726;
 }
 
+.mode-select {
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: 500;
+  background: #2a2a2a;
+  color: #ccc;
+  border: 1px solid #444;
+  cursor: pointer;
+  max-width: 110px;
+}
+
+.mode-select.has-schema {
+  border-color: #2e6b2e;
+  color: #b8e0b8;
+}
+
+.mode-select.no-schema {
+  border-color: #6b6b2e;
+  color: #ffd07a;
+}
+
+.mode-select:focus {
+  outline: none;
+  border-color: #4caf50;
+}
+
 .domain-checkbox {
   width: 16px;
   height: 16px;

@@ -17,7 +17,7 @@ const schemaRegistry = new Map();
 const BUILTIN_SCHEMAS = [
   {
     domain: 'amazon.com',
-    version: '2',
+    version: '3',
     description: 'Amazon product search results and detail pages',
     pages: {
       search: {
@@ -49,6 +49,20 @@ const BUILTIN_SCHEMAS = [
           features: { selector: '#feature-bullets ul li span.a-list-item', type: 'textAll' },
           brand: { selector: '#bylineInfo', type: 'text' },
         },
+      },
+    },
+    variants: {
+      titles: {
+        description: 'Product titles + IDs only — minimum tokens',
+        fields: ['asin', 'title'],
+      },
+      prices: {
+        description: 'Titles + prices for cross-product price comparison',
+        fields: ['asin', 'title', 'price'],
+      },
+      rated: {
+        description: 'Adds rating + review count for quality filtering',
+        fields: ['asin', 'title', 'price', 'rating', 'reviewCount'],
       },
     },
   },
@@ -352,6 +366,51 @@ async function loadSchemas() {
 }
 
 /**
+ * Apply a named variant to a base page definition, returning a projected
+ * page def that contains only the variant's selected fields (and optional
+ * per-page field overrides).
+ *
+ * Variant model:
+ *   variants.{name}.fields         — array of base field names to keep
+ *   variants.{name}.fieldOverrides — { [pageType]: { fieldName: fieldDef } }
+ *
+ * If the variant doesn't exist on the schema, returns the base page unchanged.
+ *
+ * @param {object} schema
+ * @param {string} pageType
+ * @param {object} basePage
+ * @param {string} variantName
+ * @returns {object} projected page definition
+ */
+function applyVariant(schema, pageType, basePage, variantName) {
+  if (!variantName || !schema.variants) return basePage;
+  const variant = schema.variants[variantName];
+  if (!variant) return basePage;
+
+  const projectedFields = {};
+  const baseFields = basePage.fields || {};
+  const overrides = (variant.fieldOverrides && variant.fieldOverrides[pageType]) || {};
+
+  if (Array.isArray(variant.fields)) {
+    for (const fieldName of variant.fields) {
+      if (overrides[fieldName]) {
+        projectedFields[fieldName] = overrides[fieldName];
+      } else if (baseFields[fieldName]) {
+        projectedFields[fieldName] = baseFields[fieldName];
+      }
+    }
+  } else {
+    Object.assign(projectedFields, baseFields);
+  }
+
+  for (const [fieldName, fieldDef] of Object.entries(overrides)) {
+    if (!projectedFields[fieldName]) projectedFields[fieldName] = fieldDef;
+  }
+
+  return { ...basePage, fields: projectedFields };
+}
+
+/**
  * Find a matching schema + page definition for a given URL.
  * @param {string} url
  * @returns {{ schema: object, page: object, pageType: string } | null}
@@ -647,13 +706,17 @@ async function scrollPage(tabId, scrollDepth) {
  * Run structured extraction on a tab.
  * @param {number} tabId
  * @param {string} url - The tab's URL (for schema matching)
+ * @param {{ variant?: string, forceRaw?: boolean }} [options]
  * @returns {Promise<object>} Extraction result with type indicator
  */
-async function extractStructured(tabId, url) {
-  const match = matchSchema(url);
+async function extractStructured(tabId, url, options = {}) {
+  const { variant, forceRaw } = options;
+
+  const match = forceRaw ? null : matchSchema(url);
 
   if (match) {
-    const { schema, page, pageType } = match;
+    const { schema, page: basePage, pageType } = match;
+    const page = variant ? applyVariant(schema, pageType, basePage, variant) : basePage;
 
     // URL rewrite: navigate tab to a different URL before extracting
     // (e.g., reddit.com → old.reddit.com for server-rendered content)
@@ -711,6 +774,7 @@ async function extractStructured(tabId, url) {
       domain: schema.domain,
       pageType,
       schemaVersion: schema.version,
+      ...(variant && { variant }),
       url: originalUrl || url,
       data: data || { error: 'No result from extraction script' },
     };
@@ -857,20 +921,20 @@ async function probeDomStructure(tabId) {
  * @param {number} maxPages - Maximum pages to extract (default 10)
  * @returns {Promise<object[]>} Array of extraction results
  */
-async function extractWithPagination(tabId, url, maxPages = 10) {
+async function extractWithPagination(tabId, url, maxPages = 10, options = {}) {
   const results = [];
 
-  const match = matchSchema(url);
+  const match = options.forceRaw ? null : matchSchema(url);
   if (!match) {
-    // No schema — can't paginate without knowing the "next" selector
-    const single = await extractStructured(tabId, url);
+    // No schema or forced raw — can't paginate without knowing the "next" selector
+    const single = await extractStructured(tabId, url, options);
     return [single];
   }
 
   const { schema, page, pageType } = match;
   if (!page.pagination) {
     // Schema exists but no pagination config — extract single page
-    const single = await extractStructured(tabId, url);
+    const single = await extractStructured(tabId, url, options);
     return [single];
   }
 
@@ -882,7 +946,7 @@ async function extractWithPagination(tabId, url, maxPages = 10) {
     const currentUrl = tab.url;
 
     // Extract current page
-    const result = await extractStructured(tabId, currentUrl);
+    const result = await extractStructured(tabId, currentUrl, options);
     result.title = tab.title || 'untitled';
     results.push(result);
 
@@ -973,6 +1037,7 @@ async function extractWithPagination(tabId, url, maxPages = 10) {
 globalThis.extractors = {
   loadSchemas,
   matchSchema,
+  applyVariant,
   extractStructured,
   extractWithPagination,
   probeDomStructure,

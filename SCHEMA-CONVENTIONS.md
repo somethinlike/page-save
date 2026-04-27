@@ -38,9 +38,30 @@ When creating or updating a schema, **all three locations must be updated**: the
         }
       }
     }
+  },
+  "variants": {
+    "variantName": {
+      "description": "What subset this variant projects",
+      "fields": ["fieldA", "fieldB"]
+    }
   }
 }
 ```
+
+### Variants
+
+`variants` is optional. Each variant defines a *projection* of the base page fields — a subset to keep — so the same underlying schema can serve different extraction goals (titles only, prices only, full quality view, etc.) without duplicating selectors.
+
+- `description` — shown as the dropdown option's hover text in the side panel
+- `fields` — array of field names from the base page's `fields` block. Fields that don't exist on a particular page are silently skipped, so one variant can span search and product pages.
+- `fieldOverrides` (optional, advanced) — `{ pageType: { fieldName: fieldDef } }` to add fields not in the base or replace selectors for a specific page type. Use sparingly; prefer adding the field to the base schema if it's broadly useful.
+
+The dropdown options the user sees per domain group:
+1. **Raw** (default) — bypass schema entirely, dump cleaned innerText (Defuddle for raw fallback)
+2. **Schema (full)** — base page's full field set (today's auto-extract behavior)
+3. One entry per declared variant
+
+CLI mirrors this: `--variant <name>` for a named variant, `--raw` (or `--variant raw`) to force raw.
 
 ### Field Types
 - **`text`** — `innerText` of the first matching element, trimmed. Use for titles, prices, single values.

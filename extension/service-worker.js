@@ -99,19 +99,19 @@ async function handleMessage(msg) {
         await handleGetText(id, tabId);
         break;
       case 'get-structured':
-        await handleGetStructured(id, tabId);
+        await handleGetStructured(id, tabId, { variant: msg.variant, forceRaw: msg.forceRaw });
         break;
       case 'get-structured-batch':
-        await handleGetStructuredBatch(id, msg.tabIds);
+        await handleGetStructuredBatch(id, msg.tabIds, { variant: msg.variant, forceRaw: msg.forceRaw, perTabOptions: msg.perTabOptions });
         break;
       case 'get-structured-paginated':
-        await handleGetStructuredPaginated(id, tabId, msg.maxPages);
+        await handleGetStructuredPaginated(id, tabId, msg.maxPages, { variant: msg.variant, forceRaw: msg.forceRaw });
         break;
       case 'probe-dom':
         await handleProbeDom(id, tabId);
         break;
       case 'batch-urls':
-        await handleBatchUrls(id, msg.urls);
+        await handleBatchUrls(id, msg.urls, { variant: msg.variant, forceRaw: msg.forceRaw });
         break;
       case 'get-youtube-html':
         await handleGetYoutubeHtml(id, tabId);
@@ -187,11 +187,11 @@ async function handleGetText(id, tabId) {
   });
 }
 
-async function handleGetStructured(id, tabId) {
+async function handleGetStructured(id, tabId, options = {}) {
   const resolvedId = await resolveTabId(tabId);
   const tab = await chrome.tabs.get(resolvedId);
 
-  const result = await globalThis.extractors.extractStructured(resolvedId, tab.url);
+  const result = await globalThis.extractors.extractStructured(resolvedId, tab.url, options);
   result.title = tab.title || 'untitled';
 
   send({ id, result });
@@ -221,7 +221,7 @@ async function handleGetYoutubeHtml(id, tabId) {
   });
 }
 
-async function handleBatchUrls(id, urls) {
+async function handleBatchUrls(id, urls, options = {}) {
   if (!Array.isArray(urls) || urls.length === 0) {
     send({ id, error: 'urls must be a non-empty array' });
     return;
@@ -258,7 +258,7 @@ async function handleBatchUrls(id, urls) {
           await new Promise(r => setTimeout(r, 1000));
 
           // Extract
-          const result = await globalThis.extractors.extractStructured(newTab.id, url);
+          const result = await globalThis.extractors.extractStructured(newTab.id, url, options);
           const tab = await chrome.tabs.get(newTab.id);
           result.title = tab.title || 'untitled';
 
@@ -292,14 +292,14 @@ async function handleProbeDom(id, tabId) {
   send({ id, result: { url: tab.url, domain, candidates } });
 }
 
-async function handleGetStructuredPaginated(id, tabId, maxPages) {
+async function handleGetStructuredPaginated(id, tabId, maxPages, options = {}) {
   const resolvedId = await resolveTabId(tabId);
   const tab = await chrome.tabs.get(resolvedId);
-  const results = await globalThis.extractors.extractWithPagination(resolvedId, tab.url, maxPages || 10);
+  const results = await globalThis.extractors.extractWithPagination(resolvedId, tab.url, maxPages || 10, options);
   send({ id, result: { results, count: results.length } });
 }
 
-async function handleGetStructuredBatch(id, tabIds) {
+async function handleGetStructuredBatch(id, tabIds, options = {}) {
   if (!Array.isArray(tabIds) || tabIds.length === 0) {
     send({ id, error: 'tabIds must be a non-empty array' });
     return;
@@ -308,13 +308,15 @@ async function handleGetStructuredBatch(id, tabIds) {
   const results = [];
   // Process in parallel with concurrency limit of 5 to avoid overwhelming Chrome
   const CONCURRENCY = 5;
+  const perTabOptions = options.perTabOptions || {};
   for (let i = 0; i < tabIds.length; i += CONCURRENCY) {
     const batch = tabIds.slice(i, i + CONCURRENCY);
     const batchResults = await Promise.all(
       batch.map(async (tid) => {
         try {
           const tab = await chrome.tabs.get(tid);
-          const result = await globalThis.extractors.extractStructured(tid, tab.url);
+          const tabOpts = perTabOptions[tid] || { variant: options.variant, forceRaw: options.forceRaw };
+          const result = await globalThis.extractors.extractStructured(tid, tab.url, tabOpts);
           result.title = tab.title || 'untitled';
           result.tabId = tid;
           return result;
@@ -404,6 +406,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return false;
   }
 
+  if (msg.type === 'get-schema-info') {
+    // Return per-domain summary: which variants are available, base schema present
+    const info = {};
+    for (const [domain, schema] of globalThis.extractors.schemaRegistry.entries()) {
+      const variants = schema.variants
+        ? Object.entries(schema.variants).map(([name, v]) => ({
+            name,
+            description: v.description || '',
+          }))
+        : [];
+      info[domain] = {
+        version: schema.version,
+        description: schema.description || '',
+        variants,
+      };
+    }
+    sendResponse({ schemas: info });
+    return false;
+  }
+
   if (msg.type === 'get-status') {
     sendResponse({ connected: ws && ws.readyState === WebSocket.OPEN });
     return false;
@@ -419,7 +441,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'preview-extract') {
     // Extract but return results to sidebar for preview (don't save yet)
-    handlePreviewExtract(msg.tabIds)
+    handlePreviewExtract(msg.tabIds, msg.perTabOptions || {})
       .then((result) => sendResponse(result))
       .catch((err) => sendResponse({ error: err.message || String(err) }));
     return true;
@@ -438,8 +460,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 /**
  * Extract data from tabs and return results for preview (no saving).
+ * @param {number[]} tabIds
+ * @param {Object<number, { variant?: string, forceRaw?: boolean }>} perTabOptions
  */
-async function handlePreviewExtract(tabIds) {
+async function handlePreviewExtract(tabIds, perTabOptions = {}) {
   if (!tabIds || tabIds.length === 0) {
     return { error: 'No tabs selected' };
   }
@@ -452,7 +476,8 @@ async function handlePreviewExtract(tabIds) {
       batch.map(async (tid) => {
         try {
           const tab = await chrome.tabs.get(tid);
-          const result = await globalThis.extractors.extractStructured(tid, tab.url);
+          const opts = perTabOptions[tid] || {};
+          const result = await globalThis.extractors.extractStructured(tid, tab.url, opts);
           result.title = tab.title || 'untitled';
           result.tabId = tid;
           return result;

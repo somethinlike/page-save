@@ -21,6 +21,8 @@ interface CliArgs {
   watchId?: string;
   all?: boolean;
   prev?: string;
+  variant?: string;
+  forceRaw?: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -38,6 +40,8 @@ function parseArgs(argv: string[]): CliArgs {
   let watchId: string | undefined;
   let all = false;
   let prev: string | undefined;
+  let variant: string | undefined;
+  let forceRaw = false;
 
   for (let i = 1; i < args.length; i++) {
     if (args[i] === '--tab' && args[i + 1]) {
@@ -74,10 +78,20 @@ function parseArgs(argv: string[]): CliArgs {
     } else if ((args[i] === '--prev' || args[i] === '--delta') && args[i + 1]) {
       prev = args[i + 1];
       i++;
+    } else if ((args[i] === '--variant' || args[i] === '--schema') && args[i + 1]) {
+      const val = args[i + 1];
+      if (val === 'raw') {
+        forceRaw = true;
+      } else {
+        variant = val;
+      }
+      i++;
+    } else if (args[i] === '--raw') {
+      forceRaw = true;
     }
   }
 
-  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all, prev };
+  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all, prev, variant, forceRaw };
 }
 
 // --- CLI Mode ---
@@ -168,6 +182,8 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
     watchId: cliArgs.watchId,
     all: cliArgs.all,
     prev: cliArgs.prev,
+    variant: cliArgs.variant,
+    forceRaw: cliArgs.forceRaw,
   };
 
   socket.send(JSON.stringify(command));
@@ -297,11 +313,11 @@ if (cliArgs.action === 'serve') {
   page-save tabs                                               List all open Chrome tabs
   page-save save [--tab <id|pattern>] [--out <path>]           Save page as MHTML
   page-save text [--tab <id|pattern>]                          Extract page text
-  page-save extract [--tab <id|pattern>]                       Structured extraction (single tab)
-  page-save extract-all [--domain <pattern>]                   Batch structured extraction
-  page-save extract-pages [--tab <id|pattern>] [--max-pages N] Paginated extraction (follow next links)
+  page-save extract [--tab <id|pattern>] [--variant <name>] [--raw]    Structured extraction (single tab)
+  page-save extract-all [--domain <pattern>] [--variant <name>] [--raw] Batch structured extraction
+  page-save extract-pages [--tab <id|pattern>] [--max-pages N] [--variant <name>] [--raw]  Paginated extraction
+  page-save batch --file <urls.txt> | --urls <url1,url2,...> [--variant <name>] [--raw]    Batch URL extraction
   page-save schema-suggest [--tab <id|pattern>] [--save]       Probe DOM and suggest a schema
-  page-save batch --file <urls.txt> | --urls <url1,url2,...>   Batch extraction from URL list
   page-save youtube [--tab <id|pattern>]                       Extract YouTube video transcript
   page-save session-start                                      Start an accumulating session
   page-save session-add --tab <id|pattern>                     Add extraction to active session

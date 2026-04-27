@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.04.09 (Phases 1-11 complete)
+**Updated:** 2026.04.27 (Phases 1-11 + Phase 13 Schema Variants complete)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -397,3 +397,46 @@
 - [ ] Point any AI at `saved-pages/` and ask it to summarize the latest session
 - [ ] AI reads `README.md` first, then session contents
 - [ ] AI can parse the markdown tables correctly
+
+---
+
+## 22. Schema Variants (Phase 13)
+
+### 22.1 Sidebar Dropdown Renders
+- [ ] Reload the extension in `chrome://extensions` (so updated code loads)
+- [ ] Open the side panel
+- [ ] Open one Amazon search tab and one non-schema tab (e.g. Wikipedia)
+- [ ] In the Amazon group, the row beside the domain name is a dropdown with options: `Raw`, `Schema (full)`, `titles`, `prices`, `rated`
+- [ ] In the Wikipedia group, the dropdown only shows `Raw`
+- [ ] Default selection is `Raw` for both groups
+
+### 22.2 Selection Persists
+- [ ] Pick `prices` for the Amazon group
+- [ ] Close and reopen the side panel
+- [ ] The Amazon group's dropdown is still set to `prices` (chrome.storage.local survived)
+- [ ] Restart the browser — selection survives
+
+### 22.3 Sidebar Variant Extraction
+- [ ] Set Amazon to `prices`, select an Amazon search tab, click `Save Selected`
+- [ ] Preview pane shows items containing only `asin`, `title`, `price` (no rating, no reviewCount, no prime)
+- [ ] Confirm save — `manifest.json` records `variant: "prices"` for that result
+- [ ] Set Amazon to `Raw`, repeat — output goes to `raw/`, not `reduced/`
+
+### 22.4 CLI --variant Flag
+- [ ] Open an Amazon search tab
+- [ ] `page-save extract --tab amazon --variant titles` — output contains only `asin` + `title` columns
+- [ ] `page-save extract --tab amazon --variant prices` — adds `price` column
+- [ ] `page-save extract --tab amazon --variant rated` — adds rating + reviewCount
+
+### 22.5 CLI --raw Flag
+- [ ] Open an Amazon search tab
+- [ ] `page-save extract --tab amazon --raw` — bypasses schema, output is raw text in `raw/` (Defuddle-cleaned)
+- [ ] `page-save extract --tab amazon --variant raw` (alias) — same behavior
+
+### 22.6 Variant On Unknown Domain
+- [ ] Open a Wikipedia tab
+- [ ] `page-save extract --tab wikipedia --variant prices` — there's no schema, so the variant is ignored and it falls back to raw extraction (no error)
+
+### 22.7 Variant + Pagination
+- [ ] On an Amazon search results page
+- [ ] `page-save extract-pages --tab amazon --variant titles --max-pages 2` — both pages extracted with only `asin` + `title`

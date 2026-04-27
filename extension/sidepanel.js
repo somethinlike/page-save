@@ -10,8 +10,12 @@
 let allTabs = [];        // TabInfo[] from service worker
 let selectedIds = new Set(); // Set<tabId>
 let schemasLoaded = [];  // domain strings that have schemas
+let schemaInfo = {};     // domain → { version, description, variants: [{name, description}] }
+let extractionMode = {}; // domain → "raw" | "schema" | "variant:<name>"
 let previewResults = []; // ExtractionResult[] for preview
 let previewIncluded = new Set(); // Set<index> of included items
+
+const STORAGE_KEY_MODE = 'pageSave.extractionMode.v1';
 
 // --- DOM refs ---
 
@@ -60,18 +64,55 @@ async function loadTabs() {
         favIconUrl: t.favIconUrl || '',
       }));
 
-    // Get schema info from service worker
+    // Get schema info from service worker (with variant lists per domain)
     try {
-      const schemaInfo = await sendMessage({ type: 'get-schema-domains' });
-      schemasLoaded = schemaInfo?.domains || [];
+      const info = await sendMessage({ type: 'get-schema-info' });
+      schemaInfo = info?.schemas || {};
+      schemasLoaded = Object.keys(schemaInfo);
     } catch {
+      schemaInfo = {};
       schemasLoaded = [];
+    }
+
+    // Restore persisted dropdown selections
+    try {
+      const stored = await chrome.storage.local.get(STORAGE_KEY_MODE);
+      extractionMode = stored?.[STORAGE_KEY_MODE] || {};
+    } catch {
+      extractionMode = {};
     }
 
     renderTabs();
   } catch (err) {
     tabList.innerHTML = `<div class="empty-state">Error loading tabs: ${err.message}</div>`;
   }
+}
+
+function persistExtractionMode() {
+  try {
+    chrome.storage.local.set({ [STORAGE_KEY_MODE]: extractionMode });
+  } catch {
+    // best-effort
+  }
+}
+
+/**
+ * Resolve a domain group's UI selection into extractor options.
+ * Selections: "raw" → forceRaw, "schema" → default schema, "variant:<n>" → variant.
+ */
+function modeToOptions(mode) {
+  if (!mode || mode === 'raw') return { forceRaw: true };
+  if (mode === 'schema') return {};
+  if (mode.startsWith('variant:')) return { variant: mode.slice('variant:'.length) };
+  return { forceRaw: true };
+}
+
+/**
+ * Default mode for a domain group: raw if no schema, raw (per spec) if schema.
+ * Ryan's request: raw is the default everywhere; user opts into a schema/variant.
+ */
+function defaultModeFor(domain) {
+  return 'raw';
 }
 
 // --- Check connection status ---
@@ -115,6 +156,25 @@ function hasDomainSchema(hostname) {
   return schemasLoaded.some(d => d === hostname || d === base);
 }
 
+/**
+ * Look up the matched schema entry for a domain (handles www. prefix etc).
+ */
+function getSchemaForDomain(hostname) {
+  const base = getBaseDomain(hostname);
+  return schemaInfo[hostname] || schemaInfo[base] || null;
+}
+
+/**
+ * Resolve the canonical domain key used by the schema registry, so that
+ * the persisted dropdown selection survives www-prefix variation.
+ */
+function getSchemaKey(hostname) {
+  const base = getBaseDomain(hostname);
+  if (schemaInfo[hostname]) return hostname;
+  if (schemaInfo[base]) return base;
+  return hostname;
+}
+
 function renderTabs() {
   // Group by base domain
   const groups = new Map();
@@ -141,20 +201,64 @@ function renderTabs() {
     const groupEl = document.createElement('div');
     groupEl.className = 'domain-group';
 
-    const hasSchema = hasDomainSchema(group.domain);
+    const schemaKey = getSchemaKey(group.domain);
+    const schema = getSchemaForDomain(group.domain);
+    const hasSchema = !!schema;
     const allSelected = group.tabs.every(t => selectedIds.has(t.tabId));
+    const currentMode = extractionMode[schemaKey] || defaultModeFor(schemaKey);
+
+    // Build dropdown options: Raw is always default, then full schema, then variants
+    const options = [{ value: 'raw', label: 'Raw' }];
+    if (hasSchema) {
+      options.push({ value: 'schema', label: 'Schema (full)' });
+      for (const v of (schema.variants || [])) {
+        options.push({
+          value: `variant:${v.name}`,
+          label: v.name,
+          title: v.description || v.name,
+        });
+      }
+    }
 
     // Domain header
     const header = document.createElement('div');
     header.className = 'domain-header';
-    header.innerHTML = `
-      <input type="checkbox" class="domain-checkbox" ${allSelected ? 'checked' : ''}>
-      <span class="domain-name">${group.domain}</span>
-      <span class="schema-badge ${hasSchema ? 'has-schema' : 'no-schema'}">${hasSchema ? 'Schema' : 'Raw'}</span>
-      <span class="domain-count">${group.tabs.length}</span>
-    `;
 
-    const domainCheckbox = header.querySelector('.domain-checkbox');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'domain-checkbox';
+    checkbox.checked = allSelected;
+    header.appendChild(checkbox);
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'domain-name';
+    nameEl.textContent = group.domain;
+    header.appendChild(nameEl);
+
+    const select = document.createElement('select');
+    select.className = `mode-select ${hasSchema ? 'has-schema' : 'no-schema'}`;
+    for (const opt of options) {
+      const optEl = document.createElement('option');
+      optEl.value = opt.value;
+      optEl.textContent = opt.label;
+      if (opt.title) optEl.title = opt.title;
+      if (opt.value === currentMode) optEl.selected = true;
+      select.appendChild(optEl);
+    }
+    select.addEventListener('change', (e) => {
+      e.stopPropagation();
+      extractionMode[schemaKey] = select.value;
+      persistExtractionMode();
+    });
+    select.addEventListener('click', (e) => e.stopPropagation());
+    header.appendChild(select);
+
+    const countEl = document.createElement('span');
+    countEl.className = 'domain-count';
+    countEl.textContent = group.tabs.length;
+    header.appendChild(countEl);
+
+    const domainCheckbox = checkbox;
     domainCheckbox.addEventListener('change', () => {
       for (const tab of group.tabs) {
         if (domainCheckbox.checked) {
@@ -225,6 +329,16 @@ async function saveSelected() {
   progressFill.style.width = '0%';
   progressText.textContent = `Extracting ${tabIds.length} page(s)...`;
 
+  // Build per-tab extractor options based on each tab's domain → mode mapping
+  const perTabOptions = {};
+  for (const tab of allTabs) {
+    if (!selectedIds.has(tab.tabId)) continue;
+    const hostname = getDomain(tab.url);
+    const schemaKey = getSchemaKey(hostname);
+    const mode = extractionMode[schemaKey] || defaultModeFor(schemaKey);
+    perTabOptions[tab.tabId] = modeToOptions(mode);
+  }
+
   try {
     progressFill.style.width = '30%';
 
@@ -232,6 +346,7 @@ async function saveSelected() {
     const result = await sendMessage({
       type: 'preview-extract',
       tabIds,
+      perTabOptions,
     });
 
     progressFill.style.width = '100%';

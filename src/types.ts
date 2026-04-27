@@ -7,6 +7,13 @@ export interface WsRequest {
   tabIds?: number[];
   maxPages?: number;
   urls?: string[];
+  variant?: string;
+  forceRaw?: boolean;
+}
+
+export interface ExtractOptions {
+  variant?: string;
+  forceRaw?: boolean;
 }
 
 export interface TabInfo {
@@ -40,6 +47,7 @@ export interface StructuredResult {
   domain: string;
   pageType: string;
   schemaVersion: string;
+  variant?: string;
   url: string;
   title: string;
   tabId?: number;
