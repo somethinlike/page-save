@@ -431,6 +431,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return false;
   }
 
+  if (msg.type === 'launch-server') {
+    handleLaunchServer()
+      .then((result) => sendResponse(result))
+      .catch((err) => sendResponse({ ok: false, stage: 'unexpected', error: err.message || String(err) }));
+    return true;
+  }
+
   if (msg.type === 'batch-extract') {
     // Async handler — must return true to keep sendResponse channel open
     handleBatchExtractFromPanel(msg.tabIds)
@@ -457,6 +464,155 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   return false;
 });
+
+// --- Launch Server (Native Messaging) ---------------------------------------
+
+const NATIVE_HOST = 'com.pagesave.launcher';
+const LAUNCH_COOLDOWN_MS = 5000;
+const POST_LAUNCH_POLL_INTERVAL_MS = 400;
+const POST_LAUNCH_TIMEOUT_MS = 10000;
+
+let lastLaunchAttemptAt = 0;
+
+/**
+ * Probe the WebSocket port directly from the extension. We can't open raw TCP
+ * sockets from a service worker, but the existing connection state already
+ * tells us whether the server is up. For a fresh probe, we briefly attempt a
+ * test WebSocket and discard it.
+ */
+function probeServerOnce(timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    let probe;
+    let settled = false;
+    const finish = (status) => {
+      if (settled) return;
+      settled = true;
+      try { probe && probe.close(); } catch {}
+      resolve(status);
+    };
+    try {
+      probe = new WebSocket(WS_URL);
+    } catch {
+      finish('unreachable');
+      return;
+    }
+    probe.onopen = () => finish('reachable');
+    probe.onerror = () => finish('unreachable');
+    probe.onclose = () => finish(settled ? undefined : 'unreachable');
+    setTimeout(() => finish('unreachable'), timeoutMs);
+  });
+}
+
+async function pollUntilConnected(timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (ws && ws.readyState === WebSocket.OPEN) return true;
+    // Trigger a connect attempt each cycle so we don't have to wait for the
+    // alarm-driven reconnect (which is on a 15s schedule).
+    connect();
+    await new Promise((r) => setTimeout(r, POST_LAUNCH_POLL_INTERVAL_MS));
+  }
+  return ws && ws.readyState === WebSocket.OPEN;
+}
+
+function sendNative(message) {
+  return new Promise((resolve, reject) => {
+    try {
+      chrome.runtime.sendNativeMessage(NATIVE_HOST, message, (response) => {
+        const err = chrome.runtime.lastError;
+        if (err) {
+          reject(new Error(err.message || 'Native messaging error'));
+          return;
+        }
+        resolve(response);
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+/**
+ * Launch the local page-save server via the registered native messaging host.
+ *
+ * Safety layers (matching the spec):
+ *   1. Spam protection — refuse if a launch was attempted within the cooldown
+ *      window (5s). Returns ok:true with `cooldown:true` so the UI can show
+ *      "Already starting…" without alarming the user.
+ *   2. Pre-flight WS probe — if the server is already reachable, no-op.
+ *   3. Port conflict detection — the native launcher refuses to spawn a
+ *      duplicate when the port is already bound. We surface that as a
+ *      distinct error so the UI can say "port 7224 is in use by something
+ *      else" rather than the generic launch failure.
+ *   4. Post-launch confirmation — poll the WebSocket for up to 10s after
+ *      reporting success. If we never connect, return ok:false with the
+ *      timeout reason so the UI doesn't leave the user staring at a button
+ *      that lied.
+ */
+async function handleLaunchServer() {
+  const now = Date.now();
+  if (now - lastLaunchAttemptAt < LAUNCH_COOLDOWN_MS) {
+    return { ok: true, cooldown: true, message: 'Launch already in progress.' };
+  }
+  lastLaunchAttemptAt = now;
+
+  // (2) Pre-flight: if we're already connected, nothing to do.
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    return { ok: true, alreadyRunning: true };
+  }
+  const probe = await probeServerOnce();
+  if (probe === 'reachable') {
+    // Something is on the port. Hand the existing connect() loop a kick.
+    connect();
+    const connected = await pollUntilConnected(3000);
+    if (connected) return { ok: true, alreadyRunning: true };
+    // Reachable but doesn't speak our protocol → port conflict from another app.
+    return {
+      ok: false,
+      stage: 'port-conflict',
+      error: `Port ${WS_URL.replace('ws://localhost:', '')} is in use by something that isn't page-save.`,
+    };
+  }
+
+  // (3) Ask the native host to spawn the server.
+  let response;
+  try {
+    response = await sendNative({ action: 'start' });
+  } catch (err) {
+    return {
+      ok: false,
+      stage: 'native-messaging',
+      error: `Native messaging host '${NATIVE_HOST}' is not registered. Run: page-save install-launcher --extension-id ${chrome.runtime.id}`,
+      details: err.message || String(err),
+    };
+  }
+
+  if (!response) {
+    return { ok: false, stage: 'native-response', error: 'No response from native launcher.' };
+  }
+  if (response.error) {
+    return { ok: false, stage: 'native-response', error: response.error };
+  }
+  if (response.alreadyRunning && response.occupied) {
+    // Native side detected something on the port but we couldn't speak page-save with it.
+    return {
+      ok: false,
+      stage: 'port-conflict',
+      error: `Port is occupied. Either page-save is already running and unreachable, or another app is using port 7224.`,
+    };
+  }
+
+  // (4) Confirm by polling for our own WebSocket connection.
+  const connected = await pollUntilConnected(POST_LAUNCH_TIMEOUT_MS);
+  if (connected) {
+    return { ok: true, started: true };
+  }
+  return {
+    ok: false,
+    stage: 'connect-timeout',
+    error: `Server reported started but extension couldn't connect within ${POST_LAUNCH_TIMEOUT_MS / 1000}s.`,
+  };
+}
 
 /**
  * Extract data from tabs and return results for preview (no saving).

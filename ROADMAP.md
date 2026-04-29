@@ -308,7 +308,7 @@ CHG    B00E9M4XFI  $18.97  ~T1      (was $20.97)
 
 ---
 
-## Phase 14: Server Launch From Extension Menu (Designed, Not Yet Implemented)
+## Phase 14: Server Launch From Extension Menu ✅ DONE (2026-04-28)
 
 **Problem:** A Chrome extension is sandboxed and cannot spawn a Node.js process directly. Today, the user must run `page-save serve` in a terminal *before* the extension can do anything. When the connection drops (server crash, machine reboot), the user has to drop into a terminal again. The status pill says "Disconnected" — but offers no recovery action.
 
@@ -361,6 +361,16 @@ Native messaging is Chrome's sanctioned escape hatch from the extension sandbox:
 - *Auto-start on Chrome launch* — same problem; the user wants explicit on-demand control.
 
 **Estimated scope:** ~150 LoC (launcher + install command + extension wiring) + manifest + tests. Targeted as a single-commit follow-up.
+
+**As-built (2026-04-28):**
+- `src/native-launcher.ts` — stdio framing, status/start actions, port pre-flight, post-launch re-probe (~140 LoC)
+- `bin/page-save-launcher.bat` — self-locating Node lookup (avoids fnm shim per `feedback_ps7_msix.md`)
+- `src/install-launcher.ts` — writes `bin/com.pagesave.launcher.json`, registers under `HKCU\...\NativeMessagingHosts`, supports Chrome/Edge/Brave
+- `extension/manifest.json` — `nativeMessaging` permission added
+- `extension/service-worker.js` — `handleLaunchServer()` enforces 4 safety layers: 5s cooldown, pre-flight WS probe, port-conflict detection (native side refuses to spawn over a busy port), 10s connect-timeout polling
+- `extension/sidepanel.js` — `updateSaveButton()` is mode-aware: footer button reads "Launch Local Page-Save Server" when offline, "Save Selected (N)" when online. 4s status polling auto-transitions back when server comes up. UI-side 5s debounce mirrors service-worker cooldown.
+
+**Still manual:** the user runs `page-save install-launcher --extension-id <id>` once after first install. Could be auto-triggered the first time the button is clicked but the extension ID is needed at install time and passing it through native messaging is awkward.
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-04-27T17:45:46.481Z",
+  "generatedAt": "2026-04-29T05:09:41.335Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -9,18 +9,18 @@
     },
     "extension/service-worker.js": {
       "filePath": "extension/service-worker.js",
-      "mtimeMs": 1777311499095.15,
-      "size": 18638
+      "mtimeMs": 1777439085845.414,
+      "size": 24135
     },
     "extension/sidepanel.js": {
       "filePath": "extension/sidepanel.js",
-      "mtimeMs": 1777311574415.5994,
-      "size": 16472
+      "mtimeMs": 1777439153948.4622,
+      "size": 20239
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",
-      "mtimeMs": 1777311639872.2144,
-      "size": 11383
+      "mtimeMs": 1777439044190.9102,
+      "size": 12783
     },
     "src/defuddle-extractor.ts": {
       "filePath": "src/defuddle-extractor.ts",
@@ -37,6 +37,11 @@
       "mtimeMs": 1775089702183.4673,
       "size": 1095
     },
+    "src/install-launcher.ts": {
+      "filePath": "src/install-launcher.ts",
+      "mtimeMs": 1777438996019.5925,
+      "size": 4321
+    },
     "src/markdown-formatter.ts": {
       "filePath": "src/markdown-formatter.ts",
       "mtimeMs": 1775783412234.9802,
@@ -46,6 +51,11 @@
       "filePath": "src/mcp-server.ts",
       "mtimeMs": 1775782593134.55,
       "size": 5256
+    },
+    "src/native-launcher.ts": {
+      "filePath": "src/native-launcher.ts",
+      "mtimeMs": 1777438939189.4607,
+      "size": 5413
     },
     "src/schema-suggest.ts": {
       "filePath": "src/schema-suggest.ts",

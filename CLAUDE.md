@@ -29,6 +29,11 @@ Chrome Sidebar UI          CLI (Claude Code)
 C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/cli.ts serve
 ```
 
+Or, after one-time setup (`page-save install-launcher --extension-id <id>`),
+click the "Launch Local Page-Save Server" button in the side panel when the
+status pill reads "Server offline". The button is the same footer button
+that becomes "Save Selected (N)" once the server is up.
+
 ### CLI Commands
 ```bash
 # List all open tabs

@@ -15,6 +15,12 @@ let extractionMode = {}; // domain → "raw" | "schema" | "variant:<name>"
 let previewResults = []; // ExtractionResult[] for preview
 let previewIncluded = new Set(); // Set<index> of included items
 
+let serverConnected = false;
+let launchInFlight = false;
+let lastLaunchClickAt = 0;
+let lastLaunchError = '';
+const LAUNCH_DEBOUNCE_MS = 5000;
+
 const STORAGE_KEY_MODE = 'pageSave.extractionMode.v1';
 
 // --- DOM refs ---
@@ -123,14 +129,18 @@ async function checkStatus() {
     if (result?.connected) {
       statusEl.textContent = 'Connected';
       statusEl.className = 'status connected';
+      serverConnected = true;
     } else {
       statusEl.textContent = 'Server offline';
       statusEl.className = 'status disconnected';
+      serverConnected = false;
     }
   } catch {
     statusEl.textContent = 'Disconnected';
     statusEl.className = 'status disconnected';
+    serverConnected = false;
   }
+  updateSaveButton();
 }
 
 // --- Rendering ---
@@ -311,10 +321,99 @@ function renderTabs() {
   }
 }
 
+/**
+ * The footer primary button is mode-aware:
+ *   - server offline + idle  → "Launch Local Page-Save Server"
+ *   - server offline + busy  → "Launching server…" (disabled)
+ *   - server connected + 0   → "Save Selected (0)" (disabled)
+ *   - server connected + N   → "Save Selected (N)" (enabled)
+ *
+ * Phase 14: when the server is unreachable we repurpose the otherwise-useless
+ * disabled save button into the launcher action, so the UI flow stays the
+ * same and there's never an idle dead button.
+ */
 function updateSaveButton() {
   const count = selectedIds.size;
+
+  if (!serverConnected) {
+    if (launchInFlight) {
+      btnSave.textContent = 'Launching server…';
+      btnSave.disabled = true;
+      btnSave.classList.add('btn-launch');
+    } else {
+      btnSave.textContent = 'Launch Local Page-Save Server';
+      btnSave.disabled = false;
+      btnSave.classList.add('btn-launch');
+    }
+    if (lastLaunchError) {
+      progressEl.classList.remove('hidden');
+      progressFill.style.width = '0%';
+      progressText.textContent = lastLaunchError;
+    }
+    return;
+  }
+
+  btnSave.classList.remove('btn-launch');
   btnSave.textContent = `Save Selected (${count})`;
   btnSave.disabled = count === 0;
+  if (lastLaunchError) {
+    lastLaunchError = '';
+    progressEl.classList.add('hidden');
+    progressText.textContent = '';
+  }
+}
+
+async function launchServer() {
+  const now = Date.now();
+  if (launchInFlight) return;
+  if (now - lastLaunchClickAt < LAUNCH_DEBOUNCE_MS) {
+    // UI-side debounce mirroring the service worker's cooldown so the user
+    // can't hammer the button. The 5s window is generous because launch +
+    // first WebSocket reconnect typically resolves in 1-2s.
+    return;
+  }
+  lastLaunchClickAt = now;
+  launchInFlight = true;
+  lastLaunchError = '';
+  updateSaveButton();
+
+  try {
+    const result = await sendMessage({ type: 'launch-server' });
+    if (result?.ok) {
+      // Connection-state polling already runs every few seconds; force a
+      // status refresh now so the green pill appears immediately.
+      await checkStatus();
+      if (!serverConnected) {
+        // ok:true with cooldown:true means another tab/click is mid-launch;
+        // wait briefly and re-check.
+        await new Promise((r) => setTimeout(r, 1500));
+        await checkStatus();
+      }
+    } else {
+      lastLaunchError = formatLaunchError(result);
+    }
+  } catch (err) {
+    lastLaunchError = `Launch failed: ${err.message || err}`;
+  } finally {
+    launchInFlight = false;
+    updateSaveButton();
+  }
+}
+
+function formatLaunchError(result) {
+  if (!result) return 'Launch failed: no response from extension.';
+  switch (result.stage) {
+    case 'native-messaging':
+      return `Launcher not installed. Run: page-save install-launcher --extension-id ${chrome.runtime.id}`;
+    case 'port-conflict':
+      return result.error || 'Port 7224 is already in use.';
+    case 'connect-timeout':
+      return `Server started but didn't accept connections in time. Check the terminal for errors.`;
+    case 'native-response':
+      return `Launcher error: ${result.error}`;
+    default:
+      return result.error || 'Launch failed for an unknown reason.';
+  }
 }
 
 // --- Save action (now routes through preview) ---
@@ -527,7 +626,13 @@ btnDeselectAll.addEventListener('click', () => {
   updateSaveButton();
 });
 
-btnSave.addEventListener('click', saveSelected);
+btnSave.addEventListener('click', () => {
+  if (!serverConnected) {
+    launchServer();
+  } else {
+    saveSelected();
+  }
+});
 btnPreviewSave.addEventListener('click', savePreview);
 btnPreviewDiscard.addEventListener('click', hidePreview);
 
@@ -539,3 +644,10 @@ checkStatus();
 // Refresh when tabs change
 chrome.tabs.onUpdated.addListener(() => loadTabs());
 chrome.tabs.onRemoved.addListener(() => loadTabs());
+
+// Periodic status refresh — picks up server start/stop without user action so
+// the footer button transitions from "Launch" → "Save" automatically when the
+// server comes online (whether triggered from the button or started manually
+// via `page-save serve`). 4s cadence is fast enough to feel responsive
+// without flooding the service worker.
+setInterval(checkStatus, 4000);

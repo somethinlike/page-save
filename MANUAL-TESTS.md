@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.04.27 (Phases 1-11 + Phase 13 Schema Variants complete)
+**Updated:** 2026.04.28 (Phases 1-11 + Phase 13 Schema Variants + Phase 14 Server Launch complete)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -440,3 +440,51 @@
 ### 22.7 Variant + Pagination
 - [ ] On an Amazon search results page
 - [ ] `page-save extract-pages --tab amazon --variant titles --max-pages 2` — both pages extracted with only `asin` + `title`
+
+---
+
+## 23. Server Launch From Extension (Phase 14)
+
+### 23.1 First-Time Install
+- [ ] Get extension ID from `chrome://extensions` (Developer mode on, page-save card)
+- [ ] Run `page-save install-launcher --extension-id <id>` — prints "Native messaging host registered for chrome."
+- [ ] `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher"` shows the manifest path
+- [ ] `bin/com.pagesave.launcher.json` exists with the correct extension ID in `allowed_origins`
+
+### 23.2 Reload Extension
+- [ ] After `install-launcher`, reload the extension once so the `nativeMessaging` permission is active
+- [ ] Side panel still loads; status pill shows current connection state
+
+### 23.3 Launch With Server Offline
+- [ ] Stop any running `page-save serve` process
+- [ ] Open the side panel — status pill = "Server offline" (red), footer button reads **"Launch Local Page-Save Server"** in blue
+- [ ] Click — button changes to "Launching server…" (disabled)
+- [ ] Within ~2s, status flips to "Connected" and the button transitions back to "Save Selected (0)"
+- [ ] `netstat -ano | grep 7224` shows a LISTENING entry — the spawned server is detached and survives the launcher exiting
+
+### 23.4 Launch With Server Already Running
+- [ ] Start `page-save serve` manually first
+- [ ] In a fresh side panel, the status pill should already say "Connected" (the periodic 4s poll picks this up)
+- [ ] If you somehow click before the poll updates, the launcher's pre-flight probe detects the running server and returns `alreadyRunning:true` without spawning a duplicate
+- [ ] `netstat` shows exactly one PID on port 7224
+
+### 23.5 Spam Click Protection
+- [ ] With server offline, click the launch button rapidly 5+ times within 1 second
+- [ ] Only one launch attempt actually fires (UI debounce + service-worker 5s cooldown both enforce this)
+- [ ] `tasklist | findstr node` does not show a stack of duplicate node processes
+
+### 23.6 Port Conflict
+- [ ] In a separate terminal, occupy port 7224 with something that isn't page-save: `python -m http.server 7224 --bind 127.0.0.1`
+- [ ] In the side panel, click the launch button
+- [ ] Status text under the button reads "Port 7224 is in use by something that isn't page-save." (or similar)
+- [ ] The launcher does NOT spawn a node process on top of the conflict
+
+### 23.7 Launcher Not Installed
+- [ ] Delete the registry key: `reg delete "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher" /f`
+- [ ] Click launch button → error reads "Launcher not installed. Run: page-save install-launcher --extension-id <id>"
+- [ ] Re-running the install command and reloading the extension restores normal operation
+
+### 23.8 Launcher Reports Started But No Connection
+- [ ] (Hard to reproduce naturally — would require the spawned server to crash before binding)
+- [ ] If it happens: error reads "Server started but didn't accept connections in time. Check the terminal for errors."
+- [ ] User can run `page-save serve` manually to see the actual error

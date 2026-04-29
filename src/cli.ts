@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { PORT } from './types.ts';
 import type { TabInfo } from './types.ts';
 import { startServer } from './ws-handler.ts';
+import { installLauncher } from './install-launcher.ts';
 
 // --- Argument Parsing ---
 
@@ -23,6 +24,8 @@ interface CliArgs {
   prev?: string;
   variant?: string;
   forceRaw?: boolean;
+  extensionIds?: string[];
+  browser?: 'chrome' | 'edge' | 'brave';
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -42,6 +45,8 @@ function parseArgs(argv: string[]): CliArgs {
   let prev: string | undefined;
   let variant: string | undefined;
   let forceRaw = false;
+  let extensionIds: string[] | undefined;
+  let browser: 'chrome' | 'edge' | 'brave' = 'chrome';
 
   for (let i = 1; i < args.length; i++) {
     if (args[i] === '--tab' && args[i + 1]) {
@@ -88,10 +93,21 @@ function parseArgs(argv: string[]): CliArgs {
       i++;
     } else if (args[i] === '--raw') {
       forceRaw = true;
+    } else if (args[i] === '--extension-id' && args[i + 1]) {
+      extensionIds = (extensionIds || []).concat(args[i + 1].split(',').map(s => s.trim()).filter(Boolean));
+      i++;
+    } else if (args[i] === '--browser' && args[i + 1]) {
+      const b = args[i + 1].toLowerCase();
+      if (b === 'chrome' || b === 'edge' || b === 'brave') {
+        browser = b;
+      } else {
+        throw new Error(`Unknown browser '${b}'. Use chrome, edge, or brave.`);
+      }
+      i++;
     }
   }
 
-  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all, prev, variant, forceRaw };
+  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all, prev, variant, forceRaw, extensionIds, browser };
 }
 
 // --- CLI Mode ---
@@ -302,6 +318,16 @@ const cliArgs = parseArgs(process.argv);
 
 if (cliArgs.action === 'serve') {
   startServer();
+} else if (cliArgs.action === 'install-launcher') {
+  try {
+    installLauncher({
+      extensionIds: cliArgs.extensionIds || [],
+      browser: cliArgs.browser || 'chrome',
+    });
+  } catch (err) {
+    console.error(`Error: ${(err as Error).message}`);
+    process.exit(1);
+  }
 } else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest', 'batch', 'youtube', 'session-start', 'session-add', 'session-finalize', 'session-status', 'watch-add', 'watch-list', 'watch-run'].includes(cliArgs.action)) {
   runCli(cliArgs).catch((err) => {
     console.error(`Error: ${err.message || err}`);
@@ -325,6 +351,10 @@ if (cliArgs.action === 'serve') {
   page-save session-status                                     Show active session info
   page-save watch-add --url <url> [--fields price,rating]      Create a price/content watch
   page-save watch-list                                         List all watches
-  page-save watch-run [--id <watchId> | --all]                 Run watch(es) and diff`);
+  page-save watch-run [--id <watchId> | --all]                 Run watch(es) and diff
+  page-save install-launcher --extension-id <id> [--browser chrome|edge|brave]
+                                                               Register the native messaging host so the
+                                                               extension can launch the server itself.
+                                                               Get the extension ID from chrome://extensions.`);
   process.exit(1);
 }

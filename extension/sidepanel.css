@@ -223,6 +223,19 @@ footer {
   cursor: default;
 }
 
+/* Phase 14: footer button repurposed as server-launcher when offline. */
+.btn-primary.btn-launch {
+  background: #4a90d9;
+  color: #fff;
+}
+.btn-primary.btn-launch:hover:not(:disabled) {
+  background: #3a80c9;
+}
+.btn-primary.btn-launch:disabled {
+  background: #2a4060;
+  color: #aac8e8;
+}
+
 #progress {
   margin-top: 8px;
 }

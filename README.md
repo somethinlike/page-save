@@ -29,6 +29,23 @@ Install from the [Chrome Web Store](https://chromewebstore.google.com/) or load 
 npx page-save serve
 ```
 
+### 3. (Optional) Launch the server from the extension
+After loading the extension, register a small native-messaging host so the
+side panel can start the server itself when it's offline — no terminal needed:
+
+```bash
+# Get your extension ID from chrome://extensions, then:
+npx page-save install-launcher --extension-id <id>
+```
+
+After this, when the status pill shows "Server offline" the footer button
+reads **"Launch Local Page-Save Server"**. Click it; the panel waits for the
+WebSocket to come up and then transitions back to "Save Selected (N)".
+
+The launcher refuses to spawn a duplicate when the port is already bound,
+debounces rapid clicks, and reports a clear error if something else is
+holding port 7224.
+
 ## Usage
 
 ```bash
