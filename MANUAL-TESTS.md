@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.04.28 (Phases 1-11 + Phase 13 Schema Variants + Phase 14 Server Launch complete)
+**Updated:** 2026.04.29 (Phases 1-15 complete)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -488,3 +488,24 @@
 - [ ] (Hard to reproduce naturally — would require the spawned server to crash before binding)
 - [ ] If it happens: error reads "Server started but didn't accept connections in time. Check the terminal for errors."
 - [ ] User can run `page-save serve` manually to see the actual error
+
+---
+
+## 24. Multi-Selector Fallback for Variant Listings (Phase 15)
+
+### 24.1 Multi-Variant Amazon Listings Now Extract Prices
+- [ ] Search Amazon for "king oscar sardines" — open the search results in a tab
+- [ ] Multi-variant listings (the ones with "See available options" or a price range like "$5.03 - $68.14") are present
+- [ ] Run `page-save extract --tab "king oscar"` (or save via sidebar with `prices` variant)
+- [ ] At least 80%+ of King Oscar listings now have a populated `price` field (vs ~50% before Phase 15)
+- [ ] When a listing has a price range, the extracted price is the lower bound (consistent with `parse_price` regex picking the first match)
+
+### 24.2 Schema Author Workflow
+- [ ] Open `schemas/amazon.com.json` — `price` is an array of 4 selectors
+- [ ] Edit a non-Amazon schema (e.g., `schemas/walmart.com.json`) — `selector` accepts both string (existing) and array (new) forms; existing string selectors continue to work without modification
+- [ ] Manually probe a field with a partial DOM match (delete the first selector class) — extractor falls through to the next selector and still returns the right value
+
+### 24.3 Coverage Regression Check
+- [ ] Re-run a saved sardine search session before/after Phase 15
+- [ ] Compare `confidence.fields[where field='price'].rate` in `manifest.json`
+- [ ] Phase 15 rate should be > Phase 13 rate for the `price` field on amazon.com/search

@@ -518,6 +518,43 @@ async function handleCliCommand(
     return;
   }
 
+  // --- probe-result-html: dev-only DOM probe for specific ASINs ---
+  if (action === 'probe-result-html') {
+    const asins = (msg.asins as string[] | undefined) || [];
+    if (asins.length === 0) {
+      respond({ error: 'No ASINs given. Use --asins B00X,B00Y,...' });
+      return;
+    }
+    let resolvedTabId: number | undefined;
+    if (tab !== undefined) {
+      const numericId = Number(tab);
+      if (!Number.isNaN(numericId) && String(numericId) === tab) {
+        resolvedTabId = numericId;
+      } else {
+        const tabsResponse = await sendToExtension(extensionSocket, pendingRequests, {
+          id: randomUUID(),
+          action: 'list-tabs',
+        });
+        if ('error' in tabsResponse) { respond({ error: tabsResponse.error }); return; }
+        const tabs = (tabsResponse.result as { tabs: TabInfo[] }).tabs;
+        const pattern = tab.toLowerCase();
+        const match = tabs.find((t) => t.url.toLowerCase().includes(pattern) || t.title.toLowerCase().includes(pattern));
+        if (!match) { respond({ error: `No tab matching '${tab}'.` }); return; }
+        resolvedTabId = match.tabId;
+      }
+    }
+    const request = {
+      id: randomUUID(),
+      action: 'probe-result-html' as WsRequest['action'],
+      tabId: resolvedTabId ?? -1,
+      asins,
+    } as unknown as WsRequest;
+    const response = await sendToExtension(extensionSocket, pendingRequests, request);
+    if ('error' in response) { respond({ error: response.error }); return; }
+    respond(response.result as Record<string, unknown>);
+    return;
+  }
+
   // --- Original commands: tabs, save, text ---
 
   let tabId: number | undefined;

@@ -2,13 +2,14 @@
 
 export interface WsRequest {
   id: string;
-  action: 'list-tabs' | 'save-page' | 'get-text' | 'get-structured' | 'get-structured-batch' | 'get-structured-paginated' | 'probe-dom' | 'batch-urls' | 'get-youtube-html';
+  action: 'list-tabs' | 'save-page' | 'get-text' | 'get-structured' | 'get-structured-batch' | 'get-structured-paginated' | 'probe-dom' | 'probe-result-html' | 'batch-urls' | 'get-youtube-html';
   tabId?: number;
   tabIds?: number[];
   maxPages?: number;
   urls?: string[];
   variant?: string;
   forceRaw?: boolean;
+  asins?: string[];
 }
 
 export interface ExtractOptions {

@@ -26,6 +26,7 @@ interface CliArgs {
   forceRaw?: boolean;
   extensionIds?: string[];
   browser?: 'chrome' | 'edge' | 'brave';
+  asins?: string[];
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -47,6 +48,7 @@ function parseArgs(argv: string[]): CliArgs {
   let forceRaw = false;
   let extensionIds: string[] | undefined;
   let browser: 'chrome' | 'edge' | 'brave' = 'chrome';
+  let asins: string[] | undefined;
 
   for (let i = 1; i < args.length; i++) {
     if (args[i] === '--tab' && args[i + 1]) {
@@ -96,6 +98,9 @@ function parseArgs(argv: string[]): CliArgs {
     } else if (args[i] === '--extension-id' && args[i + 1]) {
       extensionIds = (extensionIds || []).concat(args[i + 1].split(',').map(s => s.trim()).filter(Boolean));
       i++;
+    } else if (args[i] === '--asins' && args[i + 1]) {
+      asins = args[i + 1].split(',').map(s => s.trim()).filter(Boolean);
+      i++;
     } else if (args[i] === '--browser' && args[i + 1]) {
       const b = args[i + 1].toLowerCase();
       if (b === 'chrome' || b === 'edge' || b === 'brave') {
@@ -107,7 +112,7 @@ function parseArgs(argv: string[]): CliArgs {
     }
   }
 
-  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all, prev, variant, forceRaw, extensionIds, browser };
+  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all, prev, variant, forceRaw, extensionIds, browser, asins };
 }
 
 // --- CLI Mode ---
@@ -169,6 +174,7 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
     'watch-add': 'watch-add',
     'watch-list': 'watch-list',
     'watch-run': 'watch-run',
+    'probe-result-html': 'probe-result-html',
   };
 
   // Resolve batch URLs from --file or --urls
@@ -200,6 +206,7 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
     prev: cliArgs.prev,
     variant: cliArgs.variant,
     forceRaw: cliArgs.forceRaw,
+    asins: cliArgs.asins,
   };
 
   socket.send(JSON.stringify(command));
@@ -328,7 +335,7 @@ if (cliArgs.action === 'serve') {
     console.error(`Error: ${(err as Error).message}`);
     process.exit(1);
   }
-} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest', 'batch', 'youtube', 'session-start', 'session-add', 'session-finalize', 'session-status', 'watch-add', 'watch-list', 'watch-run'].includes(cliArgs.action)) {
+} else if (['tabs', 'save', 'text', 'extract', 'extract-all', 'extract-pages', 'schema-suggest', 'batch', 'youtube', 'session-start', 'session-add', 'session-finalize', 'session-status', 'watch-add', 'watch-list', 'watch-run', 'probe-result-html'].includes(cliArgs.action)) {
   runCli(cliArgs).catch((err) => {
     console.error(`Error: ${err.message || err}`);
     process.exit(1);

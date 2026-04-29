@@ -17,7 +17,7 @@ const schemaRegistry = new Map();
 const BUILTIN_SCHEMAS = [
   {
     domain: 'amazon.com',
-    version: '3',
+    version: '4',
     description: 'Amazon product search results and detail pages',
     pages: {
       search: {
@@ -27,7 +27,15 @@ const BUILTIN_SCHEMAS = [
         fields: {
           asin: { selector: '@data-asin', type: 'attribute' },
           title: { selector: '.a-text-normal', type: 'text' },
-          price: { selector: '.a-price .a-offscreen', type: 'text' },
+          price: {
+            selector: [
+              '.a-price .a-offscreen',
+              '.a-price-range .a-offscreen',
+              "[data-cy='price-recipe'] .a-offscreen",
+              '.a-color-price',
+            ],
+            type: 'text',
+          },
           rating: { selector: '.a-icon-alt', type: 'text' },
           reviewCount: { selector: 'span.s-underline-text', type: 'text' },
           prime: { selector: 'i.a-icon-prime', type: 'exists' },
@@ -43,7 +51,15 @@ const BUILTIN_SCHEMAS = [
         description: 'Individual product detail page',
         fields: {
           title: { selector: '#productTitle', type: 'text' },
-          price: { selector: '.a-price .a-offscreen', type: 'text' },
+          price: {
+            selector: [
+              '.a-price .a-offscreen',
+              '#corePriceDisplay_desktop_feature_div .a-offscreen',
+              '#priceblock_ourprice',
+              '#priceblock_dealprice',
+            ],
+            type: 'text',
+          },
           rating: { selector: '#acrPopover span.a-icon-alt', type: 'text' },
           reviewCount: { selector: '#acrCustomerReviewText', type: 'text' },
           features: { selector: '#feature-bullets ul li span.a-list-item', type: 'textAll' },
@@ -456,9 +472,11 @@ function buildExtractionScript(pageDef) {
   // This function runs INSIDE the page context (isolated world).
   // It must be completely self-contained — no references to extension variables.
   return (pageDef) => {
-    function extractField(element, fieldDef) {
-      const { selector, type, attribute } = fieldDef;
-
+    /**
+     * Extract a field given a single selector. Pulled out of extractField so
+     * the multi-selector fallback path can call it in a loop.
+     */
+    function extractFieldOnce(element, selector, type, attribute) {
       // @attr shorthand: read attribute from the element itself
       if (selector.startsWith('@')) {
         const attrName = selector.slice(1);
@@ -488,6 +506,37 @@ function buildExtractionScript(pageDef) {
       }
 
       return null;
+    }
+
+    /**
+     * "Empty" for our purposes means: null, false, empty string, empty array.
+     * A populated `false` from `exists` is a real signal so we don't treat it
+     * as empty in the multi-selector fallback (callers should not specify
+     * multiple selectors for `exists` fields anyway, but we stay consistent).
+     */
+    function isEmpty(v, type) {
+      if (v === null) return true;
+      if (type === 'exists') return false; // false here means "matched but absent" — keep
+      if (typeof v === 'string') return v === '';
+      if (Array.isArray(v)) return v.length === 0;
+      return false;
+    }
+
+    /**
+     * Extract a field. `selector` can be a string OR an array — when an array,
+     * each is tried in order and the first non-empty result wins. This lets
+     * a schema declare graceful fallbacks for DOM variants (e.g. Amazon's
+     * fixed-price spans vs. price-range spans on multi-variant listings).
+     */
+    function extractField(element, fieldDef) {
+      const { selector, type, attribute } = fieldDef;
+
+      const selectors = Array.isArray(selector) ? selector : [selector];
+      for (const sel of selectors) {
+        const result = extractFieldOnce(element, sel, type, attribute);
+        if (!isEmpty(result, type)) return result;
+      }
+      return Array.isArray(selector) ? null : null;
     }
 
     function extractFromElement(element, fields) {

@@ -1,6 +1,6 @@
 {
   "domain": "amazon.com",
-  "version": "3",
+  "version": "4",
   "description": "Amazon product search results and detail pages",
   "pages": {
     "search": {
@@ -10,7 +10,15 @@
       "fields": {
         "asin": { "selector": "@data-asin", "type": "attribute" },
         "title": { "selector": ".a-text-normal", "type": "text" },
-        "price": { "selector": ".a-price .a-offscreen", "type": "text" },
+        "price": {
+          "selector": [
+            ".a-price .a-offscreen",
+            ".a-price-range .a-offscreen",
+            "[data-cy='price-recipe'] .a-offscreen",
+            ".a-color-price"
+          ],
+          "type": "text"
+        },
         "rating": { "selector": ".a-icon-alt", "type": "text" },
         "reviewCount": { "selector": "span.s-underline-text", "type": "text" },
         "prime": { "selector": "i.a-icon-prime", "type": "exists" }
@@ -21,7 +29,15 @@
       "description": "Individual product detail page",
       "fields": {
         "title": { "selector": "#productTitle", "type": "text" },
-        "price": { "selector": ".a-price .a-offscreen", "type": "text" },
+        "price": {
+          "selector": [
+            ".a-price .a-offscreen",
+            "#corePriceDisplay_desktop_feature_div .a-offscreen",
+            "#priceblock_ourprice",
+            "#priceblock_dealprice"
+          ],
+          "type": "text"
+        },
         "rating": { "selector": "#acrPopover span.a-icon-alt", "type": "text" },
         "reviewCount": { "selector": "#acrCustomerReviewText", "type": "text" },
         "features": { "selector": "#feature-bullets ul li span.a-list-item", "type": "textAll" },

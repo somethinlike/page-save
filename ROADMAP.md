@@ -374,6 +374,44 @@ Native messaging is Chrome's sanctioned escape hatch from the extension sandbox:
 
 ---
 
+## Phase 15: Multi-Selector Fallback for DOM Variants ✅ DONE (2026-04-29)
+
+**Value (revised after measurement):** Originally hypothesized to fix the ~5% missing-price gap on Amazon. **Measurement shows it only moves the price-field rate from 91.30% → 91.90%** on a sardine search batch. Still ships because (a) the architectural support for selector arrays is generally useful for any future schema dealing with DOM A/B tests or layout variants, and (b) those few marginal cases it does fix are real — listings where Amazon renders a `.a-price-range` instead of `.a-price`, or where the `data-cy="price-recipe"` div has a price inside. The bulk of the remaining missing prices turn out to be a **different problem entirely**, which Phase 16 addresses: search cards for multi-variant listings (King Oscar's "Pack of 6/12/18" SKUs) have **literally empty price-recipe divs** — Amazon doesn't render any price hint, range, or "From $X" text. No selector can extract what isn't there. Verified via the `probe-result-html` action shipped with this phase.
+
+**What changed:**
+- `extension/extractors.js` — `extractField` now branches on `Array.isArray(selector)`. Helper `extractFieldOnce` is the old single-selector path; the new top-level `extractField` loops over the array and returns the first non-empty match. `isEmpty` correctly distinguishes `false` (a real `exists`-type result) from `null` / `''` / `[]` (empty).
+- `schemas/amazon.com.json` + extension copy + `BUILTIN_SCHEMAS` — bumped to v4. `price` field is now `[".a-price .a-offscreen", ".a-price-range .a-offscreen", "[data-cy='price-recipe'] .a-offscreen", ".a-color-price"]` for search; product-page price has its own fallback array including legacy `#priceblock_*` selectors for older Amazon layouts.
+- `extension/service-worker.js` — added `probe-result-html` action (one-shot debugging to capture outerHTML of search-result containers by ASIN; useful for grounding future schema improvements).
+- `SCHEMA-CONVENTIONS.md` — documents the array form with rules: only use it for legitimate DOM variation, not "let me try a few things." Document why each fallback exists.
+
+**Backward-compatible.** Existing schemas with string-form `selector` work unchanged.
+
+**Why the probe action shipped even though we didn't use it for this fix:** the action is small (~25 LoC) and gives a clean way to inspect Amazon's actual DOM next time a schema regresses. Better to ship the debugging tool now than re-derive it later.
+
+---
+
+## Phase 16: Follow-Through to Product Page for Empty Search-Card Prices (Designed)
+
+**Problem:** The verification under Phase 15 confirmed that ~8% of Amazon search results have **truly empty** price-recipe divs — Amazon doesn't render price text on the card for multi-variant listings (King Oscar's heavily-variantized SKUs are the canonical example). No CSS-selector strategy can extract a price that doesn't exist in the DOM. The user clicking through to /dp/<ASIN> is the only way Amazon shows them a number.
+
+**Goal:** When the search-page extractor returns empty `price` (or any opt-in field), automatically follow the listing's product-detail-page URL, extract the field there, and merge the value back into the search session. Reuse Phase 4's batch-URLs background-tab infrastructure.
+
+**Design:**
+- New CLI flag: `--follow-empty <field>` (and matching schema property `followEmpty: ["price"]` for the default behavior on a per-domain basis).
+- After the search-page extraction completes, scan results for items where the named field is null/empty.
+- For each: derive the product page URL from the ASIN (or from a `productUrl` field in the schema), open in a background tab via `chrome.tabs.create({ active: false })`, extract the product schema, copy the requested field back to the original result, close the tab. Concurrency limit 3 (matches existing batch-urls).
+- Merge results back into the session manifest with a `priceSource: "product-page"` annotation so it's auditable which prices were follow-through vs. card-direct.
+- Cost: ~2-3s per missing-price ASIN. For a typical 50-result Amazon search with ~5 missing, that's 10-15s extra — acceptable for a price-comparison workflow, opt-in for fast browsing.
+
+**Edge cases:**
+- Listing has no /dp/<ASIN> URL (rare, mostly old marketplace items) — skip silently.
+- Product page is itself a variant chooser ("Choose a size" before showing a price) — extract the *lowest* variant's price, mark with `priceVariant: "min-of-N"`. Or skip entirely with a flag the user controls.
+- Out-of-stock / "Currently unavailable" — surface as a distinct state, not as `null`.
+
+**Estimated scope:** ~80 LoC across `extractors.js` (post-process pass), `service-worker.js` (orchestration), and `ws-handler.ts` (CLI flag plumbing). Schema docs update. Manual test entry. Single follow-up commit.
+
+---
+
 ## Phase 12: More Schemas (Ongoing)
 
 **Value:** More out-of-the-box coverage. Competitive tools ship with 40-469 templates.

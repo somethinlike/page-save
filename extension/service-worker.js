@@ -113,6 +113,9 @@ async function handleMessage(msg) {
       case 'batch-urls':
         await handleBatchUrls(id, msg.urls, { variant: msg.variant, forceRaw: msg.forceRaw });
         break;
+      case 'probe-result-html':
+        await handleProbeResultHtml(id, tabId, msg.asins);
+        break;
       case 'get-youtube-html':
         await handleGetYoutubeHtml(id, tabId);
         break;
@@ -279,6 +282,42 @@ async function handleBatchUrls(id, urls, options = {}) {
   }
 
   send({ id, result: { results, count: results.length } });
+}
+
+/**
+ * One-shot debugging probe: capture outerHTML of search-result containers
+ * that match a list of ASINs. Used to ground-truth schema improvements
+ * (e.g. why some listings come back with empty price fields).
+ */
+async function handleProbeResultHtml(id, tabId, asins) {
+  const resolvedId = await resolveTabId(tabId);
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: resolvedId },
+    func: (asinList) => {
+      const out = {};
+      for (const asin of asinList) {
+        const el = document.querySelector(`[data-asin="${asin}"]`);
+        if (!el) {
+          out[asin] = { found: false };
+          continue;
+        }
+        // Capture the price-region subtree and any text mentioning "options" or "$"
+        const priceArea = el.querySelector('[data-cy="price-recipe"]')
+          || el.querySelector('.s-price-instructions-style')
+          || el.querySelector('[class*="price"]')
+          || el;
+        out[asin] = {
+          found: true,
+          priceAreaHtml: (priceArea?.outerHTML || '').slice(0, 4000),
+          containerSnippet: el.outerHTML.slice(0, 8000),
+        };
+      }
+      return out;
+    },
+    args: [asins],
+    world: 'ISOLATED',
+  });
+  send({ id, result: results?.[0]?.result || {} });
 }
 
 async function handleProbeDom(id, tabId) {

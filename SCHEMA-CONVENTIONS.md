@@ -71,6 +71,28 @@ CLI mirrors this: `--variant <name>` for a named variant, `--raw` (or `--variant
   - `"selector": ".someClass", "attribute": "href"` — reads `href` from matched child element
 - **`exists`** — Boolean. `true` if selector matches at least one element. Use for badges (Prime, free shipping).
 
+### Multi-Selector Fallbacks (Phase 15)
+
+`selector` can be a **string** (single selector) or a **string array** (try each in order, first non-empty result wins). Use array form when a field can land in multiple DOM locations depending on listing variant.
+
+```json
+"price": {
+  "selector": [
+    ".a-price .a-offscreen",
+    ".a-price-range .a-offscreen",
+    "[data-cy='price-recipe'] .a-offscreen"
+  ],
+  "type": "text"
+}
+```
+
+The fallback chain runs left-to-right; the first selector that returns a non-empty value wins. Useful for:
+- **Amazon price**: fixed-price listings use `.a-price`, multi-variant listings use `.a-price-range`, newer listings sometimes use `data-cy` attributes — without fallbacks the extractor returns `null` for whichever DOM shape isn't covered.
+- **Site redesigns mid-rollout**: when a site is A/B-testing two layouts, you can list both classes and not have to figure out which user got which variant.
+- **Sponsored vs organic cards**: same field, different DOM. Stack selectors instead of writing two schemas.
+
+Don't abuse this — the array form is for **legitimate DOM variation**, not for "let me try a few things." Each fallback selector should have a defensible reason to exist (link the Amazon doc page or A/B test announcement in a `// comment` if you can; JSON doesn't have comments so leave a note in the schema's `description`).
+
 ### Page Properties
 
 - **`urlPattern`** — Substring matched against the full URL. Must be specific enough to distinguish page types (e.g., `/s?` for Amazon search vs `/dp/` for product detail). The first matching page definition wins.
