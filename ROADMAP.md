@@ -308,7 +308,40 @@ CHG    B00E9M4XFI  $18.97  ~T1      (was $20.97)
 
 ---
 
-## Phase 14: Server Launch From Extension Menu ✅ DONE (2026-04-28)
+## Phase 14: Server Launch From Extension Menu ✅ INFRASTRUCTURE DONE (2026-04-28), 🟡 BLOCKED ON BRAVE-SPECIFIC LOOKUP BUG (2026-05-03)
+
+**Update 2026-05-03:** All four pieces of the launcher work in isolation:
+- Native messaging host script (`src/native-launcher.ts`) responds correctly to `status` and `start` actions when invoked directly via stdin (verified multiple times)
+- The `.bat` wrapper exits cleanly, returns the right framing
+- `page-save install-launcher` writes a valid manifest at `bin/com.pagesave.launcher.json` and registers the `(Default)` REG_SZ value at `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher` (and Edge + Brave equivalents)
+- `chrome.runtime.sendNativeMessage` from the extension service worker correctly serializes the call
+
+**The blocker:** `chrome.runtime.sendNativeMessage('com.pagesave.launcher', ...)` consistently returns `lastError = "Specified native messaging host not found"` on Ryan's Brave 147.1.89.145 install (and Chrome too, per cross-test). Yet at the SAME parent registry key, `chrome.runtime.sendNativeMessage('com.8bit.bitwarden', ...)` returns `"Access ... is forbidden"` — meaning Brave finds Bitwarden's manifest fine but ours specifically isn't located.
+
+**Diagnostics performed (all ruled out):**
+- Wrong registry path → wrote to all 5 plausible Chromium-derived paths (Brave, BraveSoftware\Brave-Browser, Brave-Browser, Chromium, Google\Chrome)
+- 32-bit vs 64-bit registry view — entry verified present in BOTH via PowerShell's `RegistryView::Registry32` / `Registry64`
+- `.bat` rejected by Chromium — pointed manifest's `path` at `node.exe` directly, then at Bitwarden's working `desktop_proxy.exe`
+- Manifest in `Temp` directory rejected — moved to `AppData\Local\page-save\` then `AppData\Roaming\page-save\`
+- Filename pattern (`com.pagesave.launcher.json`) — renamed to `host.json`
+- CRLF vs LF line endings — wrote LF-only matching Bitwarden's exact bytes
+- ACL pattern — verified file ACL and registry-key ACL are identical between our entry and Bitwarden's
+- Manifest field structure — byte-cloned Bitwarden's manifest with only `name` swapped
+- Multiple allowed_origin format variants — single trailing-slash entry, both formats, multi-origin
+- Cache / restart issue — Brave fully restarted, all `brave.exe` processes killed, extension toggled off+on
+- Permission missing — `chrome.runtime.getManifest().permissions` confirmed `nativeMessaging` is in the active list, `chrome.permissions.getAll` shows 8 granted permissions matching declared
+- Verbose Brave log (`--enable-logging --v=1 --vmodule=*native_message*=3`) confirms Brave logs `Can't find manifest for native messaging host com.pagesave.launcher` from `launch_context.cc:148` — same code path as truly-absent hosts (Anthropic Claude extensions, Google Drive). The `FindManifest` function in Chromium source returns empty path despite the registry entry existing.
+
+**Reading Chromium source** at `chrome/browser/extensions/api/messaging/launch_context_win.cc`: `FindManifest` calls `GetManifestPath(HKEY_CURRENT_USER, host_name, &result)` which tries 32-bit then 64-bit views. `GetManifestPathWithFlagsFromSubkey` does three sequential operations: open parent key, open subkey, read default value. ALL three must succeed. We've verified all three succeed manually via PowerShell's `OpenSubKey` + `GetValue('')`. Yet Chromium's call returns false.
+
+**What this looks like:** something Chromium-internal is short-circuiting our specific entry. Possibly a stale negative-cache from earlier debugging iterations; possibly a Brave 147.x bug specific to dynamically-added hosts on a running profile; possibly a profile-level allowlist that Bitwarden+GoogleDrive+MicrosoftBrowserCore are grandfathered into.
+
+**Next session pickup:** the verified-working things are valuable infrastructure to keep. The remaining mystery is purely on the Chromium/Brave-side discovery code path and likely needs either:
+1. A fully fresh Brave profile (or different Brave install — Beta, Nightly) to test
+2. Chromium source instrumentation (build a debug Brave) to see why `RegKey::Open` fails for our subkey but succeeds for Bitwarden's
+3. Reporting upstream to Brave with the verbose log
+
+The extension's launch button still UX-displays the "Launcher not installed" error correctly when this happens (Phase 14 commit `50d8e5a`), so user impact is bounded — they fall back to running `page-save serve` in a terminal manually, which still works perfectly.
 
 **Problem:** A Chrome extension is sandboxed and cannot spawn a Node.js process directly. Today, the user must run `page-save serve` in a terminal *before* the extension can do anything. When the connection drops (server crash, machine reboot), the user has to drop into a terminal again. The status pill says "Disconnected" — but offers no recovery action.
 
