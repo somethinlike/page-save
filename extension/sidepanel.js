@@ -404,7 +404,14 @@ function formatLaunchError(result) {
   if (!result) return 'Launch failed: no response from extension.';
   switch (result.stage) {
     case 'native-messaging':
-      return `Launcher not installed. Run: page-save install-launcher --extension-id ${chrome.runtime.id}`;
+      // Single canonical path: npx works everywhere Node does, no global install
+      // needed, no platform-package-manager rabbit hole. Triple-click the line
+      // to select it and paste into a terminal.
+      return (
+        'Launcher not installed. Run this in any terminal:\n\n' +
+        `  npx page-save install-launcher --extension-id ${chrome.runtime.id}\n\n` +
+        'Then reload the extension and click again.'
+      );
     case 'port-conflict':
       return result.error || 'Port 7224 is already in use.';
     case 'connect-timeout':

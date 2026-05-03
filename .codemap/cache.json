@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-04-29T05:41:13.953Z",
+  "generatedAt": "2026-05-03T12:41:57.934Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -14,8 +14,8 @@
     },
     "extension/sidepanel.js": {
       "filePath": "extension/sidepanel.js",
-      "mtimeMs": 1777439153948.4622,
-      "size": 20239
+      "mtimeMs": 1777812030121.3667,
+      "size": 20570
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",

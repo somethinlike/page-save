@@ -24,14 +24,24 @@ Page Save Bridge uses `chrome.pageCapture.saveAsMHTML()` — a browser-engine-le
 Install from the [Chrome Web Store](https://chromewebstore.google.com/) or load unpacked from the `extension/` folder.
 
 ### 2. Node.js Bridge
+
+You need Node.js 20+ installed. Then run via `npx` — no global install needed,
+works the same on Windows, macOS, and Linux:
+
 ```bash
-# Start the server (runs on localhost:7224)
-npx page-save serve
+npx page-save serve   # starts the server on localhost:7224
 ```
+
+(npx is the canonical Node.js way to run a CLI tool. We deliberately don't
+ship a winget / Homebrew / apt package — it'd add a ~80MB Node bundle to a
+50KB CLI, and any user who needs page-save already has Node for everything
+else they're doing in this ecosystem. If you'd rather have `page-save` on
+your PATH directly, `npm install -g page-save` works.)
 
 ### 3. (Optional) Launch the server from the extension
 After loading the extension, register a small native-messaging host so the
-side panel can start the server itself when it's offline — no terminal needed:
+side panel can start the server itself when it's offline — no terminal
+needed thereafter:
 
 ```bash
 # Get your extension ID from chrome://extensions, then:

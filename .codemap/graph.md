@@ -1,4 +1,4 @@
-# Dependency Graph (2026-04-29)
+# Dependency Graph (2026-05-03)
 
 **Internal edges:** 22 | **Files with imports:** 14
 
@@ -27,8 +27,8 @@
 |---------|---------|
 | `node:fs` | 6 files |
 | `node:path` | 6 files |
-| `node:child_process` | 3 files |
 | `ws` | 3 files |
+| `node:child_process` | 3 files |
 | `node:url` | 2 files |
 | `node:crypto` | 2 files |
 | `defuddle` | 1 file |
