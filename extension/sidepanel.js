@@ -404,11 +404,13 @@ function formatLaunchError(result) {
   if (!result) return 'Launch failed: no response from extension.';
   switch (result.stage) {
     case 'native-messaging':
-      // Single canonical path: npx works everywhere Node does, no global install
-      // needed, no platform-package-manager rabbit hole. Triple-click the line
-      // to select it and paste into a terminal.
+      // Show the actual rejection reason from chrome.runtime.lastError so we
+      // can distinguish "host not found" (registry/path issue) from "host
+      // forbidden" (extension ID mismatch in manifest) from "host exited
+      // with code N" (.bat crashed). Recovery hint follows.
       return (
-        'Launcher not installed. Run this in any terminal:\n\n' +
+        `Native messaging failed: ${result.details || result.error}\n\n` +
+        'Recovery: in a terminal:\n' +
         `  npx page-save install-launcher --extension-id ${chrome.runtime.id}\n\n` +
         'Then reload the extension and click again.'
       );

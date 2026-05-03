@@ -618,11 +618,14 @@ async function handleLaunchServer() {
   try {
     response = await sendNative({ action: 'start' });
   } catch (err) {
+    const detail = err.message || String(err);
+    console.error('[page-save] sendNativeMessage failed:', detail, err);
     return {
       ok: false,
       stage: 'native-messaging',
-      error: `Native messaging host '${NATIVE_HOST}' is not registered. Run: page-save install-launcher --extension-id ${chrome.runtime.id}`,
-      details: err.message || String(err),
+      error: `Native messaging failed: ${detail}`,
+      details: detail,
+      extensionId: chrome.runtime.id,
     };
   }
 
