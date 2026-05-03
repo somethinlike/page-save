@@ -4,7 +4,17 @@ const WS_URL = 'ws://localhost:7224';
 const RECONNECT_ALARM = 'page-save-reconnect';
 const KEEPALIVE_ALARM = 'page-save-keepalive';
 
+// Backoff schedule for reconnect attempts when the bridge server is offline.
+// Chromium's network stack auto-logs `WebSocket connection ... failed` on each
+// constructor failure and that log is unsuppressable from JS. So instead of
+// hammering every 15s forever (and dumping a stream of identical errors into
+// the service-worker console), we fall back to long-poll mode after the first
+// few attempts. Successful connect resets the index back to 0.
+const RECONNECT_BACKOFF_MIN = [0.25, 0.5, 1, 2, 5];
+
 let ws = null;
+let reconnectStreak = 0;       // how many consecutive failures since last success
+let loggedOfflineState = false; // suppresses repeat "disconnected" lines
 
 // --- WebSocket Connection ---
 
@@ -24,7 +34,13 @@ function connect() {
   ws = socket;
 
   socket.onopen = () => {
-    console.log('[page-save] Connected to bridge server');
+    if (loggedOfflineState) {
+      console.log('[page-save] Reconnected to bridge server');
+    } else {
+      console.log('[page-save] Connected to bridge server');
+    }
+    reconnectStreak = 0;
+    loggedOfflineState = false;
     chrome.alarms.clear(RECONNECT_ALARM);
     chrome.alarms.create(KEEPALIVE_ALARM, { periodInMinutes: 0.4 });
     // Use local ref to avoid race with a second connect() overwriting ws
@@ -43,22 +59,29 @@ function connect() {
   };
 
   socket.onclose = () => {
-    console.log('[page-save] Disconnected from bridge server');
+    // Log only the first disconnect of the session; further close events
+    // during the reconnect-backoff loop would just be noise.
+    if (!loggedOfflineState) {
+      console.log('[page-save] Bridge server offline. Will retry on backoff.');
+      loggedOfflineState = true;
+    }
     if (ws === socket) ws = null;
     chrome.alarms.clear(KEEPALIVE_ALARM);
     scheduleReconnect();
   };
 
-  socket.onerror = (err) => {
-    console.error('[page-save] WebSocket error:', err);
-  };
+  // Intentionally no socket.onerror handler — onerror's `Event` argument has no
+  // useful detail beyond the unsuppressable Chromium network-stack error that
+  // already prints, so logging it just doubles the noise with `[object Event]`.
 }
 
 function scheduleReconnect() {
-  // chrome.alarms survives service worker suspension (setTimeout does not)
-  // Minimum alarm period is 0.5 minutes (30 seconds) for production extensions,
-  // but unpacked extensions allow shorter. Use 0.25 min (~15 seconds).
-  chrome.alarms.create(RECONNECT_ALARM, { periodInMinutes: 0.25 });
+  reconnectStreak += 1;
+  const idx = Math.min(reconnectStreak - 1, RECONNECT_BACKOFF_MIN.length - 1);
+  const periodInMinutes = RECONNECT_BACKOFF_MIN[idx];
+  // chrome.alarms survives service worker suspension (setTimeout does not).
+  // Use a one-shot alarm so we control the delay precisely on each retry.
+  chrome.alarms.create(RECONNECT_ALARM, { delayInMinutes: periodInMinutes });
 }
 
 function send(msg) {
@@ -73,7 +96,9 @@ function send(msg) {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === RECONNECT_ALARM) {
-    console.log('[page-save] Reconnect alarm fired, attempting connection...');
+    // Silent retry — connect() will log on success ("Reconnected") or stay
+    // quiet on failure (the unsuppressable Chromium network error provides
+    // signal enough). This is the noise-reduction half of the backoff fix.
     connect();
   }
   if (alarm.name === KEEPALIVE_ALARM) {
