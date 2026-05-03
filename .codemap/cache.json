@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-03T12:41:57.934Z",
+  "generatedAt": "2026-05-03T12:48:49.881Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -19,8 +19,8 @@
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",
-      "mtimeMs": 1777440989016,
-      "size": 13077
+      "mtimeMs": 1777812480632.3237,
+      "size": 13976
     },
     "src/defuddle-extractor.ts": {
       "filePath": "src/defuddle-extractor.ts",
@@ -39,8 +39,8 @@
     },
     "src/install-launcher.ts": {
       "filePath": "src/install-launcher.ts",
-      "mtimeMs": 1777438996019.5925,
-      "size": 4321
+      "mtimeMs": 1777812442651.1953,
+      "size": 4985
     },
     "src/markdown-formatter.ts": {
       "filePath": "src/markdown-formatter.ts",

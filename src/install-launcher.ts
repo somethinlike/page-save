@@ -18,16 +18,20 @@ import { dirname, resolve as pathResolve, join } from 'node:path';
 
 const HOST_NAME = 'com.pagesave.launcher';
 
+type Browser = 'chrome' | 'edge' | 'brave';
+
 interface InstallOptions {
   extensionIds: string[];
-  browser: 'chrome' | 'edge' | 'brave';
+  browsers: Browser[];
 }
 
-const REGISTRY_KEYS: Record<InstallOptions['browser'], string> = {
+const REGISTRY_KEYS: Record<Browser, string> = {
   chrome: 'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts',
   edge: 'HKCU\\Software\\Microsoft\\Edge\\NativeMessagingHosts',
   brave: 'HKCU\\Software\\BraveSoftware\\Brave-Browser\\NativeMessagingHosts',
 };
+
+const ALL_BROWSERS: Browser[] = ['chrome', 'edge', 'brave'];
 
 function projectRoot(): string {
   // src/install-launcher.ts → ../
@@ -35,13 +39,13 @@ function projectRoot(): string {
   return pathResolve(here, '..');
 }
 
-function buildManifest(options: InstallOptions, batPath: string): Record<string, unknown> {
+function buildManifest(extensionIds: string[], batPath: string): Record<string, unknown> {
   return {
     name: HOST_NAME,
     description: 'Page Save server launcher',
     path: batPath,
     type: 'stdio',
-    allowed_origins: options.extensionIds.map((id) => `chrome-extension://${id}/`),
+    allowed_origins: extensionIds.map((id) => `chrome-extension://${id}/`),
   };
 }
 
@@ -54,7 +58,7 @@ function writeManifest(manifestPath: string, manifest: Record<string, unknown>):
  * On Windows, the (Default) value of the host's subkey points at the manifest JSON.
  * Uses `reg add` so we don't need a registry-binding npm package.
  */
-function registerInRegistry(browser: InstallOptions['browser'], manifestPath: string): void {
+function registerInRegistry(browser: Browser, manifestPath: string): void {
   if (process.platform !== 'win32') {
     throw new Error(`install-launcher currently supports Windows only; got platform: ${process.platform}`);
   }
@@ -82,6 +86,7 @@ export function installLauncher(options: InstallOptions): void {
       throw new Error(`Invalid extension ID: ${id}. Expected 32 lowercase letters a-p.`);
     }
   }
+  const browsers = options.browsers && options.browsers.length > 0 ? options.browsers : ALL_BROWSERS;
 
   const root = projectRoot();
   const batPath = join(root, 'bin', 'page-save-launcher.bat');
@@ -91,20 +96,38 @@ export function installLauncher(options: InstallOptions): void {
     throw new Error(`Launcher script missing: ${batPath}. Re-clone or restore bin/page-save-launcher.bat.`);
   }
 
-  const manifest = buildManifest(options, batPath);
+  // Manifest is shared across all browsers — they all read the same JSON
+  // file from the same path. Only the registry pointers differ.
+  const manifest = buildManifest(options.extensionIds, batPath);
   writeManifest(manifestPath, manifest);
-  registerInRegistry(options.browser, manifestPath);
 
-  // Also write to the install path Chrome looks at for native hosts (registry
-  // is canonical on Windows; the file copy is just for inspection).
-  console.log(`Native messaging host registered for ${options.browser}.`);
+  const registered: Browser[] = [];
+  const skipped: { browser: Browser; reason: string }[] = [];
+  for (const browser of browsers) {
+    try {
+      registerInRegistry(browser, manifestPath);
+      registered.push(browser);
+    } catch (err) {
+      skipped.push({ browser, reason: (err as Error).message });
+    }
+  }
+
+  console.log(`Native messaging host registered for: ${registered.join(', ') || '(none)'}`);
   console.log(`  Manifest: ${manifestPath}`);
   console.log(`  Launcher: ${batPath}`);
-  console.log(`  Registry: ${REGISTRY_KEYS[options.browser]}\\${HOST_NAME}`);
+  if (registered.length > 0) {
+    console.log(`  Registry keys:`);
+    for (const browser of registered) {
+      console.log(`    ${REGISTRY_KEYS[browser]}\\${HOST_NAME}`);
+    }
+  }
+  if (skipped.length > 0) {
+    console.log(`  Skipped: ${skipped.map((s) => `${s.browser} (${s.reason})`).join(', ')}`);
+  }
   console.log(`  Allowed origins:`);
   for (const id of options.extensionIds) {
     console.log(`    chrome-extension://${id}/`);
   }
-  console.log(`\nNext step: reload the page-save extension in chrome://extensions, then`);
+  console.log(`\nNext step: reload the page-save extension in your browser, then`);
   console.log(`click the "Launch Local Page-Save Server" button when status shows offline.`);
 }

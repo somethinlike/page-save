@@ -25,7 +25,7 @@ interface CliArgs {
   variant?: string;
   forceRaw?: boolean;
   extensionIds?: string[];
-  browser?: 'chrome' | 'edge' | 'brave';
+  browsers?: ('chrome' | 'edge' | 'brave')[];
   asins?: string[];
 }
 
@@ -47,7 +47,7 @@ function parseArgs(argv: string[]): CliArgs {
   let variant: string | undefined;
   let forceRaw = false;
   let extensionIds: string[] | undefined;
-  let browser: 'chrome' | 'edge' | 'brave' = 'chrome';
+  let browsers: ('chrome' | 'edge' | 'brave')[] | undefined;
   let asins: string[] | undefined;
 
   for (let i = 1; i < args.length; i++) {
@@ -102,17 +102,23 @@ function parseArgs(argv: string[]): CliArgs {
       asins = args[i + 1].split(',').map(s => s.trim()).filter(Boolean);
       i++;
     } else if (args[i] === '--browser' && args[i + 1]) {
-      const b = args[i + 1].toLowerCase();
-      if (b === 'chrome' || b === 'edge' || b === 'brave') {
-        browser = b;
+      const raw = args[i + 1].toLowerCase();
+      if (raw === 'all') {
+        browsers = ['chrome', 'edge', 'brave'];
       } else {
-        throw new Error(`Unknown browser '${b}'. Use chrome, edge, or brave.`);
+        const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+        for (const b of parts) {
+          if (b !== 'chrome' && b !== 'edge' && b !== 'brave') {
+            throw new Error(`Unknown browser '${b}'. Valid: chrome, edge, brave, all (or comma-separated).`);
+          }
+        }
+        browsers = parts as ('chrome' | 'edge' | 'brave')[];
       }
       i++;
     }
   }
 
-  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all, prev, variant, forceRaw, extensionIds, browser, asins };
+  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all, prev, variant, forceRaw, extensionIds, browsers, asins };
 }
 
 // --- CLI Mode ---
@@ -329,7 +335,11 @@ if (cliArgs.action === 'serve') {
   try {
     installLauncher({
       extensionIds: cliArgs.extensionIds || [],
-      browser: cliArgs.browser || 'chrome',
+      // Default to all three Chromium-based browsers when --browser isn't
+      // specified. Registering a manifest in a browser the user doesn't have
+      // installed is harmless (just a stale registry entry); registering for
+      // ONLY chrome and silently failing on Brave/Edge users is friction.
+      browsers: cliArgs.browsers || [],
     });
   } catch (err) {
     console.error(`Error: ${(err as Error).message}`);
@@ -359,9 +369,12 @@ if (cliArgs.action === 'serve') {
   page-save watch-add --url <url> [--fields price,rating]      Create a price/content watch
   page-save watch-list                                         List all watches
   page-save watch-run [--id <watchId> | --all]                 Run watch(es) and diff
-  page-save install-launcher --extension-id <id> [--browser chrome|edge|brave]
+  page-save install-launcher --extension-id <id> [--browser <list>]
                                                                Register the native messaging host so the
                                                                extension can launch the server itself.
-                                                               Get the extension ID from chrome://extensions.`);
+                                                               Get the extension ID from chrome://extensions.
+                                                               --browser defaults to registering for all
+                                                               Chromium-based browsers (chrome,edge,brave).
+                                                               Pass a comma-separated list to restrict.`);
   process.exit(1);
 }
