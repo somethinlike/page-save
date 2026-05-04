@@ -26,7 +26,7 @@ Chrome Sidebar UI          CLI (Claude Code)
 
 ### Start the server
 ```bash
-C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/cli.ts serve
+C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/GoogleDrive/Projects/page-save/src/cli.ts serve
 ```
 
 Or, after one-time setup (`page-save install-launcher --extension-id <id>`),
@@ -86,7 +86,7 @@ page-save extract-all --domain amazon --prev <session-dir>
 page-save extract-pages --tab amazon --prev <session-dir>
 ```
 
-(Replace `page-save` with `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/cli.ts`)
+(Replace `page-save` with `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/GoogleDrive/Projects/page-save/src/cli.ts`)
 
 ### Chrome Sidebar
 1. Click the page-save extension icon → side panel opens
@@ -97,7 +97,7 @@ page-save extract-pages --tab amazon --prev <session-dir>
 ### Load/Reload the Extension
 1. Navigate to `chrome://extensions` in Dev Profile
 2. Enable Developer mode
-3. Click "Load unpacked" → select `C:\Users\somet\Projects\page-save\extension\`
+3. Click "Load unpacked" → select `C:\Users\somet\GoogleDrive\Projects\page-save\extension\`
 4. After code changes, click the reload button on the extension card
 
 ## Schema System

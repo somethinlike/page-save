@@ -3,7 +3,7 @@
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
-- Node.js server: `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/Projects/page-save/src/cli.ts serve`
+- Node.js server: `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/GoogleDrive/Projects/page-save/src/cli.ts serve`
 - Extension badge should not show errors
 
 ---
