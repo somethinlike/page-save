@@ -1,3 +1,7 @@
+> **Required reading at session start:** This is a Ryan repo. Read `C:\Users\somet\.claude\rules\architecture-of-ministry.md` before starting work — it covers the cross-project architecture, feature-to-project mapping, and chain-loads any other relevant rule files (`tripping-over-jesus.md`, `oss-stewardship.md`, `wow-ui.md`) based on this repo's category.
+
+---
+
 # Page Save — AI-Optimized Browsing Assistant
 
 ## What This Is
