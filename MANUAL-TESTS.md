@@ -444,7 +444,7 @@
 ---
 
 ## 23. Server Launch From Extension (Phase 14)
-<!-- revised: 2026 May 16 13:51.4 -->
+<!-- revised: 2026 May 16 15:21.3 -->
 
 ### 23.1 First-Time Install
 - [ ] Load the unpacked extension from the current repo path or the `.chrome-extensions/page-save` junction
@@ -452,6 +452,7 @@
 - [ ] If auto-detection cannot find the extension, get the ID from `chrome://extensions` and run `page-save install-launcher --extension-id <id>`
 - [ ] `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher"` shows the manifest path
 - [ ] `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher" /reg:32` shows the same manifest path
+- [ ] `reg query "HKCU\Software\Chromium\NativeMessagingHosts\com.pagesave.launcher" /reg:64` and `/reg:32` show the same manifest path
 - [ ] If testing Brave, both `reg query "HKCU\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\com.pagesave.launcher" /reg:64` and `/reg:32` show the same manifest path
 - [ ] `bin/com.pagesave.launcher.json` exists with the correct extension ID in `allowed_origins`
 - [ ] `bin/com.pagesave.launcher.json` points `path` at `bin/page-save-native-host.exe`, not the BAT file

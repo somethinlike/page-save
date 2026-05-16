@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-16T19:24:40.174Z",
+  "generatedAt": "2026-05-16T20:21:55.025Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -44,8 +44,8 @@
     },
     "src/install-launcher.ts": {
       "filePath": "src/install-launcher.ts",
-      "mtimeMs": 1778958275993.6797,
-      "size": 8197
+      "mtimeMs": 1778962862962.8645,
+      "size": 8752
     },
     "src/markdown-formatter.ts": {
       "filePath": "src/markdown-formatter.ts",

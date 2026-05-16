@@ -50,6 +50,11 @@ const REGISTRY_TARGETS: Record<Browser, RegistryTarget[]> = {
   ],
 };
 
+const CHROMIUM_FALLBACK_TARGETS: RegistryTarget[] = [
+  { key: 'HKCU\\Software\\Chromium\\NativeMessagingHosts', view: '64' },
+  { key: 'HKCU\\Software\\Chromium\\NativeMessagingHosts', view: '32' },
+];
+
 const ALL_BROWSERS: Browser[] = ['chrome', 'edge', 'brave'];
 
 function projectRoot(): string {
@@ -174,17 +179,24 @@ export function installLauncher(options: InstallOptions): void {
 
   const registeredKeys: { browser: Browser; key: string }[] = [];
   const skipped: { browser: Browser; key: string; reason: string }[] = [];
+  const targetsToRegister = new Map<string, { browser: Browser; target: RegistryTarget }>();
   for (const browser of browsers) {
-    for (const target of REGISTRY_TARGETS[browser]) {
-      try {
-        registeredKeys.push({ browser, key: registerRegistryTarget(target, manifestPath) });
-      } catch (err) {
-        skipped.push({
-          browser,
-          key: `${target.key}\\${HOST_NAME} (/reg:${target.view})`,
-          reason: (err as Error).message,
-        });
+    for (const target of [...REGISTRY_TARGETS[browser], ...CHROMIUM_FALLBACK_TARGETS]) {
+      const targetId = `${target.key}|${target.view}`;
+      if (!targetsToRegister.has(targetId)) {
+        targetsToRegister.set(targetId, { browser, target });
       }
+    }
+  }
+  for (const { browser, target } of targetsToRegister.values()) {
+    try {
+      registeredKeys.push({ browser, key: registerRegistryTarget(target, manifestPath) });
+    } catch (err) {
+      skipped.push({
+        browser,
+        key: `${target.key}\\${HOST_NAME} (/reg:${target.view})`,
+        reason: (err as Error).message,
+      });
     }
   }
   const registeredBrowsers = [...new Set(registeredKeys.map((entry) => entry.browser))];

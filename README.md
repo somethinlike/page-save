@@ -19,7 +19,7 @@ Page Save Bridge uses `chrome.pageCapture.saveAsMHTML()` — a browser-engine-le
 2. **Node.js Bridge** — CLI that your AI calls via Bash to trigger saves and read content
 
 ## Install
-<!-- revised: 2026 May 16 13:51.4 -->
+<!-- revised: 2026 May 16 15:21.3 -->
 
 ### 1. Chrome Extension
 Install from the [Chrome Web Store](https://chromewebstore.google.com/) or load unpacked from the `extension/` folder.
@@ -52,10 +52,11 @@ By default the host is registered for Chrome, Edge, **and** Brave so it just
 works regardless of which Chromium-based browser you use. Restrict to a
 specific browser with `--browser chrome,brave` if you want.
 For unusual profiles or packaged extension IDs, pass `--extension-id <id>`.
-The installer writes both the 64-bit and 32-bit Windows registry views. If
-the browser still reports "Specified native messaging host not found" after
-installation, reload the extension; if the browser was already open before
-registration, fully quit and reopen Chrome/Brave/Edge once.
+The installer writes both the 64-bit and 32-bit Windows registry views,
+including the generic Chromium fallback hive used by some Chromium-family
+browsers. If the browser still reports "Specified native messaging host not
+found" after installation, reload the extension; if the browser was already
+open before registration, fully quit and reopen Chrome/Brave/Edge once.
 On Windows, the registered host points at a small generated
 `bin/page-save-native-host.exe` wrapper rather than a batch file, because
 native messaging requires clean binary stdio.
