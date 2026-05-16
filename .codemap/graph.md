@@ -13,11 +13,11 @@
 | `src/session-writer.ts` | 1 | 5 |
 | `src/watch.ts` | 1 | 2 |
 | `src/file-writer.ts` | 1 | 1 |
+| `src/install-launcher.ts` | 1 | 1 |
 | `src/markdown-formatter.ts` | 1 | 1 |
 | `src/schema-suggest.ts` | 1 | 1 |
-| `src/install-launcher.ts` | 1 | 1 |
-| `src/defuddle-extractor.ts` | 1 | 0 |
 | `src/browser-extension-discovery.ts` | 1 | 0 |
+| `src/defuddle-extractor.ts` | 1 | 0 |
 | `src/cli.ts` | 0 | 3 |
 | `src/mcp-server.ts` | 0 | 1 |
 | `src/native-launcher.ts` | 0 | 1 |
@@ -30,8 +30,8 @@
 | `node:path` | 7 files |
 | `ws` | 3 files |
 | `node:child_process` | 3 files |
-| `node:crypto` | 2 files |
 | `node:url` | 2 files |
+| `node:crypto` | 2 files |
 | `defuddle` | 1 file |
 | `@modelcontextprotocol/sdk` | 1 file |
 | `zod` | 1 file |

@@ -1,19 +1,11 @@
 importScripts('extractors.js');
 
 const WS_URL = 'ws://localhost:7224';
-const RECONNECT_ALARM = 'page-save-reconnect';
+const STATUS_ALARM = 'page-save-status-check';
 const KEEPALIVE_ALARM = 'page-save-keepalive';
-
-// Backoff schedule for reconnect attempts when the bridge server is offline.
-// Chromium's network stack auto-logs `WebSocket connection ... failed` on each
-// constructor failure and that log is unsuppressable from JS. So instead of
-// hammering every 15s forever (and dumping a stream of identical errors into
-// the service-worker console), we fall back to long-poll mode after the first
-// few attempts. Successful connect resets the index back to 0.
-const RECONNECT_BACKOFF_MIN = [0.25, 0.5, 1, 2, 5];
+const NATIVE_HOST = 'com.pagesave.launcher';
 
 let ws = null;
-let reconnectStreak = 0;       // how many consecutive failures since last success
 let loggedOfflineState = false; // suppresses repeat "disconnected" lines
 
 // --- WebSocket Connection ---
@@ -27,7 +19,7 @@ function connect() {
     socket = new WebSocket(WS_URL);
   } catch (err) {
     console.error('[page-save] WebSocket constructor error:', err);
-    scheduleReconnect();
+    scheduleStatusCheck();
     return;
   }
 
@@ -39,9 +31,8 @@ function connect() {
     } else {
       console.log('[page-save] Connected to bridge server');
     }
-    reconnectStreak = 0;
     loggedOfflineState = false;
-    chrome.alarms.clear(RECONNECT_ALARM);
+    chrome.alarms.clear(STATUS_ALARM);
     chrome.alarms.create(KEEPALIVE_ALARM, { periodInMinutes: 0.4 });
     // Use local ref to avoid race with a second connect() overwriting ws
     socket.send(JSON.stringify({ type: 'extension-hello' }));
@@ -60,28 +51,80 @@ function connect() {
 
   socket.onclose = () => {
     // Log only the first disconnect of the session; further close events
-    // during the reconnect-backoff loop would just be noise.
+    // during the passive status-check loop would just be noise.
     if (!loggedOfflineState) {
-      console.log('[page-save] Bridge server offline. Will retry on backoff.');
+      console.log('[page-save] Bridge server offline. Will check status in the background.');
       loggedOfflineState = true;
     }
     if (ws === socket) ws = null;
     chrome.alarms.clear(KEEPALIVE_ALARM);
-    scheduleReconnect();
+    scheduleStatusCheck();
   };
 
-  // Intentionally no socket.onerror handler — onerror's `Event` argument has no
-  // useful detail beyond the unsuppressable Chromium network-stack error that
-  // already prints, so logging it just doubles the noise with `[object Event]`.
+  // Intentionally no socket.onerror handler. We only open a WebSocket after the
+  // native launcher says the local port is listening; onerror has no useful
+  // detail beyond Chromium's own network-stack message.
 }
 
-function scheduleReconnect() {
-  reconnectStreak += 1;
-  const idx = Math.min(reconnectStreak - 1, RECONNECT_BACKOFF_MIN.length - 1);
-  const periodInMinutes = RECONNECT_BACKOFF_MIN[idx];
-  // chrome.alarms survives service worker suspension (setTimeout does not).
-  // Use a one-shot alarm so we control the delay precisely on each retry.
-  chrome.alarms.create(RECONNECT_ALARM, { delayInMinutes: periodInMinutes });
+function scheduleStatusCheck(delayInMinutes = 0.5) {
+  // Native status checks don't create Chromium WebSocket connection-refused
+  // errors, so they are safe as the passive offline poll.
+  chrome.alarms.create(STATUS_ALARM, { delayInMinutes });
+}
+
+async function refreshConnectionFromNativeStatus() {
+  if (ws && ws.readyState === WebSocket.OPEN) return true;
+  if (ws && ws.readyState === WebSocket.CONNECTING) return false;
+
+  let status;
+  try {
+    status = await sendNative({ action: 'status' });
+  } catch {
+    // Native launcher is not installed yet. Treat this as offline and wait for
+    // an explicit launch attempt, which will surface the actionable install
+    // message in the side panel.
+    scheduleStatusCheck(5);
+    return false;
+  }
+
+  if (status?.running || status?.occupied) {
+    connect();
+    return false;
+  }
+
+  scheduleStatusCheck();
+  return false;
+}
+
+function waitForSocketOpen(timeoutMs) {
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs;
+    const tick = () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        resolve(true);
+        return;
+      }
+      if (!ws || ws.readyState !== WebSocket.CONNECTING || Date.now() >= deadline) {
+        resolve(false);
+        return;
+      }
+      setTimeout(tick, 100);
+    };
+    tick();
+  });
+}
+
+async function getStatus() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    return { connected: true };
+  }
+
+  await refreshConnectionFromNativeStatus();
+  if (ws && ws.readyState === WebSocket.CONNECTING) {
+    return { connected: await waitForSocketOpen(1500) };
+  }
+
+  return { connected: false };
 }
 
 function send(msg) {
@@ -95,11 +138,8 @@ function send(msg) {
 // --- Alarm Handler (reconnect + keepalive) ---
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === RECONNECT_ALARM) {
-    // Silent retry — connect() will log on success ("Reconnected") or stay
-    // quiet on failure (the unsuppressable Chromium network error provides
-    // signal enough). This is the noise-reduction half of the backoff fix.
-    connect();
+  if (alarm.name === STATUS_ALARM) {
+    refreshConnectionFromNativeStatus();
   }
   if (alarm.name === KEEPALIVE_ALARM) {
     // Just waking the service worker to keep WebSocket alive — no action needed
@@ -452,13 +492,13 @@ chrome.commands.onCommand.addListener(async (command) => {
 // --- Lifecycle: ensure connection on startup/install ---
 
 chrome.runtime.onStartup.addListener(() => {
-  console.log('[page-save] Chrome started, connecting...');
-  connect();
+  console.log('[page-save] Chrome started, checking local server status...');
+  refreshConnectionFromNativeStatus();
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('[page-save] Extension installed/updated, connecting...');
-  connect();
+  console.log('[page-save] Extension installed/updated, checking local server status...');
+  refreshConnectionFromNativeStatus();
 });
 
 // --- Side Panel Message Handlers ---
@@ -491,8 +531,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.type === 'get-status') {
-    sendResponse({ connected: ws && ws.readyState === WebSocket.OPEN });
-    return false;
+    getStatus()
+      .then((result) => sendResponse(result))
+      .catch(() => sendResponse({ connected: false }));
+    return true;
   }
 
   if (msg.type === 'launch-server') {
@@ -530,49 +572,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 // --- Launch Server (Native Messaging) ---------------------------------------
-
-const NATIVE_HOST = 'com.pagesave.launcher';
 const LAUNCH_COOLDOWN_MS = 5000;
 const POST_LAUNCH_POLL_INTERVAL_MS = 400;
 const POST_LAUNCH_TIMEOUT_MS = 10000;
 
 let lastLaunchAttemptAt = 0;
 
-/**
- * Probe the WebSocket port directly from the extension. We can't open raw TCP
- * sockets from a service worker, but the existing connection state already
- * tells us whether the server is up. For a fresh probe, we briefly attempt a
- * test WebSocket and discard it.
- */
-function probeServerOnce(timeoutMs = 1500) {
-  return new Promise((resolve) => {
-    let probe;
-    let settled = false;
-    const finish = (status) => {
-      if (settled) return;
-      settled = true;
-      try { probe && probe.close(); } catch {}
-      resolve(status);
-    };
-    try {
-      probe = new WebSocket(WS_URL);
-    } catch {
-      finish('unreachable');
-      return;
-    }
-    probe.onopen = () => finish('reachable');
-    probe.onerror = () => finish('unreachable');
-    probe.onclose = () => finish(settled ? undefined : 'unreachable');
-    setTimeout(() => finish('unreachable'), timeoutMs);
-  });
-}
-
 async function pollUntilConnected(timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (ws && ws.readyState === WebSocket.OPEN) return true;
-    // Trigger a connect attempt each cycle so we don't have to wait for the
-    // alarm-driven reconnect (which is on a 15s schedule).
+    // After a successful native launch or occupied-port status, it is safe to
+    // actively connect; the passive offline path never reaches this loop.
     connect();
     await new Promise((r) => setTimeout(r, POST_LAUNCH_POLL_INTERVAL_MS));
   }
@@ -603,7 +614,8 @@ function sendNative(message) {
  *   1. Spam protection — refuse if a launch was attempted within the cooldown
  *      window (5s). Returns ok:true with `cooldown:true` so the UI can show
  *      "Already starting…" without alarming the user.
- *   2. Pre-flight WS probe — if the server is already reachable, no-op.
+ *   2. Pre-flight native status check — if the port is already occupied,
+ *      attempt one WebSocket connection to distinguish page-save from conflict.
  *   3. Port conflict detection — the native launcher refuses to spawn a
  *      duplicate when the port is already bound. We surface that as a
  *      distinct error so the UI can say "port 7224 is in use by something
@@ -624,18 +636,21 @@ async function handleLaunchServer() {
   if (ws && ws.readyState === WebSocket.OPEN) {
     return { ok: true, alreadyRunning: true };
   }
-  const probe = await probeServerOnce();
-  if (probe === 'reachable') {
-    // Something is on the port. Hand the existing connect() loop a kick.
-    connect();
-    const connected = await pollUntilConnected(3000);
-    if (connected) return { ok: true, alreadyRunning: true };
-    // Reachable but doesn't speak our protocol → port conflict from another app.
-    return {
-      ok: false,
-      stage: 'port-conflict',
-      error: `Port ${WS_URL.replace('ws://localhost:', '')} is in use by something that isn't page-save.`,
-    };
+  try {
+    const status = await sendNative({ action: 'status' });
+    if (status?.running || status?.occupied) {
+      connect();
+      const connected = await pollUntilConnected(3000);
+      if (connected) return { ok: true, alreadyRunning: true };
+      return {
+        ok: false,
+        stage: 'port-conflict',
+        error: `Port ${WS_URL.replace('ws://localhost:', '')} is in use by something that isn't page-save.`,
+      };
+    }
+  } catch {
+    // If the native host is not installed, the start call below will return the
+    // same browser-provided error with the recovery hint the side panel expects.
   }
 
   // (3) Ask the native host to spawn the server.
@@ -661,11 +676,20 @@ async function handleLaunchServer() {
     return { ok: false, stage: 'native-response', error: response.error };
   }
   if (response.alreadyRunning && response.occupied) {
-    // Native side detected something on the port but we couldn't speak page-save with it.
+    connect();
+    const connected = await pollUntilConnected(3000);
+    if (connected) return { ok: true, alreadyRunning: true };
     return {
       ok: false,
       stage: 'port-conflict',
       error: `Port is occupied. Either page-save is already running and unreachable, or another app is using port 7224.`,
+    };
+  }
+  if (response.started === false) {
+    return {
+      ok: false,
+      stage: 'native-response',
+      error: response.error || 'Native launcher did not start the server.',
     };
   }
 
@@ -837,4 +861,4 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => 
 // --- Initialize (handles service worker wakeup) ---
 
 globalThis.extractors.loadSchemas();
-connect();
+refreshConnectionFromNativeStatus();

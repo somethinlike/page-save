@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-16T18:28:54.758Z",
+  "generatedAt": "2026-05-16T18:41:16.209Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -9,8 +9,8 @@
     },
     "extension/service-worker.js": {
       "filePath": "extension/service-worker.js",
-      "mtimeMs": 1777816622314.9902,
-      "size": 26999
+      "mtimeMs": 1778956815034.3723,
+      "size": 27039
     },
     "extension/sidepanel.js": {
       "filePath": "extension/sidepanel.js",

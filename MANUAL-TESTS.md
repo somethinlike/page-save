@@ -459,6 +459,7 @@
 ### 23.3 Launch With Server Offline
 - [ ] Stop any running `page-save serve` process
 - [ ] Open the side panel — status pill = "Server offline" (red), footer button reads **"Launch Local Server"** in blue
+- [ ] Inspect the extension error list/service-worker console — the offline state should not create a `WebSocket connection to 'ws://localhost:7224/' failed: net::ERR_CONNECTION_REFUSED` entry
 - [ ] Click — button changes to "Launching server…" (disabled)
 - [ ] Within ~2s, status flips to "Connected" and the button transitions back to "Save Selected (0)"
 - [ ] `netstat -ano | grep 7224` shows a LISTENING entry — the spawned server is detached and survives the launcher exiting
