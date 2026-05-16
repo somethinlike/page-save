@@ -1,6 +1,7 @@
 importScripts('extractors.js');
 
 const WS_URL = 'ws://localhost:7224';
+const PROTOCOL_LAUNCH_URL = 'page-save://start';
 const STATUS_ALARM = 'page-save-status-check';
 const KEEPALIVE_ALARM = 'page-save-keepalive';
 const NATIVE_HOST = 'com.pagesave.launcher';
@@ -607,8 +608,21 @@ function sendNative(message) {
   });
 }
 
+function openProtocolLauncher() {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.create({ url: PROTOCOL_LAUNCH_URL, active: true }, () => {
+      const err = chrome.runtime.lastError;
+      if (err) {
+        reject(new Error(err.message || 'Could not open page-save:// launcher.'));
+        return;
+      }
+      resolve({ opened: true });
+    });
+  });
+}
+
 /**
- * Launch the local page-save server via the registered native messaging host.
+ * Launch the local page-save server via the registered Windows URL protocol.
  *
  * Safety layers (matching the spec):
  *   1. Spam protection — refuse if a launch was attempted within the cooldown
@@ -616,10 +630,10 @@ function sendNative(message) {
  *      "Already starting…" without alarming the user.
  *   2. Pre-flight native status check — if the port is already occupied,
  *      attempt one WebSocket connection to distinguish page-save from conflict.
- *   3. Port conflict detection — the native launcher refuses to spawn a
- *      duplicate when the port is already bound. We surface that as a
- *      distinct error so the UI can say "port 7224 is in use by something
- *      else" rather than the generic launch failure.
+ *      This is best-effort now that page-save:// is the primary launcher; if
+ *      the native host is absent we continue with the protocol launch.
+ *   3. Protocol activation — Windows handles page-save://start and launches
+ *      the local handler registered by `page-save install-launcher`.
  *   4. Post-launch confirmation — poll the WebSocket for up to 10s after
  *      reporting success. If we never connect, return ok:false with the
  *      timeout reason so the UI doesn't leave the user staring at a button
@@ -649,47 +663,22 @@ async function handleLaunchServer() {
       };
     }
   } catch {
-    // If the native host is not installed, the start call below will return the
-    // same browser-provided error with the recovery hint the side panel expects.
+    // Native messaging is no longer the primary launch path. Missing native
+    // host registration should not block the Windows URL protocol handler.
   }
 
-  // (3) Ask the native host to spawn the server.
-  let response;
+  // (3) Ask Windows to launch the registered page-save:// protocol handler.
   try {
-    response = await sendNative({ action: 'start' });
+    await openProtocolLauncher();
   } catch (err) {
     const detail = err.message || String(err);
-    console.warn('[page-save] sendNativeMessage failed:', detail, err);
+    console.warn('[page-save] protocol launcher failed:', detail, err);
     return {
       ok: false,
-      stage: 'native-messaging',
-      error: `Native messaging failed: ${detail}`,
+      stage: 'protocol-launch',
+      error: `Protocol launch failed: ${detail}`,
       details: detail,
       extensionId: chrome.runtime.id,
-    };
-  }
-
-  if (!response) {
-    return { ok: false, stage: 'native-response', error: 'No response from native launcher.' };
-  }
-  if (response.error) {
-    return { ok: false, stage: 'native-response', error: response.error };
-  }
-  if (response.alreadyRunning && response.occupied) {
-    connect();
-    const connected = await pollUntilConnected(3000);
-    if (connected) return { ok: true, alreadyRunning: true };
-    return {
-      ok: false,
-      stage: 'port-conflict',
-      error: `Port is occupied. Either page-save is already running and unreachable, or another app is using port 7224.`,
-    };
-  }
-  if (response.started === false) {
-    return {
-      ok: false,
-      stage: 'native-response',
-      error: response.error || 'Native launcher did not start the server.',
     };
   }
 
@@ -701,7 +690,7 @@ async function handleLaunchServer() {
   return {
     ok: false,
     stage: 'connect-timeout',
-    error: `Server reported started but extension couldn't connect within ${POST_LAUNCH_TIMEOUT_MS / 1000}s.`,
+    error: `Windows accepted page-save://start, but the extension couldn't connect within ${POST_LAUNCH_TIMEOUT_MS / 1000}s.`,
   };
 }
 

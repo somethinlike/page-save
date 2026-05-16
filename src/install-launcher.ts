@@ -20,6 +20,7 @@ import { detectPageSaveExtensions } from './browser-extension-discovery.ts';
 import type { Browser } from './browser-extension-discovery.ts';
 
 const HOST_NAME = 'com.pagesave.launcher';
+const LAUNCH_TASK_NAME = 'PageSaveLocalServer';
 
 interface InstallOptions {
   extensionIds: string[];
@@ -30,6 +31,8 @@ interface RegistryTarget {
   key: string;
   view: '32' | '64';
 }
+
+type CSharpOutputType = 'ConsoleApplication';
 
 const REGISTRY_TARGETS: Record<Browser, RegistryTarget[]> = {
   chrome: [
@@ -116,20 +119,17 @@ function needsCompile(sourcePath: string, exePath: string): boolean {
   return statSync(sourcePath).mtimeMs > statSync(exePath).mtimeMs;
 }
 
-function ensureNativeHostExecutable(root: string): string {
-  const sourcePath = join(root, 'src', 'native-host-wrapper.cs');
-  const exePath = join(root, 'bin', 'page-save-native-host.exe');
-
+function compileCSharpExecutable(sourcePath: string, exePath: string, outputType: CSharpOutputType): void {
   if (!existsSync(sourcePath)) {
-    throw new Error(`Native host wrapper source missing: ${sourcePath}`);
+    throw new Error(`C# launcher source missing: ${sourcePath}`);
   }
   if (!needsCompile(sourcePath, exePath)) {
-    return exePath;
+    return;
   }
 
   const command = [
     `$ErrorActionPreference = 'Stop'`,
-    `Add-Type -Path ${powershellQuote(sourcePath)} -OutputAssembly ${powershellQuote(exePath)} -OutputType ConsoleApplication`,
+    `Add-Type -Path ${powershellQuote(sourcePath)} -OutputAssembly ${powershellQuote(exePath)} -OutputType ${outputType}`,
   ].join('; ');
 
   const result = spawnSync('powershell.exe', [
@@ -142,10 +142,89 @@ function ensureNativeHostExecutable(root: string): string {
   ], { stdio: 'pipe', encoding: 'utf8' });
 
   if (result.status !== 0 || !existsSync(exePath)) {
-    throw new Error(`native host wrapper compile failed: ${result.stderr || result.stdout || 'unknown error'}`);
+    throw new Error(`C# launcher compile failed: ${result.stderr || result.stdout || 'unknown error'}`);
+  }
+}
+
+function ensureNativeHostExecutable(root: string): string {
+  const sourcePath = join(root, 'src', 'native-host-wrapper.cs');
+  const exePath = join(root, 'bin', 'page-save-native-host.exe');
+  compileCSharpExecutable(sourcePath, exePath, 'ConsoleApplication');
+  return exePath;
+}
+
+function ensureUrlProtocolScript(root: string): string {
+  const scriptPath = join(root, 'bin', 'page-save-url-launcher.vbs');
+  if (!existsSync(scriptPath)) {
+    throw new Error(`URL protocol launcher script missing: ${scriptPath}`);
+  }
+  return scriptPath;
+}
+
+function registerUrlProtocol(scriptPath: string): string[] {
+  if (process.platform !== 'win32') {
+    throw new Error(`URL protocol registration currently supports Windows only; got platform: ${process.platform}`);
   }
 
-  return exePath;
+  const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+  const wscriptPath = join(systemRoot, 'System32', 'wscript.exe');
+  const protocolRoot = 'HKCU\\Software\\Classes\\page-save';
+  const commandKey = `${protocolRoot}\\shell\\open\\command`;
+  const iconKey = `${protocolRoot}\\DefaultIcon`;
+  const commandValue = `"${wscriptPath}" "${scriptPath}" "%1"`;
+  const writes: [string, string, string?][] = [
+    [protocolRoot, 'URL:Page Save Launcher'],
+    [protocolRoot, '', 'URL Protocol'],
+    [iconKey, scriptPath],
+    [commandKey, commandValue],
+  ];
+  const registered: string[] = [];
+
+  for (const [key, value, valueName] of writes) {
+    const args = ['add', key];
+    if (valueName) {
+      args.push('/v', valueName);
+    } else {
+      args.push('/ve');
+    }
+    args.push('/t', 'REG_SZ', '/d', value, '/f');
+
+    const result = spawnSync('reg', args, { stdio: 'pipe', encoding: 'utf8' });
+    if (result.status !== 0) {
+      throw new Error(`reg add failed: ${result.stderr || result.stdout || 'unknown error'}`);
+    }
+    registered.push(valueName ? `${key}\\${valueName}` : key);
+  }
+
+  return registered;
+}
+
+function registerLaunchTask(root: string): string {
+  if (process.platform !== 'win32') {
+    throw new Error(`Task Scheduler registration currently supports Windows only; got platform: ${process.platform}`);
+  }
+
+  const taskTarget = join(root, 'bin', 'page-save-server-start.bat');
+  if (!existsSync(taskTarget)) {
+    throw new Error(`Scheduled task target missing: ${taskTarget}`);
+  }
+
+  const result = spawnSync('schtasks', [
+    '/Create',
+    '/TN', LAUNCH_TASK_NAME,
+    '/TR', taskTarget,
+    '/SC', 'ONCE',
+    '/ST', '00:00',
+    '/SD', '2000/01/01',
+    '/F',
+    '/RL', 'LIMITED',
+  ], { stdio: 'pipe', encoding: 'utf8' });
+
+  if (result.status !== 0) {
+    throw new Error(`schtasks /Create failed: ${result.stderr || result.stdout || 'unknown error'}`);
+  }
+
+  return LAUNCH_TASK_NAME;
 }
 
 export function installLauncher(options: InstallOptions): void {
@@ -170,12 +249,14 @@ export function installLauncher(options: InstallOptions): void {
 
   const root = projectRoot();
   const nativeHostPath = ensureNativeHostExecutable(root);
+  const urlLauncherPath = ensureUrlProtocolScript(root);
   const manifestPath = join(root, 'bin', `${HOST_NAME}.json`);
 
   // Manifest is shared across all browsers — they all read the same JSON
   // file from the same path. Only the registry pointers differ.
   const manifest = buildManifest(extensionIds, nativeHostPath);
   writeManifest(manifestPath, manifest);
+  const launchTaskName = registerLaunchTask(root);
 
   const registeredKeys: { browser: Browser; key: string }[] = [];
   const skipped: { browser: Browser; key: string; reason: string }[] = [];
@@ -200,10 +281,18 @@ export function installLauncher(options: InstallOptions): void {
     }
   }
   const registeredBrowsers = [...new Set(registeredKeys.map((entry) => entry.browser))];
+  const protocolKeys = registerUrlProtocol(urlLauncherPath);
 
   console.log(`Native messaging host registered for: ${registeredBrowsers.join(', ') || '(none)'}`);
   console.log(`  Manifest: ${manifestPath}`);
   console.log(`  Launcher: ${nativeHostPath}`);
+  console.log(`  URL protocol: page-save://start`);
+  console.log(`  URL launcher: ${urlLauncherPath}`);
+  console.log(`  Scheduled task: ${launchTaskName}`);
+  console.log(`  URL registry keys:`);
+  for (const key of protocolKeys) {
+    console.log(`    ${key}`);
+  }
   if (registeredKeys.length > 0) {
     console.log(`  Registry keys:`);
     for (const entry of registeredKeys) {

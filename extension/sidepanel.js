@@ -403,6 +403,11 @@ async function launchServer() {
 function formatLaunchError(result) {
   if (!result) return 'Launch failed: no response from extension.';
   switch (result.stage) {
+    case 'protocol-launch':
+      return (
+        `Windows protocol launch failed: ${result.details || result.error}\n\n` +
+        'Recovery: run page-save install-launcher, reload the extension, and accept the browser prompt to open Page Save.'
+      );
     case 'native-messaging':
       // Show the actual rejection reason from chrome.runtime.lastError so we
       // can distinguish "host not found" (registry/path issue) from "host
@@ -418,7 +423,10 @@ function formatLaunchError(result) {
     case 'port-conflict':
       return result.error || 'Port 7224 is already in use.';
     case 'connect-timeout':
-      return `Server started but didn't accept connections in time. Check the terminal for errors.`;
+      return (
+        `${result.error || "Page Save didn't accept connections in time."}\n\n` +
+        'If the browser shows an "Open Page Save?" prompt, accept it. Otherwise run page-save install-launcher to refresh the URL protocol and PageSaveLocalServer task.'
+      );
     case 'native-response':
       return `Launcher error: ${result.error}`;
     default:

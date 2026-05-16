@@ -444,11 +444,12 @@
 ---
 
 ## 23. Server Launch From Extension (Phase 14)
-<!-- revised: 2026 May 16 15:21.3 -->
+<!-- revised: 2026 May 16 15:48.4 -->
 
 ### 23.1 First-Time Install
 - [ ] Load the unpacked extension from the current repo path or the `.chrome-extensions/page-save` junction
 - [ ] Run `page-save install-launcher` — it auto-detects active Page Save extension IDs and prints "Native messaging host registered for chrome, edge, brave."
+- [ ] Installer output also prints `URL protocol: page-save://start`, `URL launcher: ...\bin\page-save-url-launcher.vbs`, and `Scheduled task: PageSaveLocalServer`
 - [ ] If auto-detection cannot find the extension, get the ID from `chrome://extensions` and run `page-save install-launcher --extension-id <id>`
 - [ ] `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher"` shows the manifest path
 - [ ] `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher" /reg:32` shows the same manifest path
@@ -457,10 +458,13 @@
 - [ ] `bin/com.pagesave.launcher.json` exists with the correct extension ID in `allowed_origins`
 - [ ] `bin/com.pagesave.launcher.json` points `path` at `bin/page-save-native-host.exe`, not the BAT file
 - [ ] `bin/page-save-native-host.exe` exists after installation
+- [ ] `reg query "HKCU\Software\Classes\page-save\shell\open\command"` points at `wscript.exe` plus `bin/page-save-url-launcher.vbs`
+- [ ] `schtasks /Query /TN PageSaveLocalServer` succeeds
+- [ ] `bin/page-save-url-launcher.vbs` exists
 
 ### 23.2 Reload Extension
 - [ ] After `install-launcher`, reload the extension once so the `nativeMessaging` permission is active
-- [ ] If the side panel still reports "Specified native messaging host not found", fully quit and reopen the browser once, then reload the extension again
+- [ ] If the side panel still reports "Specified native messaging host not found", launch should still work through `page-save://start`; fully quit and reopen the browser once if testing the native status preflight
 - [ ] Side panel still loads; status pill shows current connection state
 
 ### 23.3 Launch With Server Offline
@@ -468,8 +472,9 @@
 - [ ] Open the side panel — status pill = "Server offline" (red), footer button reads **"Launch Local Server"** in blue
 - [ ] Inspect the extension error list/service-worker console — the offline state should not create a `WebSocket connection to 'ws://localhost:7224/' failed: net::ERR_CONNECTION_REFUSED` entry
 - [ ] Click — button changes to "Launching server…" (disabled)
+- [ ] If the browser asks to open Page Save, accept the prompt
 - [ ] Within ~2s, status flips to "Connected" and the button transitions back to "Save Selected (0)"
-- [ ] `netstat -ano | grep 7224` shows a LISTENING entry — the spawned server is detached and survives the launcher exiting
+- [ ] `netstat -ano | findstr 7224` shows a LISTENING entry — the spawned server is owned by Task Scheduler and survives the URL launcher exiting
 
 ### 23.4 Launch With Server Already Running
 - [ ] Start `page-save serve` manually first
@@ -485,18 +490,19 @@
 ### 23.6 Port Conflict
 - [ ] In a separate terminal, occupy port 7224 with something that isn't page-save: `python -m http.server 7224 --bind 127.0.0.1`
 - [ ] In the side panel, click the launch button
-- [ ] Status text under the button reads "Port 7224 is in use by something that isn't page-save." (or similar)
-- [ ] The launcher does NOT spawn a node process on top of the conflict
+- [ ] Status text under the button reports that `page-save://start` was accepted but the extension could not connect in time
+- [ ] The scheduled task does not leave a long-lived duplicate node process on top of the conflict
 
 ### 23.7 Launcher Not Installed
-- [ ] Delete the registry keys: `reg delete "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher" /f /reg:64` and `reg delete "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher" /f /reg:32`
-- [ ] Click launch button → error reads "Launcher not installed. Run: page-save install-launcher"
+- [ ] Delete the URL protocol key: `reg delete "HKCU\Software\Classes\page-save" /f`
+- [ ] Delete the launch task: `schtasks /Delete /TN PageSaveLocalServer /F`
+- [ ] Click launch button → error points back to `page-save install-launcher` or reports that `page-save://start` could not be opened
 - [ ] Re-running the install command and reloading the extension restores normal operation
 
 ### 23.8 Launcher Reports Started But No Connection
 - [ ] (Hard to reproduce naturally — would require the spawned server to crash before binding)
-- [ ] If it happens: error reads "Server started but didn't accept connections in time. Check the terminal for errors."
-- [ ] User can run `page-save serve` manually to see the actual error
+- [ ] If it happens: error says Windows accepted `page-save://start`, but the extension could not connect within 10s
+- [ ] Check `.page-save-url-handler.log` and `.page-save-launched-server.err.log`, then run `page-save serve` manually to see the actual error
 
 ---
 

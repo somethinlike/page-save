@@ -19,7 +19,7 @@ Page Save Bridge uses `chrome.pageCapture.saveAsMHTML()` — a browser-engine-le
 2. **Node.js Bridge** — CLI that your AI calls via Bash to trigger saves and read content
 
 ## Install
-<!-- revised: 2026 May 16 15:21.3 -->
+<!-- revised: 2026 May 16 15:52.4 -->
 
 ### 1. Chrome Extension
 Install from the [Chrome Web Store](https://chromewebstore.google.com/) or load unpacked from the `extension/` folder.
@@ -40,9 +40,9 @@ else they're doing in this ecosystem. If you'd rather have `page-save` on
 your PATH directly, `npm install -g page-save` works.)
 
 ### 3. (Optional) Launch the server from the extension
-After loading the extension, register a small native-messaging host so the
-side panel can start the server itself when it's offline — no terminal
-needed thereafter:
+After loading the extension, register the local launch bridge so the side
+panel can start the server itself when it's offline — no terminal needed
+thereafter:
 
 ```bash
 npx page-save install-launcher
@@ -52,6 +52,11 @@ By default the host is registered for Chrome, Edge, **and** Brave so it just
 works regardless of which Chromium-based browser you use. Restrict to a
 specific browser with `--browser chrome,brave` if you want.
 For unusual profiles or packaged extension IDs, pass `--extension-id <id>`.
+The primary launch path is the Windows URL protocol handler
+`page-save://start`. That protocol points at
+`bin/page-save-url-launcher.vbs`, which asks Windows Task Scheduler to run
+the per-user `PageSaveLocalServer` task. The native messaging host is
+retained only for status checks and fallback diagnostics.
 The installer writes both the 64-bit and 32-bit Windows registry views,
 including the generic Chromium fallback hive used by some Chromium-family
 browsers. If the browser still reports "Specified native messaging host not
@@ -59,11 +64,15 @@ found" after installation, reload the extension; if the browser was already
 open before registration, fully quit and reopen Chrome/Brave/Edge once.
 On Windows, the registered host points at a small generated
 `bin/page-save-native-host.exe` wrapper rather than a batch file, because
-native messaging requires clean binary stdio.
+native messaging requires clean binary stdio. The actual server launch goes
+through Task Scheduler so the Node process is not owned by the browser,
+service worker, or protocol-handler process.
 
 After this, when the status pill shows "Server offline" the footer button
 reads **"Launch Local Server"**. Click it; the panel waits for the
 WebSocket to come up and then transitions back to "Save Selected (N)".
+The browser may show a one-time "Open Page Save?" prompt the first time the
+button activates `page-save://start`; allow it.
 
 The launcher refuses to spawn a duplicate when the port is already bound,
 debounces rapid clicks, and reports a clear error if something else is

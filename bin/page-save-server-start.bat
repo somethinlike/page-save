@@ -1,10 +1,10 @@
 @echo off
-REM page-save-server-start.bat - detached server starter used by the
-REM native-messaging launcher.
+REM page-save-server-start.bat - server starter used by the PageSaveLocalServer
+REM scheduled task.
 REM
-REM The native host itself must exit after writing its native-message response.
-REM This helper uses Windows START to create the actual long-lived server
-REM process outside the native host wrapper.
+REM The browser activates page-save://start, the registered VBS launcher asks
+REM Task Scheduler to run this script, and the long-lived Node server is then
+REM outside the browser/service-worker/protocol-handler process tree.
 
 setlocal
 
