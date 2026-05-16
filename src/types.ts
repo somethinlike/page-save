@@ -164,4 +164,3 @@ export interface DiffResult {
 }
 
 export const PORT = 7224;
-export const SAVE_DIR = 'C:\\Users\\somet\\Documents\\saved-pages';

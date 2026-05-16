@@ -19,19 +19,23 @@ Page Save Bridge uses `chrome.pageCapture.saveAsMHTML()` — a browser-engine-le
 2. **Node.js Bridge** — CLI that your AI calls via Bash to trigger saves and read content
 
 ## Install
-<!-- revised: 2026 May 16 16:32.5 -->
+<!-- revised: 2026 May 16 19:20.0 -->
 
 ### 1. Chrome Extension
 Install from the [Chrome Web Store](https://chromewebstore.google.com/) or load unpacked from the `extension/` folder.
 
 ### 2. Node.js Bridge
 
-You need Node.js 20+ installed. Then run via `npx` — no global install needed,
+You need Node.js 22.6+ installed. Then run via `npx` — no global install needed,
 works the same on Windows, macOS, and Linux:
 
 ```bash
 npx page-save serve   # starts the server on localhost:7224
 ```
+
+Saved output defaults to `~/Documents/saved-pages` on Windows, macOS, and
+Linux. Set `PAGE_SAVE_DIR` before launching the server if you want a different
+root folder.
 
 (npx is the canonical Node.js way to run a CLI tool. We deliberately don't
 ship a winget / Homebrew / apt package — it'd add a ~80MB Node bundle to a
@@ -50,29 +54,37 @@ npx page-save install-launcher
 
 By default the host is registered for Chrome, Edge, **and** Brave so it just
 works regardless of which Chromium-based browser you use. Restrict to a
-specific browser with `--browser chrome,brave` if you want.
-For unusual profiles or packaged extension IDs, pass `--extension-id <id>`.
-The primary launch path is the Windows URL protocol handler
-`page-save://start`. That protocol points at
-`bin/page-save-url-launcher.vbs`, which asks Windows Task Scheduler to run
-the per-user `PageSaveLocalServer` task. The native messaging host is
-retained only for status checks and fallback diagnostics.
-The installer writes both the 64-bit and 32-bit Windows registry views,
-including the generic Chromium fallback hive used by some Chromium-family
-browsers. If the browser still reports "Specified native messaging host not
-found" after installation, reload the extension; if the browser was already
-open before registration, fully quit and reopen Chrome/Brave/Edge once.
-On Windows, the registered host points at a small generated
-`bin/page-save-native-host.exe` wrapper rather than a batch file, because
-native messaging requires clean binary stdio. The actual server launch goes
-through Task Scheduler so the Node process is not owned by the browser,
-service worker, or protocol-handler process.
+specific browser with `--browser chrome,brave` if you want. For unusual
+profiles or packaged extension IDs, pass `--extension-id <id>`. To inspect
+what would be written without changing your machine, run
+`npx page-save install-launcher --dry-run`.
+
+The installer uses the native mechanism for each operating system:
+
+- **Windows:** writes the Chromium NativeMessagingHosts registry keys in both
+  64-bit and 32-bit registry views, registers the `page-save://start` URL
+  protocol, and creates the per-user `PageSaveLocalServer` scheduled task.
+  The URL protocol opens a Page Save Local Server command window with the
+  server status text. The native messaging host is a generated
+  `bin/page-save-native-host.exe` wrapper so Chromium gets clean binary stdio.
+- **macOS:** writes `com.pagesave.launcher.json` into the selected browser
+  NativeMessagingHosts folders under `~/Library/Application Support/...`.
+  The manifest points at a generated shell wrapper with the absolute Node.js
+  path from your install command, and launch opens a Terminal window.
+- **Linux:** writes the manifest into the selected browser folders under
+  `~/.config/.../NativeMessagingHosts`. Launch opens an available terminal
+  emulator (`x-terminal-emulator`, GNOME Terminal, Konsole, Xfce Terminal, or
+  xterm), with a detached log-file fallback for headless sessions.
+
+If the browser still reports "Specified native messaging host not found" after
+installation, reload the extension; if the browser was already open before
+registration, fully quit and reopen Chrome/Brave/Edge once.
 
 After this, when the status pill shows "Server offline" the footer button
 reads **"Launch Local Server"**. Click it; the panel waits for the
 WebSocket to come up and then transitions back to "Save Selected (N)".
-The browser may show a one-time "Open Page Save?" prompt the first time the
-button activates `page-save://start`; allow it.
+On Windows, the browser may show a one-time "Open Page Save?" prompt the
+first time the button activates `page-save://start`; allow it.
 The launch task opens a Page Save Local Server command window with the
 connection port, project path, Node.js runtime, and log paths. Keep that
 window open while using the extension; closing it stops the server.

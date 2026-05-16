@@ -14,7 +14,7 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { SAVE_DIR } from './types.ts';
+import { SAVE_DIR } from './paths.ts';
 import type { WatchConfig, DiffResult } from './types.ts';
 import { diffItems, formatDiffSummary } from './diff.ts';
 

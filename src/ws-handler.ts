@@ -8,7 +8,7 @@ import { writeSession, writeSessionWithDelta, writeYoutubeSession, openSession, 
 import { generateSchema, formatSchemaSummary, saveSchema } from './schema-suggest.ts';
 import { extractSubtitles } from './youtube-extractor.ts';
 import { createWatch, listWatches, processWatchResult } from './watch.ts';
-import { SAVE_DIR } from './types.ts';
+import { SAVE_DIR } from './paths.ts';
 
 let activeServer: { httpServer: HttpServer; wss: WebSocketServer } | null = null;
 
@@ -554,7 +554,7 @@ async function handleCliCommand(
     } as unknown as WsRequest;
     const response = await sendToExtension(extensionSocket, pendingRequests, request);
     if ('error' in response) { respond({ error: response.error }); return; }
-    respond(response.result as Record<string, unknown>);
+    respond(response.result as unknown as Record<string, unknown>);
     return;
   }
 

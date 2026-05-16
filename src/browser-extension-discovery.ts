@@ -1,4 +1,5 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { basename, isAbsolute, join, resolve } from 'node:path';
 
 export type Browser = 'chrome' | 'edge' | 'brave';
@@ -29,15 +30,32 @@ interface BrowserPreferences {
 const EXTENSION_ID_RE = /^[a-p]{32}$/;
 
 function userDataRoots(): Record<Browser, string | null> {
-  const localAppData = process.env.LOCALAPPDATA;
-  if (!localAppData) {
-    return { chrome: null, edge: null, brave: null };
+  if (process.platform === 'win32') {
+    const localAppData = process.env.LOCALAPPDATA;
+    if (!localAppData) {
+      return { chrome: null, edge: null, brave: null };
+    }
+
+    return {
+      chrome: join(localAppData, 'Google', 'Chrome', 'User Data'),
+      edge: join(localAppData, 'Microsoft', 'Edge', 'User Data'),
+      brave: join(localAppData, 'BraveSoftware', 'Brave-Browser', 'User Data'),
+    };
+  }
+
+  const home = homedir();
+  if (process.platform === 'darwin') {
+    return {
+      chrome: join(home, 'Library', 'Application Support', 'Google', 'Chrome'),
+      edge: join(home, 'Library', 'Application Support', 'Microsoft Edge'),
+      brave: join(home, 'Library', 'Application Support', 'BraveSoftware', 'Brave-Browser'),
+    };
   }
 
   return {
-    chrome: join(localAppData, 'Google', 'Chrome', 'User Data'),
-    edge: join(localAppData, 'Microsoft', 'Edge', 'User Data'),
-    brave: join(localAppData, 'BraveSoftware', 'Brave-Browser', 'User Data'),
+    chrome: join(home, '.config', 'google-chrome'),
+    edge: join(home, '.config', 'microsoft-edge'),
+    brave: join(home, '.config', 'BraveSoftware', 'Brave-Browser'),
   };
 }
 

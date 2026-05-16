@@ -15,14 +15,15 @@
  */
 
 import { createConnection } from 'node:net';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve } from 'node:path';
-import { closeSync, openSync } from 'node:fs';
+import { closeSync, existsSync, openSync } from 'node:fs';
 import { PORT } from './types.ts';
 
 const PROBE_TIMEOUT_MS = 750;
-const POST_LAUNCH_PROBE_DELAY_MS = 800;
+const POST_LAUNCH_PROBE_DELAY_MS = 1500;
+const POSIX_SERVER_START_SCRIPT = 'page-save-server-start.local.sh';
 
 interface LauncherRequest {
   action?: string;
@@ -59,6 +60,14 @@ function spawnServerDetached(): void {
   const here = dirname(fileURLToPath(import.meta.url));
   const root = pathResolve(here, '..');
   const cliPath = pathResolve(here, 'cli.ts');
+  const serverWindowScript = pathResolve(root, 'bin', POSIX_SERVER_START_SCRIPT);
+
+  if ((process.platform === 'darwin' || process.platform === 'linux')
+    && existsSync(serverWindowScript)
+    && spawnServerWindow(root, serverWindowScript)) {
+    return;
+  }
+
   const stdoutPath = pathResolve(root, '.page-save-launched-server.out.log');
   const stderrPath = pathResolve(root, '.page-save-launched-server.err.log');
 
@@ -81,6 +90,44 @@ function spawnServerDetached(): void {
     closeSync(stdout);
     closeSync(stderr);
   }
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
+}
+
+function spawnServerWindow(root: string, scriptPath: string): boolean {
+  if (process.platform === 'darwin') {
+    const command = `cd ${shellQuote(root)} && ${shellQuote(scriptPath)}`;
+    const child = spawn('/usr/bin/osascript', [
+      '-e', 'tell application "Terminal" to activate',
+      '-e', `tell application "Terminal" to do script ${JSON.stringify(command)}`,
+    ], { detached: true, stdio: 'ignore' });
+    child.unref();
+    return true;
+  }
+
+  const candidates: { command: string; args: string[] }[] = [
+    { command: 'x-terminal-emulator', args: ['-e', scriptPath] },
+    { command: 'gnome-terminal', args: ['--', scriptPath] },
+    { command: 'konsole', args: ['-e', scriptPath] },
+    { command: 'xfce4-terminal', args: ['-e', scriptPath] },
+    { command: 'xterm', args: ['-e', scriptPath] },
+  ];
+
+  for (const candidate of candidates) {
+    if (!commandExists(candidate.command)) continue;
+    const child = spawn(candidate.command, candidate.args, { detached: true, stdio: 'ignore' });
+    child.unref();
+    return true;
+  }
+
+  return false;
+}
+
+function commandExists(command: string): boolean {
+  const result = spawnSync('sh', ['-lc', `command -v ${command}`], { stdio: 'ignore' });
+  return result.status === 0;
 }
 
 async function handleStatus(): Promise<LauncherResponse> {
@@ -109,7 +156,7 @@ async function handleStart(): Promise<LauncherResponse> {
   // reality rather than optimism.
   await new Promise((r) => setTimeout(r, POST_LAUNCH_PROBE_DELAY_MS));
   const after = await probePort();
-  return { started: after.listening, alreadyRunning: false };
+  return { started: after.listening, alreadyRunning: false, launchAttempted: true };
 }
 
 // --- Native messaging stdio framing ---

@@ -405,7 +405,7 @@ function formatLaunchError(result) {
   switch (result.stage) {
     case 'protocol-launch':
       return (
-        `Windows protocol launch failed: ${result.details || result.error}\n\n` +
+        `Protocol launch failed: ${result.details || result.error}\n\n` +
         'Recovery: run page-save install-launcher, reload the extension, and accept the browser prompt to open Page Save.'
       );
     case 'native-messaging':
@@ -425,7 +425,7 @@ function formatLaunchError(result) {
     case 'connect-timeout':
       return (
         `${result.error || "Page Save didn't accept connections in time."}\n\n` +
-        'If the browser shows an "Open Page Save?" prompt, accept it. Otherwise run page-save install-launcher to refresh the URL protocol and PageSaveLocalServer task.'
+        'If the browser shows an "Open Page Save?" prompt, accept it. Otherwise run page-save install-launcher, reload the extension, and try again.'
       );
     case 'native-response':
       return `Launcher error: ${result.error}`;

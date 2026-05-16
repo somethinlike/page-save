@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SAVE_DIR } from './types.ts';
+import { SAVE_DIR } from './paths.ts';
 
 export function sanitizeFilename(title: string): string {
   return title

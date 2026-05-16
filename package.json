@@ -15,7 +15,7 @@
     "LICENSE"
   ],
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.6.0"
   },
   "keywords": [
     "claude",
@@ -39,6 +39,7 @@
     "save": "node --experimental-strip-types src/cli.ts save",
     "text": "node --experimental-strip-types src/cli.ts text",
     "mcp": "node --experimental-strip-types src/mcp-server.ts",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-16T20:53:20.791Z",
+  "generatedAt": "2026-05-16T22:00:20.978Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -9,23 +9,23 @@
     },
     "extension/service-worker.js": {
       "filePath": "extension/service-worker.js",
-      "mtimeMs": 1778964419330.319,
-      "size": 26690
+      "mtimeMs": 1778968512406.4497,
+      "size": 29168
     },
     "extension/sidepanel.js": {
       "filePath": "extension/sidepanel.js",
-      "mtimeMs": 1778964424128.579,
-      "size": 21233
+      "mtimeMs": 1778968517452.1968,
+      "size": 21205
     },
     "src/browser-extension-discovery.ts": {
       "filePath": "src/browser-extension-discovery.ts",
-      "mtimeMs": 1778954586473.847,
-      "size": 5023
+      "mtimeMs": 1778968367357.8457,
+      "size": 5645
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",
-      "mtimeMs": 1778958791783.0996,
-      "size": 14278
+      "mtimeMs": 1778968526580.0454,
+      "size": 14648
     },
     "src/defuddle-extractor.ts": {
       "filePath": "src/defuddle-extractor.ts",
@@ -39,13 +39,13 @@
     },
     "src/file-writer.ts": {
       "filePath": "src/file-writer.ts",
-      "mtimeMs": 1775089702183.4673,
+      "mtimeMs": 1778968358354.2222,
       "size": 1095
     },
     "src/install-launcher.ts": {
       "filePath": "src/install-launcher.ts",
-      "mtimeMs": 1778964736988.172,
-      "size": 11859
+      "mtimeMs": 1778968470081.8213,
+      "size": 19279
     },
     "src/markdown-formatter.ts": {
       "filePath": "src/markdown-formatter.ts",
@@ -64,8 +64,13 @@
     },
     "src/native-launcher.ts": {
       "filePath": "src/native-launcher.ts",
-      "mtimeMs": 1778958266914.3938,
-      "size": 5916
+      "mtimeMs": 1778968482967.7898,
+      "size": 7631
+    },
+    "src/paths.ts": {
+      "filePath": "src/paths.ts",
+      "mtimeMs": 1778968651440.0085,
+      "size": 424
     },
     "src/schema-suggest.ts": {
       "filePath": "src/schema-suggest.ts",
@@ -74,23 +79,23 @@
     },
     "src/session-writer.ts": {
       "filePath": "src/session-writer.ts",
-      "mtimeMs": 1775851821994.7837,
+      "mtimeMs": 1778968358434.1953,
       "size": 23661
     },
     "src/types.ts": {
       "filePath": "src/types.ts",
-      "mtimeMs": 1777440996253.5786,
-      "size": 3355
+      "mtimeMs": 1778968358271.3818,
+      "size": 3287
     },
     "src/watch.ts": {
       "filePath": "src/watch.ts",
-      "mtimeMs": 1775782725447.6753,
+      "mtimeMs": 1778968358519.6377,
       "size": 4784
     },
     "src/ws-handler.ts": {
       "filePath": "src/ws-handler.ts",
-      "mtimeMs": 1778958637481.834,
-      "size": 26434
+      "mtimeMs": 1778968651519.8606,
+      "size": 26445
     },
     "src/youtube-extractor.ts": {
       "filePath": "src/youtube-extractor.ts",

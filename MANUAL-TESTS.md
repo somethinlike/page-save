@@ -1,9 +1,10 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.05.16 (Phases 1-15 complete)
+**Updated:** 2026.05.16 (Phases 1-16 complete)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
-- Node.js server: `C:/Users/somet/.local/nodejs/node --experimental-strip-types C:/Users/somet/GoogleDrive/Projects/page-save/src/cli.ts serve`
+- Node.js 22.6+ installed
+- Node.js server: `page-save serve` or `node --experimental-strip-types <repo>/src/cli.ts serve`
 - Extension badge should not show errors
 
 ---
@@ -443,28 +444,48 @@
 
 ---
 
-## 23. Server Launch From Extension (Phase 14)
-<!-- revised: 2026 May 16 16:32.5 -->
+## 23. Server Launch From Extension (Phase 14/16)
+<!-- revised: 2026 May 16 19:20.0 -->
 
 ### 23.1 First-Time Install
 - [ ] Load the unpacked extension from the current repo path or the `.chrome-extensions/page-save` junction
-- [ ] Run `page-save install-launcher` — it auto-detects active Page Save extension IDs and prints "Native messaging host registered for chrome, edge, brave."
-- [ ] Installer output also prints `URL protocol: page-save://start`, `URL launcher: ...\bin\page-save-url-launcher.vbs`, and `Scheduled task: PageSaveLocalServer`
+- [ ] Run `page-save install-launcher --dry-run --extension-id <id>` — it prints target paths without changing the machine
+- [ ] Run `page-save install-launcher` — it auto-detects active Page Save extension IDs when possible and prints "Native messaging host registered for ..."
 - [ ] If auto-detection cannot find the extension, get the ID from `chrome://extensions` and run `page-save install-launcher --extension-id <id>`
+- [ ] `bin/com.pagesave.launcher.json` exists with the correct extension ID in `allowed_origins`
+
+### 23.1a Windows Registration
+- [ ] Installer output prints `URL protocol: page-save://start`, `URL launcher: ...\bin\page-save-url-launcher.vbs`, and `Scheduled task: PageSaveLocalServer`
 - [ ] `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher"` shows the manifest path
 - [ ] `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher" /reg:32` shows the same manifest path
 - [ ] `reg query "HKCU\Software\Chromium\NativeMessagingHosts\com.pagesave.launcher" /reg:64` and `/reg:32` show the same manifest path
 - [ ] If testing Brave, both `reg query "HKCU\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\com.pagesave.launcher" /reg:64` and `/reg:32` show the same manifest path
-- [ ] `bin/com.pagesave.launcher.json` exists with the correct extension ID in `allowed_origins`
 - [ ] `bin/com.pagesave.launcher.json` points `path` at `bin/page-save-native-host.exe`, not the BAT file
 - [ ] `bin/page-save-native-host.exe` exists after installation
 - [ ] `reg query "HKCU\Software\Classes\page-save\shell\open\command"` points at `wscript.exe` plus `bin/page-save-url-launcher.vbs`
 - [ ] `schtasks /Query /TN PageSaveLocalServer` succeeds
 - [ ] `bin/page-save-url-launcher.vbs` exists
 
+### 23.1b macOS Registration
+- [ ] `bin/com.pagesave.launcher.json` points `path` at `bin/page-save-native-host.sh`
+- [ ] `bin/page-save-native-host.sh` exists and is executable
+- [ ] `bin/page-save-server-start.local.sh` exists and is executable
+- [ ] `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.pagesave.launcher.json` exists when testing Chrome
+- [ ] If testing Brave, `~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/com.pagesave.launcher.json` exists
+- [ ] Manifest `allowed_origins` contains the loaded extension ID
+
+### 23.1c Linux Registration
+- [ ] `bin/com.pagesave.launcher.json` points `path` at `bin/page-save-native-host.sh`
+- [ ] `bin/page-save-native-host.sh` exists and is executable
+- [ ] `bin/page-save-server-start.local.sh` exists and is executable
+- [ ] `~/.config/google-chrome/NativeMessagingHosts/com.pagesave.launcher.json` exists when testing Chrome
+- [ ] If testing Chromium, `~/.config/chromium/NativeMessagingHosts/com.pagesave.launcher.json` exists
+- [ ] If testing Brave, `~/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts/com.pagesave.launcher.json` exists
+
 ### 23.2 Reload Extension
 - [ ] After `install-launcher`, reload the extension once so the `nativeMessaging` permission is active
-- [ ] If the side panel still reports "Specified native messaging host not found", launch should still work through `page-save://start`; fully quit and reopen the browser once if testing the native status preflight
+- [ ] On Windows, if the side panel still reports "Specified native messaging host not found", launch should still work through `page-save://start`; fully quit and reopen the browser once if testing the native status preflight
+- [ ] On macOS/Linux, "Specified native messaging host not found" means the manifest directory/path is wrong or the browser needs a full quit/reopen
 - [ ] Side panel still loads; status pill shows current connection state
 
 ### 23.3 Launch With Server Offline
@@ -472,10 +493,11 @@
 - [ ] Open the side panel — status pill = "Server offline" (red), footer button reads **"Launch Local Server"** in blue
 - [ ] Inspect the extension error list/service-worker console — the offline state should not create a `WebSocket connection to 'ws://localhost:7224/' failed: net::ERR_CONNECTION_REFUSED` entry
 - [ ] Click — button changes to "Launching server…" (disabled)
-- [ ] If the browser asks to open Page Save, accept the prompt
-- [ ] A Page Save Local Server command window opens with a readable banner explaining what the local bridge does, that it must stay open while the extension is in use, that closing the window stops the server, and that it is listening on `ws://localhost:7224`
+- [ ] On Windows, if the browser asks to open Page Save, accept the prompt
+- [ ] A Page Save Local Server terminal/command window opens with a readable banner explaining what the local bridge does, that it must stay open while the extension is in use, that closing the window stops the server, and that it is listening on `ws://localhost:7224`
 - [ ] Within ~2s, status flips to "Connected" and the button transitions back to "Save Selected (0)"
-- [ ] `netstat -ano | findstr 7224` shows a LISTENING entry — the spawned server is owned by Task Scheduler and survives the URL launcher exiting
+- [ ] Windows: `netstat -ano | findstr 7224` shows a LISTENING entry — the spawned server is owned by Task Scheduler and survives the URL launcher exiting
+- [ ] macOS/Linux: `lsof -iTCP:7224 -sTCP:LISTEN` or `ss -ltnp | grep 7224` shows the server listener
 
 ### 23.4 Launch With Server Already Running
 - [ ] Start `page-save serve` manually first
@@ -491,19 +513,27 @@
 ### 23.6 Port Conflict
 - [ ] In a separate terminal, occupy port 7224 with something that isn't page-save: `python -m http.server 7224 --bind 127.0.0.1`
 - [ ] In the side panel, click the launch button
-- [ ] Status text under the button reports that `page-save://start` was accepted but the extension could not connect in time
+- [ ] Status text under the button reports that launch ran but the extension could not connect in time, or that port 7224 is held by something else
 - [ ] The scheduled task does not leave a long-lived duplicate node process on top of the conflict
 
 ### 23.7 Launcher Not Installed
-- [ ] Delete the URL protocol key: `reg delete "HKCU\Software\Classes\page-save" /f`
-- [ ] Delete the launch task: `schtasks /Delete /TN PageSaveLocalServer /F`
-- [ ] Click launch button → error points back to `page-save install-launcher` or reports that `page-save://start` could not be opened
+- [ ] Windows: delete the URL protocol key: `reg delete "HKCU\Software\Classes\page-save" /f`
+- [ ] Windows: delete the launch task: `schtasks /Delete /TN PageSaveLocalServer /F`
+- [ ] macOS/Linux: move the browser's `NativeMessagingHosts/com.pagesave.launcher.json` aside temporarily
+- [ ] Click launch button → error points back to `page-save install-launcher` or reports that native messaging/protocol launch failed
 - [ ] Re-running the install command and reloading the extension restores normal operation
 
 ### 23.8 Launcher Reports Started But No Connection
 - [ ] (Hard to reproduce naturally — would require the spawned server to crash before binding)
-- [ ] If it happens: error says Windows accepted `page-save://start`, but the extension could not connect within 10s
+- [ ] If it happens: error says launch ran, but the extension could not connect within 10s
 - [ ] Check `.page-save-url-handler.log` and `.page-save-launched-server.err.log`, then run `page-save serve` manually to see the actual error
+
+### 23.9 GitHub Actions Cross-Platform Smoke
+- [ ] On a public repo, push a branch and confirm CI runs on `ubuntu-latest`, `windows-latest`, and `macos-latest`
+- [ ] Each OS passes `npm run typecheck`, `npm test`, and `install-launcher --dry-run`
+- [ ] The macOS job prints the `~/Library/Application Support/.../NativeMessagingHosts` targets
+- [ ] The Linux job prints the `~/.config/.../NativeMessagingHosts` targets
+- [ ] The Windows job prints registry, protocol, and scheduled task targets with `[dry-run]` on registry/task outputs
 
 ---
 

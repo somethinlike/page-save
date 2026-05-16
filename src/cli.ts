@@ -26,6 +26,7 @@ interface CliArgs {
   forceRaw?: boolean;
   extensionIds?: string[];
   browsers?: ('chrome' | 'edge' | 'brave')[];
+  dryRun?: boolean;
   asins?: string[];
 }
 
@@ -48,6 +49,7 @@ function parseArgs(argv: string[]): CliArgs {
   let forceRaw = false;
   let extensionIds: string[] | undefined;
   let browsers: ('chrome' | 'edge' | 'brave')[] | undefined;
+  let dryRun = false;
   let asins: string[] | undefined;
 
   for (let i = 1; i < args.length; i++) {
@@ -95,6 +97,8 @@ function parseArgs(argv: string[]): CliArgs {
       i++;
     } else if (args[i] === '--raw') {
       forceRaw = true;
+    } else if (args[i] === '--dry-run') {
+      dryRun = true;
     } else if (args[i] === '--extension-id' && args[i + 1]) {
       extensionIds = (extensionIds || []).concat(args[i + 1].split(',').map(s => s.trim()).filter(Boolean));
       i++;
@@ -118,7 +122,7 @@ function parseArgs(argv: string[]): CliArgs {
     }
   }
 
-  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all, prev, variant, forceRaw, extensionIds, browsers, asins };
+  return { action, tab, output, domain, maxPages, save, urls, file, url, fields, watchId, all, prev, variant, forceRaw, extensionIds, browsers, dryRun, asins };
 }
 
 // --- CLI Mode ---
@@ -343,6 +347,7 @@ if (cliArgs.action === 'serve') {
       // installed is harmless (just a stale registry entry); registering for
       // ONLY chrome and silently failing on Brave/Edge users is friction.
       browsers: cliArgs.browsers || [],
+      dryRun: cliArgs.dryRun,
     });
   } catch (err) {
     console.error(`Error: ${(err as Error).message}`);
@@ -372,13 +377,15 @@ if (cliArgs.action === 'serve') {
   page-save watch-add --url <url> [--fields price,rating]      Create a price/content watch
   page-save watch-list                                         List all watches
   page-save watch-run [--id <watchId> | --all]                 Run watch(es) and diff
-  page-save install-launcher [--extension-id <id>] [--browser <list>]
+  page-save install-launcher [--extension-id <id>] [--browser <list>] [--dry-run]
                                                                Register the native messaging host so the
                                                                extension can launch the server itself.
                                                                Auto-detects local unpacked Page Save IDs;
                                                                use --extension-id for unusual profiles.
                                                                --browser defaults to registering for all
                                                                Chromium-based browsers (chrome,edge,brave).
-                                                               Pass a comma-separated list to restrict.`);
+                                                               Pass a comma-separated list to restrict.
+                                                               --dry-run prints the install targets without
+                                                               writing manifests, registry keys, or tasks.`);
   process.exit(1);
 }

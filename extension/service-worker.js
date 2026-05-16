@@ -621,8 +621,25 @@ function openProtocolLauncher() {
   });
 }
 
+function getPlatformInfo() {
+  return new Promise((resolve, reject) => {
+    try {
+      chrome.runtime.getPlatformInfo((info) => {
+        const err = chrome.runtime.lastError;
+        if (err) {
+          reject(new Error(err.message || 'Could not read browser platform info.'));
+          return;
+        }
+        resolve(info);
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
 /**
- * Launch the local page-save server via the registered Windows URL protocol.
+ * Launch the local page-save server.
  *
  * Safety layers (matching the spec):
  *   1. Spam protection — refuse if a launch was attempted within the cooldown
@@ -630,10 +647,11 @@ function openProtocolLauncher() {
  *      "Already starting…" without alarming the user.
  *   2. Pre-flight native status check — if the port is already occupied,
  *      attempt one WebSocket connection to distinguish page-save from conflict.
- *      This is best-effort now that page-save:// is the primary launcher; if
- *      the native host is absent we continue with the protocol launch.
- *   3. Protocol activation — Windows handles page-save://start and launches
- *      the local handler registered by `page-save install-launcher`.
+ *      Missing native registration is tolerated on Windows because the
+ *      page-save:// handler can still launch the server.
+ *   3. Launch activation — Windows prefers page-save://start so it can open
+ *      the Task Scheduler-backed command window. macOS/Linux prefer native
+ *      messaging, which opens a terminal window through the generated launcher.
  *   4. Post-launch confirmation — poll the WebSocket for up to 10s after
  *      reporting success. If we never connect, return ok:false with the
  *      timeout reason so the UI doesn't leave the user staring at a button
@@ -650,6 +668,16 @@ async function handleLaunchServer() {
   if (ws && ws.readyState === WebSocket.OPEN) {
     return { ok: true, alreadyRunning: true };
   }
+
+  let platformOs = 'unknown';
+  try {
+    const platform = await getPlatformInfo();
+    platformOs = platform?.os || 'unknown';
+  } catch {
+    // Platform detection is best-effort; native launch remains the fallback.
+  }
+
+  let nativeStatusError = '';
   try {
     const status = await sendNative({ action: 'status' });
     if (status?.running || status?.occupied) {
@@ -662,35 +690,91 @@ async function handleLaunchServer() {
         error: `Port ${WS_URL.replace('ws://localhost:', '')} is in use by something that isn't page-save.`,
       };
     }
-  } catch {
-    // Native messaging is no longer the primary launch path. Missing native
-    // host registration should not block the Windows URL protocol handler.
+  } catch (err) {
+    nativeStatusError = err.message || String(err);
+    // Missing native registration should not block the Windows URL protocol
+    // handler, but macOS/Linux need native messaging to start the server.
   }
 
-  // (3) Ask Windows to launch the registered page-save:// protocol handler.
+  let protocolOpened = false;
+  let protocolError = '';
+  if (platformOs === 'win') {
+    try {
+      await openProtocolLauncher();
+      protocolOpened = true;
+      const connected = await pollUntilConnected(POST_LAUNCH_TIMEOUT_MS);
+      if (connected) {
+        return { ok: true, started: true, via: 'protocol' };
+      }
+    } catch (err) {
+      protocolError = err.message || String(err);
+      console.warn('[page-save] protocol launcher failed:', protocolError, err);
+    }
+  }
+
+  let nativeStartError = '';
+  let nativeStart = null;
   try {
-    await openProtocolLauncher();
+    nativeStart = await sendNative({ action: 'start' });
+    if (nativeStart?.error) {
+      nativeStartError = nativeStart.error;
+    } else {
+      connect();
+      const connected = await pollUntilConnected(POST_LAUNCH_TIMEOUT_MS);
+      if (connected) {
+        return {
+          ok: true,
+          started: true,
+          alreadyRunning: nativeStart?.alreadyRunning === true,
+          via: 'native',
+        };
+      }
+      if (nativeStart?.alreadyRunning || nativeStart?.occupied) {
+        return {
+          ok: false,
+          stage: 'port-conflict',
+          error: `Port ${WS_URL.replace('ws://localhost:', '')} is in use by something that isn't page-save.`,
+        };
+      }
+    }
   } catch (err) {
-    const detail = err.message || String(err);
-    console.warn('[page-save] protocol launcher failed:', detail, err);
+    nativeStartError = err.message || String(err);
+    console.warn('[page-save] native launch failed:', nativeStartError, err);
+  }
+
+  if (!protocolOpened && platformOs === 'win') {
+    const details = [
+      protocolError && `Protocol: ${protocolError}`,
+      nativeStartError && `Native messaging: ${nativeStartError}`,
+      nativeStatusError && !nativeStartError && `Native status: ${nativeStatusError}`,
+    ].filter(Boolean).join('\n');
     return {
       ok: false,
       stage: 'protocol-launch',
-      error: `Protocol launch failed: ${detail}`,
-      details: detail,
+      error: `Protocol launch failed: ${protocolError || 'page-save://start could not be opened.'}`,
+      details,
       extensionId: chrome.runtime.id,
     };
   }
 
-  // (4) Confirm by polling for our own WebSocket connection.
-  const connected = await pollUntilConnected(POST_LAUNCH_TIMEOUT_MS);
-  if (connected) {
-    return { ok: true, started: true };
+  if (platformOs !== 'win' && nativeStartError) {
+    return {
+      ok: false,
+      stage: 'native-messaging',
+      error: `Native launch failed: ${nativeStartError}`,
+      details: nativeStartError,
+      extensionId: chrome.runtime.id,
+    };
   }
+
+  const context = platformOs === 'win' && protocolOpened
+    ? 'The operating system accepted page-save://start, but'
+    : 'The launcher ran, but';
   return {
     ok: false,
     stage: 'connect-timeout',
-    error: `Windows accepted page-save://start, but the extension couldn't connect within ${POST_LAUNCH_TIMEOUT_MS / 1000}s.`,
+    error: `${context} the extension could not connect within ${POST_LAUNCH_TIMEOUT_MS / 1000}s.`,
+    details: nativeStartError || nativeStatusError || '',
   };
 }
 

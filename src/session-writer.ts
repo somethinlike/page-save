@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync, copyFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SAVE_DIR } from './types.ts';
+import { SAVE_DIR } from './paths.ts';
 import { formatStructuredMarkdown, formatRawMarkdown } from './markdown-formatter.ts';
 import { extractWithDefuddle } from './defuddle-extractor.ts';
 import { diffItems } from './diff.ts';
