@@ -8,6 +8,7 @@
  * server terminal window.
  *
  * Usage:
+ *   page-save setup [--extension-id <id>] [--browser chrome|edge|brave] [--dry-run]
  *   page-save install-launcher [--extension-id <id>] [--browser chrome|edge|brave] [--dry-run]
  */
 

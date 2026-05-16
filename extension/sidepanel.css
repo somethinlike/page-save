@@ -391,6 +391,93 @@ footer {
   background: #444;
 }
 
+/* Local bridge setup dialog */
+.setup-dialog {
+  width: min(92vw, 380px);
+  max-height: 92vh;
+  padding: 0;
+  color: #e0e0e0;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 8px;
+}
+
+.setup-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.setup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.setup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.setup-header h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.icon-button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #333;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.icon-button:hover {
+  background: #444;
+}
+
+.setup-intro {
+  color: #bbb;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#setup-prompt {
+  width: 100%;
+  min-height: 280px;
+  max-height: 52vh;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #171717;
+  color: #ddd;
+  font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  white-space: pre-wrap;
+}
+
+.setup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.setup-actions .btn-primary,
+.setup-actions .btn-secondary {
+  flex: 1;
+}
+
+.copy-status {
+  min-height: 14px;
+  color: #8ec5ff;
+  font-size: 11px;
+  text-align: center;
+}
+
 /* Scrollbar */
 #tab-list::-webkit-scrollbar {
   width: 6px;

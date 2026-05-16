@@ -338,7 +338,7 @@ if (cliArgs.action === 'serve') {
   // Detached Windows launches can have no interactive stdio; keep the daemon's
   // event loop explicitly referenced so it stays alive waiting for WebSockets.
   setInterval(() => undefined, 60_000);
-} else if (cliArgs.action === 'install-launcher') {
+} else if (cliArgs.action === 'install-launcher' || cliArgs.action === 'setup') {
   try {
     installLauncher({
       extensionIds: cliArgs.extensionIds || [],
@@ -377,6 +377,8 @@ if (cliArgs.action === 'serve') {
   page-save watch-add --url <url> [--fields price,rating]      Create a price/content watch
   page-save watch-list                                         List all watches
   page-save watch-run [--id <watchId> | --all]                 Run watch(es) and diff
+  page-save setup [--extension-id <id>] [--browser <list>] [--dry-run]
+                                                               Friendly alias for install-launcher.
   page-save install-launcher [--extension-id <id>] [--browser <list>] [--dry-run]
                                                                Register the native messaging host so the
                                                                extension can launch the server itself.

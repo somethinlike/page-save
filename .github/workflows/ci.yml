@@ -36,4 +36,4 @@ jobs:
         run: npm test
 
       - name: Validate launcher install targets
-        run: node --experimental-strip-types src/cli.ts install-launcher --extension-id lekikondcgipaabofcppaifgmfbekhlf --dry-run
+        run: node --experimental-strip-types src/cli.ts setup --extension-id lekikondcgipaabofcppaifgmfbekhlf --dry-run

@@ -13,12 +13,12 @@
 | `src/ws-handler.ts` | 1 | 7 |
 | `src/session-writer.ts` | 1 | 6 |
 | `src/watch.ts` | 1 | 3 |
+| `src/file-writer.ts` | 1 | 1 |
 | `src/markdown-formatter.ts` | 1 | 1 |
 | `src/schema-suggest.ts` | 1 | 1 |
-| `src/file-writer.ts` | 1 | 1 |
 | `src/install-launcher.ts` | 1 | 1 |
-| `src/defuddle-extractor.ts` | 1 | 0 |
 | `src/browser-extension-discovery.ts` | 1 | 0 |
+| `src/defuddle-extractor.ts` | 1 | 0 |
 | `src/cli.ts` | 0 | 3 |
 | `src/mcp-server.ts` | 0 | 1 |
 | ...1 more files | | |
@@ -29,8 +29,8 @@
 |---------|---------|
 | `node:fs` | 8 files |
 | `node:path` | 8 files |
-| `ws` | 3 files |
 | `node:os` | 3 files |
+| `ws` | 3 files |
 | `node:child_process` | 3 files |
 | `node:url` | 2 files |
 | `node:crypto` | 2 files |

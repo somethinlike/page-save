@@ -44,6 +44,24 @@
     </div>
   </footer>
 
+  <dialog id="setup-dialog" class="setup-dialog">
+    <form method="dialog" class="setup-card">
+      <div class="setup-header">
+        <h2>Local Server Setup</h2>
+        <button id="btn-close-setup" class="icon-button" value="close" aria-label="Close setup prompt">×</button>
+      </div>
+      <p class="setup-intro">
+        Copy this prompt into your LLM assistant. It tells the assistant to verify the official project, explain the local server install, ask for permission, then configure Page Save for this browser.
+      </p>
+      <textarea id="setup-prompt" readonly spellcheck="false"></textarea>
+      <div class="setup-actions">
+        <button id="btn-copy-setup" class="btn-primary" type="button">Copy Prompt</button>
+        <button class="btn-secondary" value="close">Close</button>
+      </div>
+      <div id="setup-copy-status" class="copy-status" aria-live="polite"></div>
+    </form>
+  </dialog>
+
   <script src="sidepanel.js"></script>
 </body>
 </html>

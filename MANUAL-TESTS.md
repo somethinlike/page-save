@@ -449,9 +449,9 @@
 
 ### 23.1 First-Time Install
 - [ ] Load the unpacked extension from the current repo path or the `.chrome-extensions/page-save` junction
-- [ ] Run `page-save install-launcher --dry-run --extension-id <id>` — it prints target paths without changing the machine
-- [ ] Run `page-save install-launcher` — it auto-detects active Page Save extension IDs when possible and prints "Native messaging host registered for ..."
-- [ ] If auto-detection cannot find the extension, get the ID from `chrome://extensions` and run `page-save install-launcher --extension-id <id>`
+- [ ] Run `page-save setup --dry-run --extension-id <id>` — it prints target paths without changing the machine
+- [ ] Run `page-save setup` — it auto-detects active Page Save extension IDs when possible and prints "Native messaging host registered for ..."
+- [ ] If auto-detection cannot find the extension, get the ID from `chrome://extensions` and run `page-save setup --extension-id <id>`
 - [ ] `bin/com.pagesave.launcher.json` exists with the correct extension ID in `allowed_origins`
 
 ### 23.1a Windows Registration
@@ -534,6 +534,18 @@
 - [ ] The macOS job prints the `~/Library/Application Support/.../NativeMessagingHosts` targets
 - [ ] The Linux job prints the `~/.config/.../NativeMessagingHosts` targets
 - [ ] The Windows job prints registry, protocol, and scheduled task targets with `[dry-run]` on registry/task outputs
+
+### 23.10 LLM-Assisted First Install
+- [ ] On a machine/profile where Page Save's local bridge has not been installed, open the side panel and click **Launch Local Server**
+- [ ] The failed launch opens a **Local Server Setup** dialog
+- [ ] Dialog text includes a copyable prompt for an LLM assistant
+- [ ] The prompt contains the current `chrome.runtime.id`
+- [ ] The prompt tells the LLM to find and inspect `https://github.com/somethinlike/page-save`
+- [ ] The prompt tells the LLM to explain the local Node.js server, localhost port 7224, native messaging host, OS-specific registration, and saved output folder before installation
+- [ ] The prompt tells the LLM to ask for permission before running install commands
+- [ ] The prompt gives `npx page-save setup --extension-id <id>` and the fallback `npx page-save install-launcher --extension-id <id>`
+- [ ] Click **Copy Prompt** — clipboard receives the full prompt
+- [ ] Paste the prompt into an LLM assistant; it is self-contained enough for the assistant to proceed without screenshots
 
 ---
 

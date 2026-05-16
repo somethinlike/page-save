@@ -41,6 +41,11 @@ const previewList = document.getElementById('preview-list');
 const previewCount = document.getElementById('preview-count');
 const btnPreviewSave = document.getElementById('btn-preview-save');
 const btnPreviewDiscard = document.getElementById('btn-preview-discard');
+const setupDialog = document.getElementById('setup-dialog');
+const setupPromptEl = document.getElementById('setup-prompt');
+const btnCopySetup = document.getElementById('btn-copy-setup');
+const btnCloseSetup = document.getElementById('btn-close-setup');
+const setupCopyStatus = document.getElementById('setup-copy-status');
 
 // --- Communication with service worker ---
 
@@ -391,6 +396,9 @@ async function launchServer() {
       }
     } else {
       lastLaunchError = formatLaunchError(result);
+      if (shouldShowSetupDialog(result)) {
+        showSetupDialog(result);
+      }
     }
   } catch (err) {
     lastLaunchError = `Launch failed: ${err.message || err}`;
@@ -400,13 +408,18 @@ async function launchServer() {
   }
 }
 
+function shouldShowSetupDialog(result) {
+  if (!result) return false;
+  return result.stage === 'native-messaging' || result.stage === 'protocol-launch';
+}
+
 function formatLaunchError(result) {
   if (!result) return 'Launch failed: no response from extension.';
   switch (result.stage) {
     case 'protocol-launch':
       return (
         `Protocol launch failed: ${result.details || result.error}\n\n` +
-        'Recovery: run page-save install-launcher, reload the extension, and accept the browser prompt to open Page Save.'
+        'Recovery: run page-save setup, reload the extension, and accept the browser prompt to open Page Save.'
       );
     case 'native-messaging':
       // Show the actual rejection reason from chrome.runtime.lastError so we
@@ -416,8 +429,8 @@ function formatLaunchError(result) {
       return (
         `Native messaging failed: ${result.details || result.error}\n\n` +
         'Recovery: in a terminal:\n' +
-        '  page-save install-launcher\n' +
-        `  page-save install-launcher --extension-id ${chrome.runtime.id}\n\n` +
+        '  page-save setup\n' +
+        `  page-save setup --extension-id ${chrome.runtime.id}\n\n` +
         'Then reload the extension. If Chrome/Brave was already open when the host was registered, fully quit and reopen the browser once.'
       );
     case 'port-conflict':
@@ -425,12 +438,79 @@ function formatLaunchError(result) {
     case 'connect-timeout':
       return (
         `${result.error || "Page Save didn't accept connections in time."}\n\n` +
-        'If the browser shows an "Open Page Save?" prompt, accept it. Otherwise run page-save install-launcher, reload the extension, and try again.'
+        'If the browser shows an "Open Page Save?" prompt, accept it. Otherwise run page-save setup, reload the extension, and try again.'
       );
     case 'native-response':
       return `Launcher error: ${result.error}`;
     default:
       return result.error || 'Launch failed for an unknown reason.';
+  }
+}
+
+function buildSetupPrompt(result = {}) {
+  const extensionId = chrome.runtime.id;
+  const launchError = result.details || result.error || 'The extension could not find or launch the local Page Save server.';
+
+  return [
+    'Please help me set up the local server for the Page Save Bridge Chromium extension.',
+    '',
+    'Context:',
+    `- The extension ID in this browser is: ${extensionId}`,
+    `- The launch error shown by the extension was: ${launchError}`,
+    '- The extension can capture pages in the browser, but it needs a local Node.js bridge to write saved pages and reduced markdown files to disk.',
+    '',
+    'First, find and inspect the official GitHub repository for Page Save Bridge. The expected repository is:',
+    'https://github.com/somethinlike/page-save',
+    '',
+    'Before installing anything, explain what will be downloaded or changed:',
+    '- the npm package / GitHub project named page-save',
+    '- a local Node.js server that listens only on localhost port 7224',
+    '- a Chromium native messaging host registered for this extension ID',
+    '- on Windows, user-level registry entries plus a page-save:// protocol handler and scheduled task',
+    '- on macOS/Linux, user-level NativeMessagingHosts manifests plus generated shell launcher scripts',
+    '- saved output under ~/Documents/saved-pages unless PAGE_SAVE_DIR is set',
+    '',
+    'Ask me for permission before running install commands.',
+    '',
+    'If I approve, verify Node.js 22.6+ is installed, then run:',
+    `npx page-save setup --extension-id ${extensionId}`,
+    '',
+    'If that setup alias is not available in the package version you get, use the equivalent lower-level command:',
+    `npx page-save install-launcher --extension-id ${extensionId}`,
+    '',
+    'After installation, verify the native messaging manifest contains this extension ID in allowed_origins. Then tell me to fully quit and reopen the browser if it was already open during registration.',
+    '',
+    'Once the extension shows Connected, give me basic usage instructions:',
+    '1. Open the Page Save side panel.',
+    '2. Select the tabs I want to save or extract.',
+    '3. Choose Raw or a schema variant per domain when available.',
+    '4. Click Save Selected.',
+    '5. Keep the Page Save Local Server window open while using the extension; closing it stops the local server.',
+  ].join('\n');
+}
+
+function showSetupDialog(result) {
+  if (!setupDialog || !setupPromptEl) return;
+  setupPromptEl.value = buildSetupPrompt(result);
+  setupCopyStatus.textContent = '';
+
+  if (typeof setupDialog.showModal === 'function') {
+    if (!setupDialog.open) setupDialog.showModal();
+  } else {
+    setupDialog.setAttribute('open', '');
+  }
+}
+
+async function copySetupPrompt() {
+  if (!setupPromptEl) return;
+  try {
+    await navigator.clipboard.writeText(setupPromptEl.value);
+    setupCopyStatus.textContent = 'Prompt copied.';
+  } catch {
+    setupPromptEl.focus();
+    setupPromptEl.select();
+    document.execCommand('copy');
+    setupCopyStatus.textContent = 'Prompt selected and copied.';
   }
 }
 
@@ -653,6 +733,10 @@ btnSave.addEventListener('click', () => {
 });
 btnPreviewSave.addEventListener('click', savePreview);
 btnPreviewDiscard.addEventListener('click', hidePreview);
+btnCopySetup.addEventListener('click', copySetupPrompt);
+btnCloseSetup.addEventListener('click', () => {
+  setupCopyStatus.textContent = '';
+});
 
 // --- Init ---
 

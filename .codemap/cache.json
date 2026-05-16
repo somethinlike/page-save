@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-16T22:00:20.978Z",
+  "generatedAt": "2026-05-16T22:44:07.864Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -14,8 +14,8 @@
     },
     "extension/sidepanel.js": {
       "filePath": "extension/sidepanel.js",
-      "mtimeMs": 1778968517452.1968,
-      "size": 21205
+      "mtimeMs": 1778971391432.7786,
+      "size": 24950
     },
     "src/browser-extension-discovery.ts": {
       "filePath": "src/browser-extension-discovery.ts",
@@ -24,8 +24,8 @@
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",
-      "mtimeMs": 1778968526580.0454,
-      "size": 14648
+      "mtimeMs": 1778971288860.704,
+      "size": 14849
     },
     "src/defuddle-extractor.ts": {
       "filePath": "src/defuddle-extractor.ts",
@@ -44,8 +44,8 @@
     },
     "src/install-launcher.ts": {
       "filePath": "src/install-launcher.ts",
-      "mtimeMs": 1778968470081.8213,
-      "size": 19279
+      "mtimeMs": 1778971317312.9995,
+      "size": 19364
     },
     "src/markdown-formatter.ts": {
       "filePath": "src/markdown-formatter.ts",

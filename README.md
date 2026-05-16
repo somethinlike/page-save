@@ -49,7 +49,7 @@ panel can start the server itself when it's offline — no terminal needed
 thereafter:
 
 ```bash
-npx page-save install-launcher
+npx page-save setup
 ```
 
 By default the host is registered for Chrome, Edge, **and** Brave so it just
@@ -57,7 +57,11 @@ works regardless of which Chromium-based browser you use. Restrict to a
 specific browser with `--browser chrome,brave` if you want. For unusual
 profiles or packaged extension IDs, pass `--extension-id <id>`. To inspect
 what would be written without changing your machine, run
-`npx page-save install-launcher --dry-run`.
+`npx page-save setup --dry-run`.
+
+`setup` is a friendly alias for the lower-level `install-launcher` command.
+The extension uses the same command name in the copyable LLM setup prompt it
+shows when the local bridge is missing.
 
 The installer uses the native mechanism for each operating system:
 
