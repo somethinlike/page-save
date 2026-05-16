@@ -308,7 +308,9 @@ CHG    B00E9M4XFI  $18.97  ~T1      (was $20.97)
 
 ---
 
-## Phase 14: Server Launch From Extension Menu ✅ INFRASTRUCTURE DONE (2026-04-28), 🟡 BLOCKED ON BRAVE-SPECIFIC LOOKUP BUG (2026-05-03)
+## Phase 14: Server Launch From Extension Menu ✅ DONE (2026-05-16)
+
+**Update 2026-05-16:** The earlier "host not found" behavior was local install drift, not a Chrome/Brave capability blocker. The machine-local generated manifest pointed at the old `C:\Users\somet\Projects\page-save` path, registry entries were absent, and browser profiles contained both stale and current unpacked Page Save extension IDs. `page-save install-launcher` now auto-detects active Page Save unpacked extension IDs from Chrome/Brave/Edge profile preferences, includes all matching IDs in `allowed_origins`, and regenerates the manifest with the current repo path. The side-panel offline primary action now reads **"Launch Local Server"** and transitions back to `Save Selected (N)` when the WebSocket reconnects.
 
 **Update 2026-05-03:** All four pieces of the launcher work in isolation:
 - Native messaging host script (`src/native-launcher.ts`) responds correctly to `status` and `start` actions when invoked directly via stdin (verified multiple times)
@@ -374,14 +376,14 @@ Native messaging is Chrome's sanctioned escape hatch from the extension sandbox:
 
 3. **Install command** (`page-save install-launcher`)
    - Generates the manifest with the absolute launcher path
-   - Asks the user to paste their extension ID (printed in the side panel one-time on first run, or readable from `chrome://extensions`)
+   - Auto-detects active unpacked Page Save extension IDs from local Chrome/Edge/Brave profiles; accepts `--extension-id` for unusual cases
    - Writes the manifest, registers it (registry on Windows, file copy on Unix)
    - Idempotent — re-running updates the path/extension ID
 
 4. **Extension changes**
    - `manifest.json`: add `"nativeMessaging"` permission
    - `service-worker.js`: handle a `start-server` message; call `chrome.runtime.sendNativeMessage('com.pagesave.launcher', {action:'start'})`; after success, re-attempt `connect()` on the WebSocket
-   - `sidepanel.js`: when status is "Disconnected", show a "Start Server" button; on click, send the message and update the status
+   - `sidepanel.js`: when status is "Disconnected", show a "Launch Local Server" button; on click, send the message and update the status
 
 **Edge cases:**
 - Server already running → launcher's status check returns `running: true`, button no-ops
@@ -398,12 +400,13 @@ Native messaging is Chrome's sanctioned escape hatch from the extension sandbox:
 **As-built (2026-04-28):**
 - `src/native-launcher.ts` — stdio framing, status/start actions, port pre-flight, post-launch re-probe (~140 LoC)
 - `bin/page-save-launcher.bat` — self-locating Node lookup (avoids fnm shim per `feedback_ps7_msix.md`)
+- `bin/page-save-server-start.bat` + `bin/page-save-server-start.vbs` — Windows ShellExecute path for launching the long-lived server outside the native host process tree
 - `src/install-launcher.ts` — writes `bin/com.pagesave.launcher.json`, registers under `HKCU\...\NativeMessagingHosts`, supports Chrome/Edge/Brave
 - `extension/manifest.json` — `nativeMessaging` permission added
 - `extension/service-worker.js` — `handleLaunchServer()` enforces 4 safety layers: 5s cooldown, pre-flight WS probe, port-conflict detection (native side refuses to spawn over a busy port), 10s connect-timeout polling
-- `extension/sidepanel.js` — `updateSaveButton()` is mode-aware: footer button reads "Launch Local Page-Save Server" when offline, "Save Selected (N)" when online. 4s status polling auto-transitions back when server comes up. UI-side 5s debounce mirrors service-worker cooldown.
+- `extension/sidepanel.js` — `updateSaveButton()` is mode-aware: footer button reads "Launch Local Server" when offline, "Save Selected (N)" when online. 4s status polling auto-transitions back when server comes up. UI-side 5s debounce mirrors service-worker cooldown.
 
-**Still manual:** the user runs `page-save install-launcher --extension-id <id>` once after first install. Could be auto-triggered the first time the button is clicked but the extension ID is needed at install time and passing it through native messaging is awkward.
+**Still manual:** the user runs `page-save install-launcher` once after first install. Auto-detection covers local unpacked Chrome/Brave/Edge installs; `--extension-id <id>` remains available for unusual profiles or packaged extension IDs.
 
 ---
 

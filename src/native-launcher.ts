@@ -18,6 +18,7 @@ import { createConnection } from 'node:net';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve } from 'node:path';
+import { closeSync, openSync } from 'node:fs';
 import { PORT } from './types.ts';
 
 const PROBE_TIMEOUT_MS = 750;
@@ -50,23 +51,51 @@ function probePort(): Promise<{ listening: boolean }> {
 
 /**
  * Spawn the page-save server detached so it survives Chrome (and this launcher)
- * exiting. stdio is fully ignored to prevent the parent from holding stdout
- * pipes open.
+ * exiting. Windows goes through ShellExecute so the long-lived server is not
+ * kept under the native messaging host's process tree.
  */
 function spawnServerDetached(): void {
   // __dirname equivalent for ES modules under --experimental-strip-types
   const here = dirname(fileURLToPath(import.meta.url));
+  const root = pathResolve(here, '..');
   const cliPath = pathResolve(here, 'cli.ts');
+  const stdoutPath = pathResolve(root, '.page-save-launched-server.out.log');
+  const stderrPath = pathResolve(root, '.page-save-launched-server.err.log');
 
-  const child = spawn(
-    process.execPath,
-    ['--experimental-strip-types', cliPath, 'serve'],
-    {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true,
-    },
-  );
+  if (process.platform === 'win32') {
+    spawnServerWithBatch(root);
+    return;
+  }
+
+  const stdout = openSync(stdoutPath, 'a');
+  const stderr = openSync(stderrPath, 'a');
+
+  try {
+    const child = spawn(
+      process.execPath,
+      ['--experimental-strip-types', cliPath, 'serve'],
+      {
+        cwd: root,
+        detached: true,
+        stdio: ['ignore', stdout, stderr],
+        windowsHide: true,
+      },
+    );
+    child.unref();
+  } finally {
+    closeSync(stdout);
+    closeSync(stderr);
+  }
+}
+
+function spawnServerWithBatch(root: string): void {
+  const starter = pathResolve(root, 'bin', 'page-save-server-start.vbs');
+  const child = spawn('wscript.exe', [starter], {
+    cwd: root,
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+  });
   child.unref();
 }
 

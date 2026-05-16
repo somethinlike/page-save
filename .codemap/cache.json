@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-03T13:57:28.735Z",
+  "generatedAt": "2026-05-16T18:28:54.758Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -14,13 +14,18 @@
     },
     "extension/sidepanel.js": {
       "filePath": "extension/sidepanel.js",
-      "mtimeMs": 1777812879920.0068,
-      "size": 20695
+      "mtimeMs": 1778955732250.7246,
+      "size": 20714
+    },
+    "src/browser-extension-discovery.ts": {
+      "filePath": "src/browser-extension-discovery.ts",
+      "mtimeMs": 1778954586473.847,
+      "size": 5023
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",
-      "mtimeMs": 1777812480632.3237,
-      "size": 13976
+      "mtimeMs": 1778954638571.648,
+      "size": 14078
     },
     "src/defuddle-extractor.ts": {
       "filePath": "src/defuddle-extractor.ts",
@@ -39,8 +44,8 @@
     },
     "src/install-launcher.ts": {
       "filePath": "src/install-launcher.ts",
-      "mtimeMs": 1777812442651.1953,
-      "size": 4985
+      "mtimeMs": 1778955559355.1355,
+      "size": 5956
     },
     "src/markdown-formatter.ts": {
       "filePath": "src/markdown-formatter.ts",
@@ -54,8 +59,8 @@
     },
     "src/native-launcher.ts": {
       "filePath": "src/native-launcher.ts",
-      "mtimeMs": 1777438939189.4607,
-      "size": 5413
+      "mtimeMs": 1778955876280.4453,
+      "size": 6284
     },
     "src/schema-suggest.ts": {
       "filePath": "src/schema-suggest.ts",

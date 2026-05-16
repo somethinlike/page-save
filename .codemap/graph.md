@@ -1,6 +1,6 @@
-# Dependency Graph (2026-05-03)
+# Dependency Graph (2026-05-16)
 
-**Internal edges:** 22 | **Files with imports:** 14
+**Internal edges:** 23 | **Files with imports:** 15
 
 ## Hot Files (most imported)
 
@@ -15,8 +15,9 @@
 | `src/file-writer.ts` | 1 | 1 |
 | `src/markdown-formatter.ts` | 1 | 1 |
 | `src/schema-suggest.ts` | 1 | 1 |
+| `src/install-launcher.ts` | 1 | 1 |
 | `src/defuddle-extractor.ts` | 1 | 0 |
-| `src/install-launcher.ts` | 1 | 0 |
+| `src/browser-extension-discovery.ts` | 1 | 0 |
 | `src/cli.ts` | 0 | 3 |
 | `src/mcp-server.ts` | 0 | 1 |
 | `src/native-launcher.ts` | 0 | 1 |
@@ -25,12 +26,12 @@
 
 | Package | Used By |
 |---------|---------|
-| `node:fs` | 6 files |
-| `node:path` | 6 files |
+| `node:fs` | 8 files |
+| `node:path` | 7 files |
 | `ws` | 3 files |
 | `node:child_process` | 3 files |
-| `node:url` | 2 files |
 | `node:crypto` | 2 files |
+| `node:url` | 2 files |
 | `defuddle` | 1 file |
 | `@modelcontextprotocol/sdk` | 1 file |
 | `zod` | 1 file |

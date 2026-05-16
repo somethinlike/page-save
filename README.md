@@ -44,17 +44,16 @@ side panel can start the server itself when it's offline — no terminal
 needed thereafter:
 
 ```bash
-# Get your extension ID from chrome://extensions (or brave://extensions
-# or edge://extensions — same place in any Chromium-based browser), then:
-npx page-save install-launcher --extension-id <id>
+npx page-save install-launcher
 ```
 
 By default the host is registered for Chrome, Edge, **and** Brave so it just
 works regardless of which Chromium-based browser you use. Restrict to a
 specific browser with `--browser chrome,brave` if you want.
+For unusual profiles or packaged extension IDs, pass `--extension-id <id>`.
 
 After this, when the status pill shows "Server offline" the footer button
-reads **"Launch Local Page-Save Server"**. Click it; the panel waits for the
+reads **"Launch Local Server"**. Click it; the panel waits for the
 WebSocket to come up and then transitions back to "Save Selected (N)".
 
 The launcher refuses to spawn a duplicate when the port is already bound,

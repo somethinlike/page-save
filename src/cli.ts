@@ -369,10 +369,11 @@ if (cliArgs.action === 'serve') {
   page-save watch-add --url <url> [--fields price,rating]      Create a price/content watch
   page-save watch-list                                         List all watches
   page-save watch-run [--id <watchId> | --all]                 Run watch(es) and diff
-  page-save install-launcher --extension-id <id> [--browser <list>]
+  page-save install-launcher [--extension-id <id>] [--browser <list>]
                                                                Register the native messaging host so the
                                                                extension can launch the server itself.
-                                                               Get the extension ID from chrome://extensions.
+                                                               Auto-detects local unpacked Page Save IDs;
+                                                               use --extension-id for unusual profiles.
                                                                --browser defaults to registering for all
                                                                Chromium-based browsers (chrome,edge,brave).
                                                                Pass a comma-separated list to restrict.`);

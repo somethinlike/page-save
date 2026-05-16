@@ -323,7 +323,7 @@ function renderTabs() {
 
 /**
  * The footer primary button is mode-aware:
- *   - server offline + idle  → "Launch Local Page-Save Server"
+ *   - server offline + idle  → "Launch Local Server"
  *   - server offline + busy  → "Launching server…" (disabled)
  *   - server connected + 0   → "Save Selected (0)" (disabled)
  *   - server connected + N   → "Save Selected (N)" (enabled)
@@ -341,7 +341,7 @@ function updateSaveButton() {
       btnSave.disabled = true;
       btnSave.classList.add('btn-launch');
     } else {
-      btnSave.textContent = 'Launch Local Page-Save Server';
+      btnSave.textContent = 'Launch Local Server';
       btnSave.disabled = false;
       btnSave.classList.add('btn-launch');
     }
@@ -411,7 +411,8 @@ function formatLaunchError(result) {
       return (
         `Native messaging failed: ${result.details || result.error}\n\n` +
         'Recovery: in a terminal:\n' +
-        `  npx page-save install-launcher --extension-id ${chrome.runtime.id}\n\n` +
+        '  page-save install-launcher\n' +
+        `  page-save install-launcher --extension-id ${chrome.runtime.id}\n\n` +
         'Then reload the extension and click again.'
       );
     case 'port-conflict':

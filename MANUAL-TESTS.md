@@ -446,8 +446,9 @@
 ## 23. Server Launch From Extension (Phase 14)
 
 ### 23.1 First-Time Install
-- [ ] Get extension ID from `chrome://extensions` (Developer mode on, page-save card)
-- [ ] Run `page-save install-launcher --extension-id <id>` — prints "Native messaging host registered for chrome."
+- [ ] Load the unpacked extension from the current repo path or the `.chrome-extensions/page-save` junction
+- [ ] Run `page-save install-launcher` — it auto-detects active Page Save extension IDs and prints "Native messaging host registered for chrome."
+- [ ] If auto-detection cannot find the extension, get the ID from `chrome://extensions` and run `page-save install-launcher --extension-id <id>`
 - [ ] `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher"` shows the manifest path
 - [ ] `bin/com.pagesave.launcher.json` exists with the correct extension ID in `allowed_origins`
 
@@ -457,7 +458,7 @@
 
 ### 23.3 Launch With Server Offline
 - [ ] Stop any running `page-save serve` process
-- [ ] Open the side panel — status pill = "Server offline" (red), footer button reads **"Launch Local Page-Save Server"** in blue
+- [ ] Open the side panel — status pill = "Server offline" (red), footer button reads **"Launch Local Server"** in blue
 - [ ] Click — button changes to "Launching server…" (disabled)
 - [ ] Within ~2s, status flips to "Connected" and the button transitions back to "Save Selected (0)"
 - [ ] `netstat -ano | grep 7224` shows a LISTENING entry — the spawned server is detached and survives the launcher exiting
@@ -481,7 +482,7 @@
 
 ### 23.7 Launcher Not Installed
 - [ ] Delete the registry key: `reg delete "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher" /f`
-- [ ] Click launch button → error reads "Launcher not installed. Run: page-save install-launcher --extension-id <id>"
+- [ ] Click launch button → error reads "Launcher not installed. Run: page-save install-launcher"
 - [ ] Re-running the install command and reloading the extension restores normal operation
 
 ### 23.8 Launcher Reports Started But No Connection
