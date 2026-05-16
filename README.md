@@ -19,7 +19,7 @@ Page Save Bridge uses `chrome.pageCapture.saveAsMHTML()` — a browser-engine-le
 2. **Node.js Bridge** — CLI that your AI calls via Bash to trigger saves and read content
 
 ## Install
-<!-- revised: 2026 May 16 15:52.4 -->
+<!-- revised: 2026 May 16 16:32.5 -->
 
 ### 1. Chrome Extension
 Install from the [Chrome Web Store](https://chromewebstore.google.com/) or load unpacked from the `extension/` folder.
@@ -73,6 +73,9 @@ reads **"Launch Local Server"**. Click it; the panel waits for the
 WebSocket to come up and then transitions back to "Save Selected (N)".
 The browser may show a one-time "Open Page Save?" prompt the first time the
 button activates `page-save://start`; allow it.
+The launch task opens a Page Save Local Server command window with the
+connection port, project path, Node.js runtime, and log paths. Keep that
+window open while using the extension; closing it stops the server.
 
 The launcher refuses to spawn a duplicate when the port is already bound,
 debounces rapid clicks, and reports a clear error if something else is

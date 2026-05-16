@@ -444,7 +444,7 @@
 ---
 
 ## 23. Server Launch From Extension (Phase 14)
-<!-- revised: 2026 May 16 15:48.4 -->
+<!-- revised: 2026 May 16 16:32.5 -->
 
 ### 23.1 First-Time Install
 - [ ] Load the unpacked extension from the current repo path or the `.chrome-extensions/page-save` junction
@@ -473,6 +473,7 @@
 - [ ] Inspect the extension error list/service-worker console — the offline state should not create a `WebSocket connection to 'ws://localhost:7224/' failed: net::ERR_CONNECTION_REFUSED` entry
 - [ ] Click — button changes to "Launching server…" (disabled)
 - [ ] If the browser asks to open Page Save, accept the prompt
+- [ ] A Page Save Local Server command window opens with a readable banner explaining what the local bridge does, that it must stay open while the extension is in use, that closing the window stops the server, and that it is listening on `ws://localhost:7224`
 - [ ] Within ~2s, status flips to "Connected" and the button transitions back to "Save Selected (0)"
 - [ ] `netstat -ano | findstr 7224` shows a LISTENING entry — the spawned server is owned by Task Scheduler and survives the URL launcher exiting
 

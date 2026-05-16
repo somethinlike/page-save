@@ -12,6 +12,9 @@ set "PROJECT_DIR=%~dp0.."
 set "NODE_EXE=%USERPROFILE%\.local\nodejs\node.exe"
 set "OUT_LOG=%PROJECT_DIR%\.page-save-launched-server.out.log"
 set "ERR_LOG=%PROJECT_DIR%\.page-save-launched-server.err.log"
+set "SERVER_PORT=7224"
+
+title Page Save Local Server - ws://localhost:%SERVER_PORT%
 
 if not exist "%NODE_EXE%" (
   for /f "delims=" %%I in ('where node 2^>nul') do (
@@ -26,5 +29,53 @@ if not exist "%NODE_EXE%" (
 )
 :found_node
 
+cls
+echo ============================================================
+echo Page Save Local Server
+echo ============================================================
+echo.
+echo This window is running the local Page Save bridge that your browser
+echo extension talks to when you click "Save Selected" or use Page Save's
+echo structured extraction features.
+echo.
+echo The browser extension itself cannot save arbitrary files directly to your
+echo Documents folder. Instead, the extension connects to this local Node.js
+echo process over a WebSocket connection, then this server writes the captured
+echo pages, reduced markdown, manifests, and logs to disk.
+echo.
+echo Keep this window open while you are using the Page Save extension. If you
+echo close this window, the local server stops and the extension will return to
+echo its offline state until you launch the server again.
+echo.
+echo Connection:
+echo   WebSocket URL : ws://localhost:%SERVER_PORT%
+echo   Port          : %SERVER_PORT%
+echo.
+echo Runtime:
+echo   Project       : %PROJECT_DIR%
+echo   Node.js       : %NODE_EXE%
+echo.
+echo Logs:
+echo   Server output : %OUT_LOG%
+echo   Server errors : %ERR_LOG%
+echo.
+echo The server is starting now. This window may stay mostly quiet during
+echo normal use because detailed server output is written to the log files
+echo above. Browser saves and extraction jobs should work as long as this
+echo window remains open.
+echo.
+echo To stop Page Save, close this window.
+echo ============================================================
+echo.
+
 "%NODE_EXE%" --experimental-strip-types "%PROJECT_DIR%\src\cli.ts" serve >>"%OUT_LOG%" 2>>"%ERR_LOG%"
-exit /b %ERRORLEVEL%
+set "EXIT_CODE=%ERRORLEVEL%"
+
+echo.
+echo ============================================================
+echo Page Save server stopped with exit code %EXIT_CODE%.
+echo If this was unexpected, check the log files listed above.
+echo ============================================================
+echo.
+pause
+exit /b %EXIT_CODE%
