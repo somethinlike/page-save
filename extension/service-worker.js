@@ -659,7 +659,7 @@ async function handleLaunchServer() {
     response = await sendNative({ action: 'start' });
   } catch (err) {
     const detail = err.message || String(err);
-    console.error('[page-save] sendNativeMessage failed:', detail, err);
+    console.warn('[page-save] sendNativeMessage failed:', detail, err);
     return {
       ok: false,
       stage: 'native-messaging',

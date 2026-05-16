@@ -413,7 +413,7 @@ function formatLaunchError(result) {
         'Recovery: in a terminal:\n' +
         '  page-save install-launcher\n' +
         `  page-save install-launcher --extension-id ${chrome.runtime.id}\n\n` +
-        'Then reload the extension and click again.'
+        'Then reload the extension. If Chrome/Brave was already open when the host was registered, fully quit and reopen the browser once.'
       );
     case 'port-conflict':
       return result.error || 'Port 7224 is already in use.';

@@ -31,3 +31,4 @@ if not exist "%NODE_EXE%" (
 :found_node
 
 "%NODE_EXE%" --experimental-strip-types "%PROJECT_DIR%\src\native-launcher.ts"
+exit /b %ERRORLEVEL%

@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.04.29 (Phases 1-15 complete)
+**Updated:** 2026.05.16 (Phases 1-15 complete)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -444,16 +444,22 @@
 ---
 
 ## 23. Server Launch From Extension (Phase 14)
+<!-- revised: 2026 May 16 13:51.4 -->
 
 ### 23.1 First-Time Install
 - [ ] Load the unpacked extension from the current repo path or the `.chrome-extensions/page-save` junction
-- [ ] Run `page-save install-launcher` — it auto-detects active Page Save extension IDs and prints "Native messaging host registered for chrome."
+- [ ] Run `page-save install-launcher` — it auto-detects active Page Save extension IDs and prints "Native messaging host registered for chrome, edge, brave."
 - [ ] If auto-detection cannot find the extension, get the ID from `chrome://extensions` and run `page-save install-launcher --extension-id <id>`
 - [ ] `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher"` shows the manifest path
+- [ ] `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher" /reg:32` shows the same manifest path
+- [ ] If testing Brave, both `reg query "HKCU\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\com.pagesave.launcher" /reg:64` and `/reg:32` show the same manifest path
 - [ ] `bin/com.pagesave.launcher.json` exists with the correct extension ID in `allowed_origins`
+- [ ] `bin/com.pagesave.launcher.json` points `path` at `bin/page-save-native-host.exe`, not the BAT file
+- [ ] `bin/page-save-native-host.exe` exists after installation
 
 ### 23.2 Reload Extension
 - [ ] After `install-launcher`, reload the extension once so the `nativeMessaging` permission is active
+- [ ] If the side panel still reports "Specified native messaging host not found", fully quit and reopen the browser once, then reload the extension again
 - [ ] Side panel still loads; status pill shows current connection state
 
 ### 23.3 Launch With Server Offline
@@ -482,7 +488,7 @@
 - [ ] The launcher does NOT spawn a node process on top of the conflict
 
 ### 23.7 Launcher Not Installed
-- [ ] Delete the registry key: `reg delete "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher" /f`
+- [ ] Delete the registry keys: `reg delete "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher" /f /reg:64` and `reg delete "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.pagesave.launcher" /f /reg:32`
 - [ ] Click launch button → error reads "Launcher not installed. Run: page-save install-launcher"
 - [ ] Re-running the install command and reloading the extension restores normal operation
 

@@ -12,7 +12,7 @@
  * chrome://extensions (Developer mode on, look at the page-save card).
  */
 
-import { writeFileSync, existsSync } from 'node:fs';
+import { writeFileSync, existsSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve, join } from 'node:path';
@@ -26,10 +26,28 @@ interface InstallOptions {
   browsers: Browser[];
 }
 
-const REGISTRY_KEYS: Record<Browser, string> = {
-  chrome: 'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts',
-  edge: 'HKCU\\Software\\Microsoft\\Edge\\NativeMessagingHosts',
-  brave: 'HKCU\\Software\\BraveSoftware\\Brave-Browser\\NativeMessagingHosts',
+interface RegistryTarget {
+  key: string;
+  view: '32' | '64';
+}
+
+const REGISTRY_TARGETS: Record<Browser, RegistryTarget[]> = {
+  chrome: [
+    { key: 'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts', view: '64' },
+    { key: 'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts', view: '32' },
+  ],
+  edge: [
+    { key: 'HKCU\\Software\\Microsoft\\Edge\\NativeMessagingHosts', view: '64' },
+    { key: 'HKCU\\Software\\Microsoft\\Edge\\NativeMessagingHosts', view: '32' },
+  ],
+  brave: [
+    { key: 'HKCU\\Software\\BraveSoftware\\Brave-Browser\\NativeMessagingHosts', view: '64' },
+    { key: 'HKCU\\Software\\BraveSoftware\\Brave-Browser\\NativeMessagingHosts', view: '32' },
+    { key: 'HKCU\\Software\\BraveSoftware\\Brave\\NativeMessagingHosts', view: '64' },
+    { key: 'HKCU\\Software\\BraveSoftware\\Brave\\NativeMessagingHosts', view: '32' },
+    { key: 'HKCU\\Software\\Brave-Browser\\NativeMessagingHosts', view: '64' },
+    { key: 'HKCU\\Software\\Brave-Browser\\NativeMessagingHosts', view: '32' },
+  ],
 };
 
 const ALL_BROWSERS: Browser[] = ['chrome', 'edge', 'brave'];
@@ -44,11 +62,11 @@ function projectExtensionDir(): string {
   return join(projectRoot(), 'extension');
 }
 
-function buildManifest(extensionIds: string[], batPath: string): Record<string, unknown> {
+function buildManifest(extensionIds: string[], hostPath: string): Record<string, unknown> {
   return {
     name: HOST_NAME,
     description: 'Page Save server launcher',
-    path: batPath,
+    path: hostPath,
     type: 'stdio',
     allowed_origins: extensionIds.map((id) => `chrome-extension://${id}/`),
   };
@@ -59,18 +77,18 @@ function writeManifest(manifestPath: string, manifest: Record<string, unknown>):
 }
 
 /**
- * Register the manifest path under the browser's NativeMessagingHosts key.
+ * Register the manifest path under a browser NativeMessagingHosts key.
  * On Windows, the (Default) value of the host's subkey points at the manifest JSON.
  * Uses `reg add` so we don't need a registry-binding npm package.
  */
-function registerInRegistry(browser: Browser, manifestPath: string): void {
+function registerRegistryTarget(target: RegistryTarget, manifestPath: string): string {
   if (process.platform !== 'win32') {
     throw new Error(`install-launcher currently supports Windows only; got platform: ${process.platform}`);
   }
-  const baseKey = REGISTRY_KEYS[browser];
-  const fullKey = `${baseKey}\\${HOST_NAME}`;
+  const fullKey = `${target.key}\\${HOST_NAME}`;
   const result = spawnSync('reg', [
     'add', fullKey,
+    `/reg:${target.view}`,
     '/ve',                  // (Default) value
     '/t', 'REG_SZ',
     '/d', manifestPath,
@@ -80,6 +98,49 @@ function registerInRegistry(browser: Browser, manifestPath: string): void {
   if (result.status !== 0) {
     throw new Error(`reg add failed: ${result.stderr || result.stdout || 'unknown error'}`);
   }
+
+  return `${fullKey} (/reg:${target.view})`;
+}
+
+function powershellQuote(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+function needsCompile(sourcePath: string, exePath: string): boolean {
+  if (!existsSync(exePath)) return true;
+  return statSync(sourcePath).mtimeMs > statSync(exePath).mtimeMs;
+}
+
+function ensureNativeHostExecutable(root: string): string {
+  const sourcePath = join(root, 'src', 'native-host-wrapper.cs');
+  const exePath = join(root, 'bin', 'page-save-native-host.exe');
+
+  if (!existsSync(sourcePath)) {
+    throw new Error(`Native host wrapper source missing: ${sourcePath}`);
+  }
+  if (!needsCompile(sourcePath, exePath)) {
+    return exePath;
+  }
+
+  const command = [
+    `$ErrorActionPreference = 'Stop'`,
+    `Add-Type -Path ${powershellQuote(sourcePath)} -OutputAssembly ${powershellQuote(exePath)} -OutputType ConsoleApplication`,
+  ].join('; ');
+
+  const result = spawnSync('powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-Command',
+    command,
+  ], { stdio: 'pipe', encoding: 'utf8' });
+
+  if (result.status !== 0 || !existsSync(exePath)) {
+    throw new Error(`native host wrapper compile failed: ${result.stderr || result.stdout || 'unknown error'}`);
+  }
+
+  return exePath;
 }
 
 export function installLauncher(options: InstallOptions): void {
@@ -103,47 +164,45 @@ export function installLauncher(options: InstallOptions): void {
   const browsers = options.browsers && options.browsers.length > 0 ? options.browsers : ALL_BROWSERS;
 
   const root = projectRoot();
-  const batPath = join(root, 'bin', 'page-save-launcher.bat');
+  const nativeHostPath = ensureNativeHostExecutable(root);
   const manifestPath = join(root, 'bin', `${HOST_NAME}.json`);
-  const requiredLaunchFiles = [
-    batPath,
-    join(root, 'bin', 'page-save-server-start.bat'),
-    join(root, 'bin', 'page-save-server-start.vbs'),
-  ];
-
-  for (const file of requiredLaunchFiles) {
-    if (!existsSync(file)) {
-      throw new Error(`Launcher file missing: ${file}. Re-clone or restore the bin launcher files.`);
-    }
-  }
 
   // Manifest is shared across all browsers — they all read the same JSON
   // file from the same path. Only the registry pointers differ.
-  const manifest = buildManifest(extensionIds, batPath);
+  const manifest = buildManifest(extensionIds, nativeHostPath);
   writeManifest(manifestPath, manifest);
 
-  const registered: Browser[] = [];
-  const skipped: { browser: Browser; reason: string }[] = [];
+  const registeredKeys: { browser: Browser; key: string }[] = [];
+  const skipped: { browser: Browser; key: string; reason: string }[] = [];
   for (const browser of browsers) {
-    try {
-      registerInRegistry(browser, manifestPath);
-      registered.push(browser);
-    } catch (err) {
-      skipped.push({ browser, reason: (err as Error).message });
+    for (const target of REGISTRY_TARGETS[browser]) {
+      try {
+        registeredKeys.push({ browser, key: registerRegistryTarget(target, manifestPath) });
+      } catch (err) {
+        skipped.push({
+          browser,
+          key: `${target.key}\\${HOST_NAME} (/reg:${target.view})`,
+          reason: (err as Error).message,
+        });
+      }
     }
   }
+  const registeredBrowsers = [...new Set(registeredKeys.map((entry) => entry.browser))];
 
-  console.log(`Native messaging host registered for: ${registered.join(', ') || '(none)'}`);
+  console.log(`Native messaging host registered for: ${registeredBrowsers.join(', ') || '(none)'}`);
   console.log(`  Manifest: ${manifestPath}`);
-  console.log(`  Launcher: ${batPath}`);
-  if (registered.length > 0) {
+  console.log(`  Launcher: ${nativeHostPath}`);
+  if (registeredKeys.length > 0) {
     console.log(`  Registry keys:`);
-    for (const browser of registered) {
-      console.log(`    ${REGISTRY_KEYS[browser]}\\${HOST_NAME}`);
+    for (const entry of registeredKeys) {
+      console.log(`    ${entry.browser}: ${entry.key}`);
     }
   }
   if (skipped.length > 0) {
-    console.log(`  Skipped: ${skipped.map((s) => `${s.browser} (${s.reason})`).join(', ')}`);
+    console.log(`  Skipped registry keys:`);
+    for (const entry of skipped) {
+      console.log(`    ${entry.browser}: ${entry.key} (${entry.reason})`);
+    }
   }
   if (detected.length > 0) {
     console.log(`  Detected Page Save extension IDs:`);
@@ -158,4 +217,5 @@ export function installLauncher(options: InstallOptions): void {
   }
   console.log(`\nNext step: reload the page-save extension in your browser, then`);
   console.log(`click the "Launch Local Server" button when status shows offline.`);
+  console.log(`If the browser was open before registration and still says "host not found", fully quit and reopen it once.`);
 }

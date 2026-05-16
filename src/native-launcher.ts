@@ -62,11 +62,6 @@ function spawnServerDetached(): void {
   const stdoutPath = pathResolve(root, '.page-save-launched-server.out.log');
   const stderrPath = pathResolve(root, '.page-save-launched-server.err.log');
 
-  if (process.platform === 'win32') {
-    spawnServerWithBatch(root);
-    return;
-  }
-
   const stdout = openSync(stdoutPath, 'a');
   const stderr = openSync(stderrPath, 'a');
 
@@ -86,17 +81,6 @@ function spawnServerDetached(): void {
     closeSync(stdout);
     closeSync(stderr);
   }
-}
-
-function spawnServerWithBatch(root: string): void {
-  const starter = pathResolve(root, 'bin', 'page-save-server-start.vbs');
-  const child = spawn('wscript.exe', [starter], {
-    cwd: root,
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: true,
-  });
-  child.unref();
 }
 
 async function handleStatus(): Promise<LauncherResponse> {

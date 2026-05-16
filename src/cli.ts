@@ -331,6 +331,9 @@ const cliArgs = parseArgs(process.argv);
 
 if (cliArgs.action === 'serve') {
   startServer();
+  // Detached Windows launches can have no interactive stdio; keep the daemon's
+  // event loop explicitly referenced so it stays alive waiting for WebSockets.
+  setInterval(() => undefined, 60_000);
 } else if (cliArgs.action === 'install-launcher') {
   try {
     installLauncher({

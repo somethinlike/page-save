@@ -26,4 +26,5 @@ if not exist "%NODE_EXE%" (
 )
 :found_node
 
-powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%NODE_EXE%' -ArgumentList '--experimental-strip-types','%PROJECT_DIR%\src\cli.ts','serve' -WorkingDirectory '%PROJECT_DIR%' -WindowStyle Hidden"
+"%NODE_EXE%" --experimental-strip-types "%PROJECT_DIR%\src\cli.ts" serve >>"%OUT_LOG%" 2>>"%ERR_LOG%"
+exit /b %ERRORLEVEL%

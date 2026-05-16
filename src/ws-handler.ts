@@ -1,5 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { randomUUID } from 'node:crypto';
+import { createServer, type Server as HttpServer } from 'node:http';
 import { PORT } from './types.ts';
 import type { WsRequest, WsResponse, TabInfo, SavePageResult, GetTextResult, ExtractionResult, BatchResult, DomProbeResult, YoutubeHtmlResult } from './types.ts';
 import { writeMhtml } from './file-writer.ts';
@@ -8,6 +9,8 @@ import { generateSchema, formatSchemaSummary, saveSchema } from './schema-sugges
 import { extractSubtitles } from './youtube-extractor.ts';
 import { createWatch, listWatches, processWatchResult } from './watch.ts';
 import { SAVE_DIR } from './types.ts';
+
+let activeServer: { httpServer: HttpServer; wss: WebSocketServer } | null = null;
 
 interface PendingRequest {
   resolve: (value: WsResponse) => void;
@@ -619,11 +622,24 @@ async function handleCliCommand(
 }
 
 export function startServer(): void {
-  const wss = new WebSocketServer({ port: PORT });
+  if (activeServer) return;
+
+  const httpServer = createServer();
+  const wss = new WebSocketServer({ server: httpServer });
+  activeServer = { httpServer, wss };
   let extensionSocket: WebSocket | null = null;
   const pendingRequests = new Map<string, PendingRequest>();
 
-  console.log(`[page-save] Server listening on port ${PORT}`);
+  httpServer.listen(PORT, () => {
+    console.log(`[page-save] Server listening on port ${PORT}`);
+  });
+  httpServer.on('close', () => {
+    if (activeServer?.httpServer === httpServer) activeServer = null;
+  });
+  httpServer.on('error', (err) => {
+    console.error(`[page-save] Server error: ${(err as Error).message}`);
+    if (activeServer?.httpServer === httpServer) activeServer = null;
+  });
 
   wss.on('connection', (socket) => {
     let isExtension = false;
