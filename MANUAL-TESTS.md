@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.05.16 (Phases 1-16 complete)
+**Updated:** 2026.05.18 (Phases 1-17 complete)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -567,3 +567,17 @@
 - [ ] Re-run a saved sardine search session before/after Phase 15
 - [ ] Compare `confidence.fields[where field='price'].rate` in `manifest.json`
 - [ ] Phase 15 rate should be > Phase 13 rate for the `price` field on amazon.com/search
+
+---
+
+## 25. Gemini Conversation Schema (Phase 17)
+<!-- added: 2026 May 18 17:16.0 -->
+
+### 25.1 Assistant Responses Only
+- [ ] Open a Gemini conversation at `gemini.google.com/gem/...` or `gemini.google.com/app/...`
+- [ ] Reload the extension so `extension/schemas/gemini.google.com.json` is loaded
+- [ ] Run `page-save extract --tab gemini` or select the Gemini tab in the side panel with schema mode enabled
+- [ ] Output uses schema `gemini.google.com/gemConversation` or `gemini.google.com/appConversation`
+- [ ] Each item has a `response` field containing only Gemini/model response text
+- [ ] Output does not include Gemini UI labels such as `You said`, `Copy prompt`, `Listen`, `Share`, or sidebar text
+- [ ] User prompts such as `Continue` are not emitted in the default schema output

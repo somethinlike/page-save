@@ -1,0 +1,32 @@
+{
+  "domain": "gemini.google.com",
+  "version": "1",
+  "status": "experimental",
+  "description": "Google Gemini conversations — extracts only assistant response text from each conversation turn",
+  "pages": {
+    "gemConversation": {
+      "urlPattern": "/gem/",
+      "description": "Gemini custom Gem conversation page",
+      "scrollDepth": "none",
+      "container": ".conversation-container.message-actions-hover-boundary",
+      "fields": {
+        "response": {
+          "selector": "model-response .markdown.markdown-main-panel",
+          "type": "text"
+        }
+      }
+    },
+    "appConversation": {
+      "urlPattern": "/app/",
+      "description": "Gemini app conversation page",
+      "scrollDepth": "none",
+      "container": ".conversation-container.message-actions-hover-boundary",
+      "fields": {
+        "response": {
+          "selector": "model-response .markdown.markdown-main-panel",
+          "type": "text"
+        }
+      }
+    }
+  }
+}
