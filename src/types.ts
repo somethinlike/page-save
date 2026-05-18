@@ -68,6 +68,8 @@ export interface RawResult {
   tabId?: number;
   text: string;
   html?: string;
+  mhtml?: string; // base64 MHTML from chrome.pageCapture.saveAsMHTML()
+  sourceCaptureError?: string;
 }
 
 export interface ErrorResult {

@@ -160,7 +160,7 @@ export function formatStructuredMarkdown(result: StructuredResult): string {
 }
 
 /**
- * Format a raw text extraction result as markdown.
+ * Format text captured from a raw page into LLM-readable markdown.
  */
 export function formatRawMarkdown(result: RawResult): string {
   const lines: string[] = [];
@@ -168,7 +168,7 @@ export function formatRawMarkdown(result: RawResult): string {
 
   lines.push(`# ${result.title}`);
   lines.push('');
-  lines.push(`Extracted: ${timestamp} | Schema: none (raw text)`);
+  lines.push(`Extracted: ${timestamp} | Schema: none (raw-derived reduction)`);
   lines.push(`Source: ${result.url}`);
   lines.push('');
   lines.push('---');

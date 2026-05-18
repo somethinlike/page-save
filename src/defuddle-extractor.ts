@@ -1,7 +1,7 @@
 /**
  * defuddle-extractor.ts — Clean article extraction using Defuddle
  *
- * Replaces raw innerText fallback with Defuddle-powered extraction.
+ * Produces reduced markdown from HTML when a page has no schema.
  * Strips nav bars, ads, sidebars, footers — outputs clean article content
  * as markdown. Uses defuddle/node which handles DOM parsing internally.
  */

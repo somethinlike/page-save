@@ -22,6 +22,15 @@ export interface SessionInfo {
   timestamp: string;
 }
 
+interface WrittenPageFiles {
+  /** Primary LLM-readable artifact for this page. */
+  file?: string;
+  /** Markdown/token-reduced artifact for this page. */
+  reducedFile?: string;
+  /** Untouched or closest-available browser source capture for this page. */
+  rawFile?: string;
+}
+
 /**
  * Create a new session directory with reduced/ and raw/ subdirs.
  * Timestamp format: YYYY-MM-DD_HHmm (CST approximation via local time)
@@ -73,15 +82,33 @@ function writeStructured(session: SessionInfo, result: StructuredResult, index: 
   return filepath;
 }
 
+function writeRawSource(session: SessionInfo, result: RawResult, index: number): string | undefined {
+  const basename = sanitizeFilename(`${result.domain}-${index + 1}`);
+
+  if (result.mhtml) {
+    const filepath = join(session.rawDir, `${basename}.mhtml`);
+    writeFileSync(filepath, Buffer.from(result.mhtml, 'base64'));
+    return filepath;
+  }
+
+  if (result.html) {
+    const filepath = join(session.rawDir, `${basename}.html`);
+    writeFileSync(filepath, result.html, 'utf-8');
+    return filepath;
+  }
+
+  return undefined;
+}
+
 /**
- * Write a raw text result to the raw/ directory.
+ * Write an LLM-readable reduction for a raw extraction result to reduced/.
  * If HTML is available, uses Defuddle for clean article extraction.
  */
-async function writeRaw(session: SessionInfo, result: RawResult, index: number): Promise<string> {
+async function writeRawReduction(session: SessionInfo, result: RawResult, index: number): Promise<string> {
   const filename = sanitizeFilename(
-    `${result.domain}-${index + 1}.md`
+    `${result.domain}-raw-${index + 1}.md`
   );
-  const filepath = join(session.rawDir, filename);
+  const filepath = join(session.reducedDir, filename);
 
   // Try Defuddle extraction if HTML is available
   if (result.html) {
@@ -102,30 +129,30 @@ async function writeRaw(session: SessionInfo, result: RawResult, index: number):
         return filepath;
       }
     } catch {
-      // Defuddle failed — fall through to raw text
+      // Defuddle failed — fall through to text-derived markdown
     }
   }
 
-  // Fallback: plain text output
+  // Fallback: text-derived markdown output
   const markdown = formatRawMarkdown(result);
   writeFileSync(filepath, markdown, 'utf-8');
   return filepath;
 }
 
 /**
- * Copy GUIDANCE.md template into the raw/ directory if there are raw results.
+ * Write an LLM guidance note beside reduced markdown for raw results.
  */
 function writeGuidance(session: SessionInfo): void {
-  const dest = join(session.rawDir, 'GUIDANCE.md');
+  const dest = join(session.reducedDir, 'GUIDANCE.md');
   if (existsSync(GUIDANCE_SOURCE)) {
     copyFileSync(GUIDANCE_SOURCE, dest);
   } else {
     // Inline fallback if template file is missing
     writeFileSync(dest, [
-      '# AI Guidance for Raw Pages',
+      '# LLM Guidance for Raw-Derived Reductions',
       '',
-      'These pages did not match any known extraction schema.',
-      'The full page text is preserved as-is.',
+      'These markdown files were derived from pages that did not match any known extraction schema.',
+      'Use the reduced markdown first. If fidelity matters, inspect the untouched source capture in ../raw/.',
       '',
       '## What to extract',
       '- Product name / title',
@@ -135,12 +162,23 @@ function writeGuidance(session: SessionInfo): void {
       '- Availability / shipping info',
       '',
       '## Proposing a new schema',
-      'If you see a consistent pattern across multiple raw pages from the same domain,',
+      'If you see a consistent pattern across multiple raw-derived reductions from the same domain,',
       'you can propose a new schema. See `schemas/_template.json` in the page-save project',
       'for the format specification.',
       '',
     ].join('\n'), 'utf-8');
   }
+}
+
+async function writeRaw(session: SessionInfo, result: RawResult, index: number): Promise<WrittenPageFiles> {
+  const rawFile = writeRawSource(session, result, index);
+  const reducedFile = await writeRawReduction(session, result, index);
+
+  return {
+    file: reducedFile,
+    reducedFile,
+    rawFile,
+  };
 }
 
 /**
@@ -149,22 +187,37 @@ function writeGuidance(session: SessionInfo): void {
 function writeManifest(
   session: SessionInfo,
   results: ExtractionResult[],
-  files: string[],
+  files: WrittenPageFiles[],
   confidence: PageConfidence[],
 ): void {
+  const structuredCount = results.filter(r => r.type === 'structured').length;
+  const rawCount = results.filter(r => r.type === 'raw').length;
+  const errorCount = results.filter(r => r.type === 'error').length;
+
   const manifest: Record<string, unknown> = {
     timestamp: session.timestamp,
     totalPages: results.length,
-    reduced: results.filter(r => r.type === 'structured').length,
-    raw: results.filter(r => r.type === 'raw').length,
-    errors: results.filter(r => r.type === 'error').length,
-    pages: results.map((r, i) => ({
-      type: r.type,
-      domain: 'domain' in r ? r.domain : undefined,
-      url: 'url' in r ? r.url : undefined,
-      title: 'title' in r ? r.title : undefined,
-      file: files[i] || null,
-    })),
+    structured: structuredCount,
+    raw: rawCount,
+    reduced: files.filter(f => f.reducedFile).length,
+    rawSources: files.filter(f => f.rawFile).length,
+    errors: errorCount,
+    pages: results.map((r, i) => {
+      const written = files[i] || {};
+      const page: Record<string, unknown> = {
+        type: r.type,
+        domain: 'domain' in r ? r.domain : undefined,
+        url: 'url' in r ? r.url : undefined,
+        title: 'title' in r ? r.title : undefined,
+        file: written.file || null,
+      };
+
+      if (written.reducedFile) page.reducedFile = written.reducedFile;
+      if (written.rawFile) page.rawFile = written.rawFile;
+      if (r.type === 'raw' && r.sourceCaptureError) page.rawSourceError = r.sourceCaptureError;
+
+      return page;
+    }),
   };
 
   if (confidence.length > 0) {
@@ -451,15 +504,12 @@ export function computeConfidence(results: ExtractionResult[]): PageConfidence[]
 }
 
 /**
- * Process an array of extraction results into a session folder.
- * Returns the session directory path.
+ * Process extraction results into an existing session folder.
+ * @internal exported for tests and accumulation mode.
  */
-export async function writeSession(results: ExtractionResult[]): Promise<string> {
-  ensureMasterReadme();
-  const session = createSession();
-
-  // 1. Deduplicate across pages (same product on multiple search pages → keep first)
-  const dupsRemoved = deduplicateResults(results);
+export async function writeSessionFiles(session: SessionInfo, results: ExtractionResult[]): Promise<void> {
+  // 1. Deduplicate across pages (same product on multiple search pages -> keep first)
+  deduplicateResults(results);
 
   // 2. Compute confidence scores (after dedup, before interning mutates values)
   const confidence = computeConfidence(results);
@@ -469,7 +519,7 @@ export async function writeSession(results: ExtractionResult[]): Promise<string>
   applySymbols(results, symbolTable);
   writeRefsFile(session, symbolTable);
 
-  const files: string[] = [];
+  const files: WrittenPageFiles[] = [];
 
   let structuredIndex = 0;
   let rawIndex = 0;
@@ -478,13 +528,13 @@ export async function writeSession(results: ExtractionResult[]): Promise<string>
   for (const result of results) {
     if (result.type === 'structured') {
       const path = writeStructured(session, result, structuredIndex++);
-      files.push(path);
+      files.push({ file: path, reducedFile: path });
     } else if (result.type === 'raw') {
-      const path = await writeRaw(session, result, rawIndex++);
-      files.push(path);
+      const written = await writeRaw(session, result, rawIndex++);
+      files.push(written);
       hasRaw = true;
     } else {
-      files.push(''); // error results get no file
+      files.push({}); // error results get no file
     }
   }
 
@@ -493,7 +543,16 @@ export async function writeSession(results: ExtractionResult[]): Promise<string>
   }
 
   writeManifest(session, results, files, confidence);
+}
 
+/**
+ * Process an array of extraction results into a session folder.
+ * Returns the session directory path.
+ */
+export async function writeSession(results: ExtractionResult[]): Promise<string> {
+  ensureMasterReadme();
+  const session = createSession();
+  await writeSessionFiles(session, results);
   return session.dir;
 }
 
@@ -563,37 +622,7 @@ export async function finalizeSession(): Promise<string> {
     return session.dir;
   }
 
-  // Same pipeline as writeSession: dedup → confidence → interning → write
-  deduplicateResults(results);
-  const confidence = computeConfidence(results);
-  const symbolTable = buildSymbolTable(results);
-  applySymbols(results, symbolTable);
-  writeRefsFile(session, symbolTable);
-
-  const files: string[] = [];
-  let structuredIndex = 0;
-  let rawIndex = 0;
-  let hasRaw = false;
-
-  for (const result of results) {
-    if (result.type === 'structured') {
-      const path = writeStructured(session, result, structuredIndex++);
-      files.push(path);
-    } else if (result.type === 'raw') {
-      const path = await writeRaw(session, result, rawIndex++);
-      files.push(path);
-      hasRaw = true;
-    } else {
-      files.push('');
-    }
-  }
-
-  if (hasRaw) {
-    writeGuidance(session);
-  }
-
-  writeManifest(session, results, files, confidence);
-
+  await writeSessionFiles(session, results);
   return session.dir;
 }
 

@@ -127,6 +127,17 @@ The extension uses privileged Chrome APIs that sites cannot block:
 - `chrome.pageCapture.saveAsMHTML()` — captures full page with all resources
 - `chrome.scripting.executeScript()` — extracts text in an isolated world
 
+For extraction sessions, page-save separates source preservation from LLM
+ingestion:
+
+- `raw/` contains the untouched browser capture, equivalent to "Save Page As"
+  MHTML when Chromium can provide it.
+- `reduced/` contains the LLM-readable markdown: schema output when a schema is
+  selected, or a reduced fallback derived from raw page text/HTML when Raw mode
+  is selected.
+- `manifest.json` points each page at its primary reduced `file` and, when
+  available, its source `rawFile`.
+
 ## Why Not Just Use Browser MCP / Chrome DevTools MCP?
 
 Those tools inject content scripts into pages, which gets blocked by CSP on sites like Reddit. Page Save operates at the browser engine level — there's nothing for the site to block.

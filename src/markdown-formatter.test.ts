@@ -177,7 +177,7 @@ describe('formatStructuredMarkdown', () => {
 });
 
 describe('formatRawMarkdown', () => {
-  it('formats raw text extraction with title, url, and separator', () => {
+  it('formats raw-derived markdown with title, url, and separator', () => {
     const result: RawResult = {
       type: 'raw',
       domain: 'example.com',
@@ -189,7 +189,7 @@ describe('formatRawMarkdown', () => {
     const md = formatRawMarkdown(result);
 
     expect(md).toContain('# Example Article');
-    expect(md).toContain('Schema: none (raw text)');
+    expect(md).toContain('Schema: none (raw-derived reduction)');
     expect(md).toContain('Source: https://example.com/article');
     expect(md).toContain('---');
     expect(md).toContain('This is the raw page content.');

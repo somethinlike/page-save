@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.05.18 (Phases 1-17 complete)
+**Updated:** 2026.05.18 (Phases 1-18 complete)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -108,20 +108,22 @@
 ### 5.3 Raw Fallback — Unknown Domain
 - [ ] Open a page from a site without a schema (e.g., any small e-commerce site)
 - [ ] Run `page-save extract --tab <pattern>`
-- [ ] Should save to `raw/` folder with full text
-- [ ] `GUIDANCE.md` should appear in the `raw/` folder
+- [ ] Should save an untouched browser source capture to `raw/<domain>-1.mhtml` when Chromium capture succeeds
+- [ ] Should save LLM-readable markdown to `reduced/<domain>-raw-1.md`
+- [ ] `GUIDANCE.md` should appear in the `reduced/` folder, not `raw/`
 
 ### 5.4 Mixed Batch — Amazon + Unknown
 - [ ] Open Amazon tabs AND a non-schema site tab
 - [ ] Run `page-save extract-all` (no --domain filter)
-- [ ] Session should have files in both `reduced/` and `raw/`
+- [ ] Session should have LLM-readable files in `reduced/` and untouched source captures in `raw/`
 - [ ] `manifest.json` shows correct type for each page
 
 ### 5.5 Session Folder Structure
 - [ ] After any extraction, verify folder: `saved-pages/sessions/YYYY-MM-DD_HHmm/`
 - [ ] Contains `manifest.json`, `reduced/`, `raw/`
-- [ ] First session ever creates `saved-pages/README.md` (AI guidance master file)
-- [ ] Sessions with raw pages have `raw/GUIDANCE.md`
+- [ ] First session ever creates `saved-pages/README.md` (LLM guidance master file)
+- [ ] Sessions with raw pages have `reduced/GUIDANCE.md`
+- [ ] Raw result entries in `manifest.json` include `file`, `reducedFile`, and `rawFile` when MHTML capture succeeds
 
 ### 5.6 Walmart Search
 - [ ] Open Walmart search results
@@ -233,7 +235,7 @@
 ### 9.3 Pagination on Non-Schema Site
 - [ ] Open a page with no schema
 - [ ] Run `page-save extract-pages --tab <pattern>`
-- [ ] Should fall back to single raw text extraction
+- [ ] Should fall back to one raw result with an MHTML source capture and reduced markdown
 
 ---
 
@@ -274,14 +276,16 @@
 ### 12.1 Article Extraction
 - [ ] Open a news article or blog post (no schema)
 - [ ] Run `page-save extract --tab <pattern>`
-- [ ] Raw output should be clean markdown — NO nav bars, ads, sidebars
+- [ ] Reduced output should be clean markdown in `reduced/` — NO nav bars, ads, sidebars
+- [ ] Untouched source capture should be present in `raw/` when Chromium MHTML capture succeeds
 - [ ] Has title, author, word count metadata at top
 - [ ] Content is the article body only
 
 ### 12.2 Defuddle Fallback
 - [ ] Open a page that Defuddle can't parse well (e.g., a form-heavy SPA)
 - [ ] Run `page-save extract --tab <pattern>`
-- [ ] Should fall back to raw innerText output
+- [ ] Should fall back to text-derived markdown in `reduced/`
+- [ ] `raw/` should still contain the untouched source capture when available
 
 ---
 
@@ -421,7 +425,7 @@
 - [ ] Set Amazon to `prices`, select an Amazon search tab, click `Save Selected`
 - [ ] Preview pane shows items containing only `asin`, `title`, `price` (no rating, no reviewCount, no prime)
 - [ ] Confirm save — `manifest.json` records `variant: "prices"` for that result
-- [ ] Set Amazon to `Raw`, repeat — output goes to `raw/`, not `reduced/`
+- [ ] Set Amazon to `Raw`, repeat — `raw/` contains the untouched MHTML source and `reduced/` contains the raw-derived markdown
 
 ### 22.4 CLI --variant Flag
 - [ ] Open an Amazon search tab
@@ -431,7 +435,7 @@
 
 ### 22.5 CLI --raw Flag
 - [ ] Open an Amazon search tab
-- [ ] `page-save extract --tab amazon --raw` — bypasses schema, output is raw text in `raw/` (Defuddle-cleaned)
+- [ ] `page-save extract --tab amazon --raw` — bypasses schema, saves MHTML source in `raw/`, and writes Defuddle/text-derived markdown in `reduced/`
 - [ ] `page-save extract --tab amazon --variant raw` (alias) — same behavior
 
 ### 22.6 Variant On Unknown Domain
@@ -581,3 +585,20 @@
 - [ ] Each item has a `response` field containing only Gemini/model response text
 - [ ] Output does not include Gemini UI labels such as `You said`, `Copy prompt`, `Listen`, `Share`, or sidebar text
 - [ ] User prompts such as `Continue` are not emitted in the default schema output
+
+---
+
+## 26. Raw Source Preservation (Phase 18)
+<!-- added: 2026 May 18 17:38.0 -->
+
+### 26.1 Raw Mode Artifact Split
+- [ ] Open any normal webpage and set its side panel dropdown to `Raw`
+- [ ] Click `Save Selected`, confirm the preview, and open the newest session folder
+- [ ] `raw/` contains an `.mhtml` file for the page and does not contain `GUIDANCE.md`
+- [ ] `reduced/` contains a `*-raw-1.md` markdown file plus `GUIDANCE.md`
+- [ ] `manifest.json` entry for the raw page has `file` and `reducedFile` pointing at the markdown file, and `rawFile` pointing at the `.mhtml`
+
+### 26.2 CLI Raw Mode
+- [ ] Run `page-save extract --tab <pattern> --raw`
+- [ ] Verify the same artifact split: MHTML source in `raw/`, LLM-readable markdown in `reduced/`
+- [ ] Open the `.mhtml` file in Chrome and verify it renders like the browser's Save Page As output

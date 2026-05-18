@@ -829,7 +829,8 @@ async function extractStructured(tabId, url, options = {}) {
     };
   }
 
-  // No schema — fall back to raw text + HTML for Defuddle processing
+  // No schema — fall back to text + HTML for reduced markdown.
+  // The service worker attaches the untouched MHTML source before saving.
   const results = await chrome.scripting.executeScript({
     target: { tabId },
     func: () => ({

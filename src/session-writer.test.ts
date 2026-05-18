@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   computeConfidence,
   parseTsvFromMarkdown,
   applyDeltaAnnotations,
+  writeSessionFiles,
 } from './session-writer.ts';
-import type { ExtractionResult, StructuredResult } from './types.ts';
+import type { ExtractionResult, StructuredResult, RawResult } from './types.ts';
 
 // --- Test fixtures ---
 
@@ -22,6 +26,21 @@ function makeStructured(
     title: 'Test',
     data: { items, count: items.length },
   };
+}
+
+function makeTestSession() {
+  const dir = mkdtempSync(join(tmpdir(), 'page-save-session-'));
+  const session = {
+    dir,
+    reducedDir: join(dir, 'reduced'),
+    rawDir: join(dir, 'raw'),
+    timestamp: 'test-session',
+  };
+
+  mkdirSync(session.reducedDir, { recursive: true });
+  mkdirSync(session.rawDir, { recursive: true });
+
+  return session;
 }
 
 describe('computeConfidence', () => {
@@ -315,5 +334,41 @@ describe('applyDeltaAnnotations', () => {
 
     const items = (results[0] as StructuredResult).data.items!;
     expect(items[0].__delta).toBeUndefined();
+  });
+});
+
+describe('writeSessionFiles', () => {
+  it('writes raw MHTML source separately from raw-derived reduced markdown', async () => {
+    const session = makeTestSession();
+    const source = 'MIME-Version: 1.0\r\nContent-Type: multipart/related\r\n\r\n<html><body>Untouched source</body></html>';
+    const result: RawResult = {
+      type: 'raw',
+      domain: 'example.com',
+      url: 'https://example.com/article',
+      title: 'Example Article',
+      text: 'Readable fallback text for the LLM-facing reduced artifact.',
+      mhtml: Buffer.from(source, 'utf-8').toString('base64'),
+    };
+
+    try {
+      await writeSessionFiles(session, [result]);
+
+      const rawFile = join(session.rawDir, 'example.com-1.mhtml');
+      const reducedFile = join(session.reducedDir, 'example.com-raw-1.md');
+      const manifest = JSON.parse(readFileSync(join(session.dir, 'manifest.json'), 'utf-8'));
+
+      expect(readFileSync(rawFile, 'utf-8')).toBe(source);
+      expect(readFileSync(reducedFile, 'utf-8')).toContain('Schema: none (raw-derived reduction)');
+      expect(existsSync(join(session.reducedDir, 'GUIDANCE.md'))).toBe(true);
+      expect(existsSync(join(session.rawDir, 'GUIDANCE.md'))).toBe(false);
+      expect(manifest.raw).toBe(1);
+      expect(manifest.reduced).toBe(1);
+      expect(manifest.rawSources).toBe(1);
+      expect(manifest.pages[0].file).toBe(reducedFile);
+      expect(manifest.pages[0].reducedFile).toBe(reducedFile);
+      expect(manifest.pages[0].rawFile).toBe(rawFile);
+    } finally {
+      rmSync(session.dir, { recursive: true, force: true });
+    }
   });
 });

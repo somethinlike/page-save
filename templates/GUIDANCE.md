@@ -1,12 +1,14 @@
-# AI Guidance for Raw Pages
+# LLM Guidance for Raw-Derived Reductions
 
-These pages did not match any known extraction schema. The full page text is preserved as-is for you to analyze.
+These markdown files were derived from pages that did not match any known extraction schema, or from pages the user explicitly saved in Raw mode. Treat the markdown in this folder as the first-pass LLM input.
+
+The untouched browser captures live in `../raw/` as MHTML files when Chrome could capture them. Use those source files only when you need audit-level fidelity, need to recover information missing from the reduced markdown, or are designing a better schema.
 
 **Note:** If you see values starting with `~` (e.g., `~T1`, `~U3`), these are interned references. Look them up in `refs.txt` in the session root folder.
 
 ## What to extract
 
-When processing raw pages, look for:
+When processing raw-derived reductions, look for:
 - **Product name / title** — the primary item being sold or described
 - **Price** — current price, original price, discount percentage
 - **Rating** — star rating and total review count
@@ -22,7 +24,7 @@ Structure your extraction as a markdown table or key-value list, matching the fo
 
 ## Proposing a new schema
 
-If you see a consistent DOM pattern across multiple raw pages from the same domain, you can propose an extraction schema. The schema format is JSON:
+If you see a consistent DOM pattern across multiple raw-derived reductions from the same domain, you can propose an extraction schema. Use the corresponding MHTML files in `../raw/` as source evidence when the markdown reduction is not enough. The schema format is JSON:
 
 ```json
 {

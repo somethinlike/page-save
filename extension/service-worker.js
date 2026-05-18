@@ -222,8 +222,7 @@ async function handleSavePage(id, tabId) {
   const resolvedId = await resolveTabId(tabId);
   const tab = await chrome.tabs.get(resolvedId);
 
-  const blob = await chrome.pageCapture.saveAsMHTML({ tabId: resolvedId });
-  const base64 = await blobToBase64(blob);
+  const base64 = await captureTabMhtml(resolvedId);
 
   send({
     id,
@@ -233,6 +232,36 @@ async function handleSavePage(id, tabId) {
       url: tab.url || '',
     },
   });
+}
+
+async function captureTabMhtml(tabId) {
+  const blob = await chrome.pageCapture.saveAsMHTML({ tabId });
+  return blobToBase64(blob);
+}
+
+async function attachRawSource(result, tabId) {
+  if (!result || result.type !== 'raw' || !tabId || result.mhtml) return result;
+
+  try {
+    result.mhtml = await captureTabMhtml(tabId);
+  } catch (err) {
+    result.sourceCaptureError = err.message || String(err);
+    console.warn('[page-save] Raw MHTML capture failed:', result.sourceCaptureError, err);
+  }
+
+  return result;
+}
+
+async function attachRawSources(results) {
+  if (!Array.isArray(results)) return results;
+
+  for (const result of results) {
+    if (result?.type === 'raw' && result.tabId) {
+      await attachRawSource(result, result.tabId);
+    }
+  }
+
+  return results;
 }
 
 async function handleGetText(id, tabId) {
@@ -262,6 +291,8 @@ async function handleGetStructured(id, tabId, options = {}) {
 
   const result = await globalThis.extractors.extractStructured(resolvedId, tab.url, options);
   result.title = tab.title || 'untitled';
+  result.tabId = resolvedId;
+  await attachRawSource(result, resolvedId);
 
   send({ id, result });
 }
@@ -330,6 +361,8 @@ async function handleBatchUrls(id, urls, options = {}) {
           const result = await globalThis.extractors.extractStructured(newTab.id, url, options);
           const tab = await chrome.tabs.get(newTab.id);
           result.title = tab.title || 'untitled';
+          result.tabId = newTab.id;
+          await attachRawSource(result, newTab.id);
 
           // Close tab
           await chrome.tabs.remove(newTab.id);
@@ -401,6 +434,11 @@ async function handleGetStructuredPaginated(id, tabId, maxPages, options = {}) {
   const resolvedId = await resolveTabId(tabId);
   const tab = await chrome.tabs.get(resolvedId);
   const results = await globalThis.extractors.extractWithPagination(resolvedId, tab.url, maxPages || 10, options);
+  for (const result of results) {
+    result.title = result.title || tab.title || 'untitled';
+    result.tabId = resolvedId;
+    await attachRawSource(result, resolvedId);
+  }
   send({ id, result: { results, count: results.length } });
 }
 
@@ -424,6 +462,7 @@ async function handleGetStructuredBatch(id, tabIds, options = {}) {
           const result = await globalThis.extractors.extractStructured(tid, tab.url, tabOpts);
           result.title = tab.title || 'untitled';
           result.tabId = tid;
+          await attachRawSource(result, tid);
           return result;
         } catch (err) {
           return { tabId: tid, type: 'error', error: err.message || String(err) };
@@ -467,8 +506,7 @@ chrome.commands.onCommand.addListener(async (command) => {
       return;
     }
 
-    const blob = await chrome.pageCapture.saveAsMHTML({ tabId: activeTab.id });
-    const base64 = await blobToBase64(blob);
+    const base64 = await captureTabMhtml(activeTab.id);
 
     send({
       type: 'shortcut-save',
@@ -824,6 +862,8 @@ async function handleSaveFilteredResults(results) {
     return { error: 'Node.js server not connected. Start the page-save server.' };
   }
 
+  await attachRawSources(results);
+
   return new Promise((resolve) => {
     const id = crypto.randomUUID();
     const timeout = setTimeout(() => {
@@ -876,6 +916,7 @@ async function handleBatchExtractFromPanel(tabIds) {
           const result = await globalThis.extractors.extractStructured(tid, tab.url);
           result.title = tab.title || 'untitled';
           result.tabId = tid;
+          await attachRawSource(result, tid);
           return result;
         } catch (err) {
           return { tabId: tid, type: 'error', error: err.message || String(err) };

@@ -1,6 +1,6 @@
-# Page Save — AI Browsing Assistant Output
+# Page Save — LLM Browsing Assistant Output
 
-This folder contains structured web page extractions created by [page-save](https://github.com/somethinlike/page-save), a Chrome extension + Node.js bridge that captures and reduces web content for AI consumption.
+This folder contains structured web page extractions created by [page-save](https://github.com/somethinlike/page-save), a Chrome extension + Node.js bridge that captures and reduces web content for LLM consumption.
 
 ## How it works
 
@@ -18,28 +18,30 @@ saved-pages/
 │   └── YYYY-MM-DD_HHmm/  ← One folder per save session
 │       ├── manifest.json  ← Index of all pages in this session
 │       ├── refs.txt       ← Symbol table (interned references)
-│       ├── reduced/       ← Pages with schema-based extraction (structured, minimal)
-│       │   └── *.md       ← Markdown with tables or key-value product data
-│       └── raw/           ← Pages without a matching schema (full text dump)
-│           ├── GUIDANCE.md ← Instructions for processing raw pages
-│           └── *.md       ← Full innerText of the page
+│       ├── reduced/       ← LLM-readable markdown (schema output or reduced fallback)
+│       │   ├── GUIDANCE.md ← Instructions for raw-derived reductions, when present
+│       │   └── *.md       ← Markdown with compact tables, key-value data, or reduced text
+│       └── raw/           ← Untouched browser source captures
+│           └── *.mhtml    ← Browser Save Page As / MHTML capture when available
 ```
 
 ## How to read sessions
 
-1. **Start with `manifest.json`** — it lists every page, its type (structured/raw/error), source URL, and output file
-2. **Read `reduced/` first** — these are pre-processed. Product data is already in tables or key-value format. Minimal tokens.
-3. **Read `raw/` if needed** — these are full text dumps. Refer to `GUIDANCE.md` in the raw folder for extraction instructions.
+1. **Start with `manifest.json`** — it lists every page, its type (structured/raw/error), source URL, primary LLM-readable `file`, and any untouched `rawFile`
+2. **Read `reduced/` first** — these are pre-processed. Product data is already in tables, key-value format, or clean fallback markdown. Minimal tokens.
+3. **Open `raw/` only when fidelity matters** — these are source captures for auditing, schema work, or recovering information the reduction missed.
 
 ## What "reduced" means
 
-A **reduced** file was extracted using a domain-specific schema (e.g., `amazon.com.json`). The schema defines CSS selectors that target exactly the product data fields — title, price, rating, features — and ignores navigation, ads, recommendations, and tracking noise. A 42KB Amazon search page becomes a ~2KB markdown table.
+A **reduced** file is the artifact intended for LLM consumption. The best case is a domain-specific schema (e.g., `amazon.com.json`) that targets exactly the relevant fields — title, price, rating, features — and ignores navigation, ads, recommendations, and tracking noise. A 42KB Amazon search page becomes a ~2KB markdown table.
+
+When a page has no schema or the user explicitly chooses Raw mode, page-save still writes an LLM-readable reduction in `reduced/`: Defuddle-cleaned article markdown when possible, otherwise compact markdown from the page text.
 
 ## What "raw" means
 
-A **raw** file is the full `document.body.innerText` of a page that had no matching schema. It includes everything — nav bars, sidebars, footers. You (the AI) should extract the relevant data following the instructions in `GUIDANCE.md`.
+A **raw** file is the untouched browser capture, equivalent to the browser's "Save Page As" MHTML output. It preserves the rendered page source and resources for auditability. It is not the first-pass LLM input because it is intentionally large and unreduced.
 
-If you encounter multiple raw pages from the same domain with a consistent structure, consider proposing a new schema. See `GUIDANCE.md` for the schema format.
+If you encounter multiple raw-derived reductions from the same domain with a consistent structure, consider proposing a new schema. See `reduced/GUIDANCE.md` for the schema format.
 
 ## Interned references (~symbols)
 
