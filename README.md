@@ -94,8 +94,11 @@ connection port, project path, Node.js runtime, and log paths. Keep that
 window open while using the extension; closing it stops the server.
 
 The launcher refuses to spawn a duplicate when the port is already bound,
-debounces rapid clicks, and reports a clear error if something else is
-holding port 7224.
+debounces rapid clicks in both the extension and the Windows URL handler, and
+reports a clear error if something else is holding port 7224. On Windows, once
+`page-save://start` has been accepted, the extension does not also fire the
+native messaging start path; this keeps slow launches from opening two server
+windows.
 
 ## Usage
 

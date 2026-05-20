@@ -613,7 +613,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // --- Launch Server (Native Messaging) ---------------------------------------
 const LAUNCH_COOLDOWN_MS = 5000;
 const POST_LAUNCH_POLL_INTERVAL_MS = 400;
-const POST_LAUNCH_TIMEOUT_MS = 10000;
+const POST_LAUNCH_TIMEOUT_MS = 15000;
 
 let lastLaunchAttemptAt = 0;
 
@@ -690,7 +690,7 @@ function getPlatformInfo() {
  *   3. Launch activation — Windows prefers page-save://start so it can open
  *      the Task Scheduler-backed command window. macOS/Linux prefer native
  *      messaging, which opens a terminal window through the generated launcher.
- *   4. Post-launch confirmation — poll the WebSocket for up to 10s after
+ *   4. Post-launch confirmation — poll the WebSocket for up to 15s after
  *      reporting success. If we never connect, return ok:false with the
  *      timeout reason so the UI doesn't leave the user staring at a button
  *      that lied.
@@ -747,6 +747,16 @@ async function handleLaunchServer() {
     } catch (err) {
       protocolError = err.message || String(err);
       console.warn('[page-save] protocol launcher failed:', protocolError, err);
+    }
+
+    if (protocolOpened) {
+      return {
+        ok: false,
+        stage: 'connect-timeout',
+        error: `The operating system accepted page-save://start, but the extension could not connect within ${POST_LAUNCH_TIMEOUT_MS / 1000}s.`,
+        details: nativeStatusError || '',
+        extensionId: chrome.runtime.id,
+      };
     }
   }
 

@@ -307,6 +307,8 @@ CHG    B00E9M4XFI  $18.97  ~T1      (was $20.97)
 
 ## Phase 14: Server Launch From Extension Menu ✅ DONE (2026-05-16)
 
+**Update 2026-05-20:** Windows duplicate-terminal launches were traced to overlapping launch paths. After `page-save://start` was accepted, the service worker could still fall through to native messaging `start` if the WebSocket did not connect quickly enough; separately, the hidden VBS URL handler always requested the scheduled task even when port 7224 was already listening or a launch had just been requested. The Windows path now treats accepted `page-save://start` as the single launch mechanism, extends confirmation polling to 15s, skips scheduled-task requests when port 7224 is already bound, and suppresses duplicate URL-handler invocations inside a 15s cooldown window.
+
 **Update 2026-05-16:** The earlier "host not found" behavior was local install drift, not a Chrome/Brave capability blocker. The machine-local generated manifest pointed at the old `C:\Users\somet\Projects\page-save` path, registry entries were absent, and browser profiles contained both stale and current unpacked Page Save extension IDs. `page-save install-launcher` now auto-detects active Page Save unpacked extension IDs from Chrome/Brave/Edge profile preferences, includes all matching IDs in `allowed_origins`, and regenerates the manifest with the current repo path. The side-panel offline primary action now reads **"Launch Local Server"** and transitions back to `Save Selected (N)` when the WebSocket reconnects.
 
 **Update 2026-05-03:** All four pieces of the launcher work in isolation:
@@ -400,7 +402,7 @@ Native messaging is Chrome's sanctioned escape hatch from the extension sandbox:
 - `bin/page-save-server-start.bat` + `bin/page-save-server-start.vbs` — Windows ShellExecute path for launching the long-lived server outside the native host process tree
 - `src/install-launcher.ts` — writes `bin/com.pagesave.launcher.json`, registers under `HKCU\...\NativeMessagingHosts`, supports Chrome/Edge/Brave
 - `extension/manifest.json` — `nativeMessaging` permission added
-- `extension/service-worker.js` — `handleLaunchServer()` enforces 4 safety layers: 5s cooldown, pre-flight WS probe, port-conflict detection (native side refuses to spawn over a busy port), 10s connect-timeout polling
+- `extension/service-worker.js` — `handleLaunchServer()` enforces 4 safety layers: 5s cooldown, pre-flight WS probe, port-conflict detection (native side refuses to spawn over a busy port), 15s connect-timeout polling
 - `extension/sidepanel.js` — `updateSaveButton()` is mode-aware: footer button reads "Launch Local Server" when offline, "Save Selected (N)" when online. 4s status polling auto-transitions back when server comes up. UI-side 5s debounce mirrors service-worker cooldown.
 
 **Still manual:** the user runs `page-save install-launcher` once after first install. Auto-detection covers local unpacked Chrome/Brave/Edge installs; `--extension-id <id>` remains available for unusual profiles or packaged extension IDs.

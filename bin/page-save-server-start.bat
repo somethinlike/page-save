@@ -29,6 +29,14 @@ if not exist "%NODE_EXE%" (
 )
 :found_node
 
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$client = New-Object Net.Sockets.TcpClient; try { $client.Connect('127.0.0.1', %SERVER_PORT%); if ($client.Connected) { $client.Close(); exit 0 } } catch {} exit 1" >nul 2>nul
+if "%ERRORLEVEL%"=="0" (
+  echo Page Save already appears to be running on ws://localhost:%SERVER_PORT%.
+  echo No second local server was started.
+  timeout /t 3 >nul
+  exit /b 0
+)
+
 cls
 echo ============================================================
 echo Page Save Local Server

@@ -511,11 +511,13 @@
 - [ ] Start `page-save serve` manually first
 - [ ] In a fresh side panel, the status pill should already say "Connected" (the periodic 4s poll picks this up)
 - [ ] If you somehow click before the poll updates, the launcher's pre-flight probe detects the running server and returns `alreadyRunning:true` without spawning a duplicate
+- [ ] Windows: if `page-save://start` is invoked while port 7224 is already listening, `.page-save-url-handler.log` records that the port was already listening and no scheduled task was requested
 - [ ] `netstat` shows exactly one PID on port 7224
 
 ### 23.5 Spam Click Protection
 - [ ] With server offline, click the launch button rapidly 5+ times within 1 second
 - [ ] Only one launch attempt actually fires (UI debounce + service-worker 5s cooldown both enforce this)
+- [ ] Windows: repeated `page-save://start` invocations within 15s log `launch request is already in flight` and do not open additional server terminals
 - [ ] `tasklist | findstr node` does not show a stack of duplicate node processes
 
 ### 23.6 Port Conflict
@@ -533,7 +535,7 @@
 
 ### 23.8 Launcher Reports Started But No Connection
 - [ ] (Hard to reproduce naturally — would require the spawned server to crash before binding)
-- [ ] If it happens: error says launch ran, but the extension could not connect within 10s
+- [ ] If it happens: error says launch ran, but the extension could not connect within 15s
 - [ ] Check `.page-save-url-handler.log` and `.page-save-launched-server.err.log`, then run `page-save serve` manually to see the actual error
 
 ### 23.9 GitHub Actions Cross-Platform Smoke
