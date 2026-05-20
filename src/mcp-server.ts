@@ -13,7 +13,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { WebSocket } from 'ws';
-import { PORT } from './types.ts';
+import { PORT } from './types.js';
 
 // --- WebSocket Client ---
 

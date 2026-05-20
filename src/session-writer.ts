@@ -1,11 +1,11 @@
 import { mkdirSync, writeFileSync, copyFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SAVE_DIR } from './paths.ts';
-import { formatStructuredMarkdown } from './markdown-formatter.ts';
-import { diffItems } from './diff.ts';
-import type { YoutubeResult } from './youtube-extractor.ts';
-import { formatYoutubeMarkdown } from './youtube-extractor.ts';
-import type { ExtractionResult, StructuredResult, RawResult, PageConfidence, FieldConfidence } from './types.ts';
+import { SAVE_DIR } from './paths.js';
+import { formatStructuredMarkdown } from './markdown-formatter.js';
+import { diffItems } from './diff.js';
+import type { YoutubeResult } from './youtube-extractor.js';
+import { formatYoutubeMarkdown } from './youtube-extractor.js';
+import type { ExtractionResult, StructuredResult, RawResult, PageConfidence, FieldConfidence } from './types.js';
 
 const SESSIONS_DIR = join(SAVE_DIR, 'sessions');
 

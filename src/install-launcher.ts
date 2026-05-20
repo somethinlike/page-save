@@ -17,8 +17,8 @@ import { homedir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve, join } from 'node:path';
-import { detectPageSaveExtensions } from './browser-extension-discovery.ts';
-import type { Browser } from './browser-extension-discovery.ts';
+import { detectPageSaveExtensions } from './browser-extension-discovery.js';
+import type { Browser } from './browser-extension-discovery.js';
 
 const HOST_NAME = 'com.pagesave.launcher';
 const LAUNCH_TASK_NAME = 'PageSaveLocalServer';
@@ -70,7 +70,7 @@ const CHROMIUM_FALLBACK_TARGETS: RegistryTarget[] = [
 const ALL_BROWSERS: Browser[] = ['chrome', 'edge', 'brave'];
 
 function projectRoot(): string {
-  // src/install-launcher.ts -> ../
+  // dist/install-launcher.js -> ../
   const here = dirname(fileURLToPath(import.meta.url));
   return pathResolve(here, '..');
 }
@@ -243,14 +243,14 @@ function registerLaunchTask(root: string, dryRun = false): string {
 
 function ensurePosixNativeHostScript(root: string, dryRun = false): string {
   const scriptPath = join(root, 'bin', POSIX_NATIVE_HOST_SCRIPT);
-  const launcherPath = join(root, 'src', 'native-launcher.ts');
+  const launcherPath = join(root, 'dist', 'native-launcher.js');
   if (!existsSync(launcherPath)) {
-    throw new Error(`Native launcher source missing: ${launcherPath}`);
+    throw new Error(`Native launcher missing: ${launcherPath}. Run npm run build first.`);
   }
 
   writeExecutableScript(scriptPath, [
     '#!/bin/sh',
-    `exec ${shQuote(process.execPath)} --experimental-strip-types ${shQuote(launcherPath)}`,
+    `exec ${shQuote(process.execPath)} ${shQuote(launcherPath)}`,
     '',
   ].join('\n'), dryRun);
 
@@ -308,7 +308,7 @@ function ensurePosixServerStartScript(root: string, dryRun = false): string {
     'printf "\\n"',
     '',
     'cd "$PROJECT_DIR" || exit 1',
-    '"$NODE_EXE" --experimental-strip-types "$PROJECT_DIR/src/cli.ts" serve >>"$OUT_LOG" 2>>"$ERR_LOG"',
+    '"$NODE_EXE" "$PROJECT_DIR/dist/cli.js" serve >>"$OUT_LOG" 2>>"$ERR_LOG"',
     'EXIT_CODE=$?',
     '',
     'printf "\\n"',

@@ -3,7 +3,7 @@ REM page-save-launcher.bat — Chrome native messaging host wrapper.
 REM
 REM Chrome invokes this script with no arguments and communicates with it over
 REM stdin/stdout using the 4-byte length-prefix framing protocol. The actual
-REM launcher logic lives in src/native-launcher.ts; this wrapper just locates
+REM launcher logic lives in dist/native-launcher.js; this wrapper just locates
 REM Node.js and forwards stdio.
 REM
 REM Self-locating: %~dp0 is this script's directory, so the project paths are
@@ -30,5 +30,5 @@ if not exist "%NODE_EXE%" (
 )
 :found_node
 
-"%NODE_EXE%" --experimental-strip-types "%PROJECT_DIR%\src\native-launcher.ts"
+"%NODE_EXE%" "%PROJECT_DIR%\dist\native-launcher.js"
 exit /b %ERRORLEVEL%

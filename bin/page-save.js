@@ -5,10 +5,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const cliPath = join(__dirname, '..', 'src', 'cli.ts');
+const cliPath = join(__dirname, '..', 'dist', 'cli.js');
 
 try {
-  execFileSync(process.execPath, ['--experimental-strip-types', cliPath, ...process.argv.slice(2)], {
+  execFileSync(process.execPath, [cliPath, ...process.argv.slice(2)], {
     stdio: 'inherit',
     env: process.env,
   });

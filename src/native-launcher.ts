@@ -19,7 +19,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as pathResolve } from 'node:path';
 import { closeSync, existsSync, openSync } from 'node:fs';
-import { PORT } from './types.ts';
+import { PORT } from './types.js';
 
 const PROBE_TIMEOUT_MS = 750;
 const POST_LAUNCH_PROBE_DELAY_MS = 1500;
@@ -56,10 +56,9 @@ function probePort(): Promise<{ listening: boolean }> {
  * kept under the native messaging host's process tree.
  */
 function spawnServerDetached(): void {
-  // __dirname equivalent for ES modules under --experimental-strip-types
   const here = dirname(fileURLToPath(import.meta.url));
   const root = pathResolve(here, '..');
-  const cliPath = pathResolve(here, 'cli.ts');
+  const cliPath = pathResolve(here, 'cli.js');
   const serverWindowScript = pathResolve(root, 'bin', POSIX_SERVER_START_SCRIPT);
 
   if ((process.platform === 'darwin' || process.platform === 'linux')
@@ -77,7 +76,7 @@ function spawnServerDetached(): void {
   try {
     const child = spawn(
       process.execPath,
-      ['--experimental-strip-types', cliPath, 'serve'],
+      [cliPath, 'serve'],
       {
         cwd: root,
         detached: true,

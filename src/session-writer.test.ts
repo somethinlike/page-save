@@ -7,8 +7,8 @@ import {
   parseTsvFromMarkdown,
   applyDeltaAnnotations,
   writeSessionFiles,
-} from './session-writer.ts';
-import type { ExtractionResult, StructuredResult, RawResult } from './types.ts';
+} from './session-writer.js';
+import type { ExtractionResult, StructuredResult, RawResult } from './types.js';
 
 // --- Test fixtures ---
 
