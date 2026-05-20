@@ -103,18 +103,34 @@ const BUILTIN_SCHEMAS = [
   },
   {
     domain: 'ebay.com',
-    version: '1',
-    description: 'eBay product search results',
+    version: '2',
+    description: 'eBay product search results with normalized listing metadata',
     pages: {
       search: {
         urlPattern: '/sch/',
         description: 'Search results listing page',
-        container: '.s-card',
+        container: 'li.s-card:has(a[href^="https://www.ebay.com/itm/"])',
         fields: {
-          title: { selector: '.s-card__title', type: 'text' },
-          price: { selector: '.s-card__price', type: 'text' },
+          itemId: { selector: '@data-listingid', type: 'attribute' },
+          url: { selector: '.s-card__link', type: 'attribute', attribute: 'href' },
+          title: { selector: '.s-card__title .su-styled-text.primary', type: 'text' },
           condition: { selector: '.s-card__subtitle-row .su-styled-text', type: 'text' },
+          rating: { selector: '.x-star-rating .clipped', type: 'text' },
+          reviewCount: { selector: '.s-card__reviews-count span[aria-hidden="false"]', type: 'text' },
+          price: { selector: '.s-card__price', type: 'text' },
+          details: { selector: '.su-card-container__attributes__primary .s-card__attribute-row', type: 'textAll' },
+          sellerInfo: { selector: '.su-card-container__attributes__secondary .su-styled-text', type: 'textAll' },
         },
+      },
+    },
+    variants: {
+      prices: {
+        description: 'IDs, titles, price, and sale mechanics for quick price comparison',
+        fields: ['itemId', 'url', 'title', 'price', 'details'],
+      },
+      seller: {
+        description: 'Adds condition and seller reputation for trust filtering',
+        fields: ['itemId', 'url', 'title', 'condition', 'price', 'details', 'sellerInfo'],
       },
     },
   },
@@ -652,6 +668,84 @@ const POST_PROCESSORS = {
       const priceMatch = item.price.match(/\$[\d,.]+/);
       if (priceMatch) item.price = priceMatch[0];
     }
+
+    return item;
+  },
+  'ebay.com': (item) => {
+    const compactCount = (raw) => {
+      if (!raw) return null;
+      const value = String(raw).replace(/,/g, '').trim();
+      if (/k$/i.test(value)) return String(Math.round(parseFloat(value) * 1000));
+      return value;
+    };
+
+    if (item.itemId) item.url = 'ebay.com/itm/' + item.itemId;
+
+    if (item.title && typeof item.title === 'string') {
+      item.title = item.title
+        .replace(/^New Listing/i, '')
+        .replace(/Opens in a new window or tab$/i, '')
+        .trim();
+    }
+
+    if (item.price && typeof item.price === 'string') {
+      const price = item.price.match(/\$[\d,.]+(?:\s+to\s+\$[\d,.]+)?/);
+      if (price) item.price = price[0];
+    }
+
+    if (item.rating && typeof item.rating === 'string') {
+      const rating = item.rating.match(/([\d.]+)\s+out of/i);
+      if (rating) item.rating = rating[1];
+    }
+
+    if (item.reviewCount && typeof item.reviewCount === 'string') {
+      const reviews = item.reviewCount.match(/([\d,.]+)\s+product/i);
+      if (reviews) item.reviewCount = reviews[1].replace(/,/g, '');
+    }
+
+    const details = Array.isArray(item.details) ? item.details : [];
+    for (const detail of details) {
+      const text = String(detail).replace(/\s+/g, ' ').trim();
+      if (!text || text === item.price) continue;
+
+      const bids = text.match(/(\d+)\s+bids?/i);
+      if (bids) {
+        item.listingType = 'auction';
+        item.bidCount = bids[1];
+        const timeLeft = text.match(/Time left\s*(.+)$/i);
+        if (timeLeft) item.timeLeft = timeLeft[1].trim();
+      } else if (/buy it now/i.test(text)) {
+        item.listingType = 'buyItNow';
+      } else if (/best offer/i.test(text)) {
+        item.bestOffer = 'Y';
+        if (!item.listingType) item.listingType = 'bestOffer';
+      } else if (/delivery/i.test(text)) {
+        item.shipping = text;
+      } else if (/^Located in/i.test(text)) {
+        item.location = text.replace(/^Located in\s*/i, '');
+      } else if (/\bsold\b/i.test(text)) {
+        const sold = text.match(/([\d,.]+\+?)\s+sold/i);
+        item.sold = sold ? sold[1].replace(/,/g, '') : text;
+      } else if (/returns/i.test(text)) {
+        item.returns = 'Y';
+      } else if (/Save up/i.test(text)) {
+        item.quantityDiscount = text;
+      }
+    }
+
+    const sellerInfo = Array.isArray(item.sellerInfo) ? item.sellerInfo : [];
+    const sellerText = sellerInfo.map(s => String(s).trim()).filter(Boolean).join(' ');
+    const seller = sellerText.match(/^(.+?)\s+([\d.]+)%\s+positive\s+\(([^)]+)\)/i);
+    if (seller) {
+      item.seller = seller[1].trim();
+      item.sellerPositive = seller[2];
+      item.sellerFeedbackCount = compactCount(seller[3]);
+    } else if (sellerText) {
+      item.seller = sellerText;
+    }
+
+    delete item.details;
+    delete item.sellerInfo;
 
     return item;
   },

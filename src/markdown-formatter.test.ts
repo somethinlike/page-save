@@ -81,6 +81,31 @@ describe('formatStructuredMarkdown', () => {
     expect(headerLine).not.toContain('url');
   });
 
+  it('keeps sparse fields that appear after the first item', () => {
+    const result: StructuredResult = {
+      type: 'structured',
+      domain: 'ebay.com',
+      pageType: 'search',
+      schemaVersion: '2',
+      url: 'https://www.ebay.com/sch/i.html?_nkw=nvme+2230',
+      title: 'eBay Search',
+      data: {
+        items: [
+          { itemId: '1', title: 'Auction SSD', price: '$9.99' },
+          { itemId: '2', title: 'Seller SSD', price: '$19.99', returns: 'Y', sold: '260+' },
+        ],
+        count: 2,
+      },
+    };
+
+    const md = formatStructuredMarkdown(result);
+    const headerLine = md.split('\n').find(l => l.startsWith('id\t'));
+
+    expect(headerLine).toContain('returns');
+    expect(headerLine).toContain('sold');
+    expect(md).toContain('2\tSeller SSD\t$19.99\tY\t260+');
+  });
+
   it('applies HEADER_MAP to shorten column names', () => {
     const result: StructuredResult = {
       type: 'structured',

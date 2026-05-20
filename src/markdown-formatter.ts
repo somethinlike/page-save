@@ -113,7 +113,7 @@ export function formatStructuredMarkdown(result: StructuredResult): string {
 
   if (data.items && data.items.length > 0) {
     // TSV format for repeating items — much more compact than markdown tables
-    const allFields = Object.keys(data.items[0]);
+    const allFields = Array.from(new Set(data.items.flatMap(item => Object.keys(item))));
     const redundant = getRedundantFields(allFields);
     const fields = allFields.filter(f => !redundant.has(f) && f !== '__delta');
 

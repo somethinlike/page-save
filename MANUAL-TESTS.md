@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.05.18 (Phases 1-18 complete)
+**Updated:** 2026.05.20 (Phases 1-19 complete)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -133,7 +133,10 @@
 ### 5.7 eBay Search
 - [ ] Open eBay search results
 - [ ] Run `page-save extract --tab ebay`
-- [ ] Verify structured extraction with title, price, condition fields
+- [ ] Verify structured extraction uses schema `ebay.com/search v2`
+- [ ] Output has 50+ real listing rows and excludes repeated `Shop on eBay` promo cards
+- [ ] Core fields are populated: `itemId`, `url`, `title`, `condition`, `price`, `listingType`, `shipping`, `location`, `seller`, `sellerPositive`, `sellerFeedbackCount`
+- [ ] Auction rows include `bidCount` and `timeLeft`; fixed-price rows show `buyItNow` or `bestOffer`
 
 ### 5.8 Best Buy Search
 - [ ] Open Best Buy search results
@@ -602,3 +605,19 @@
 - [ ] Run `page-save extract --tab <pattern> --raw`
 - [ ] Verify the same artifact split: MHTML source in `raw/`, LLM-readable markdown in `reduced/`
 - [ ] Open the `.mhtml` file in Chrome and verify it renders like the browser's Save Page As output
+
+---
+
+## 27. eBay Search Schema (Phase 19)
+<!-- added: 2026 May 20 06:34.0 -->
+
+### 27.1 NVMe 2230 Search Pages
+- [ ] Open the three saved eBay `nvme 2230` result pages or fresh equivalent pages
+- [ ] Set eBay to schema mode in the side panel, then save
+- [ ] Each page extracts about 60 real listings
+- [ ] `Shop on eBay` promo cards are absent
+- [ ] Generated markdown keeps shopping-decision fields only: item id, clean item URL, title, condition, price, sale mechanic, shipping, location, seller reputation, sold/returns/ratings when present
+
+### 27.2 eBay Variants
+- [ ] Select `prices`; output keeps item id, URL, title, price, and derived sale mechanics
+- [ ] Select `seller`; output adds condition and seller reputation fields

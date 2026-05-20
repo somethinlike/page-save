@@ -1,20 +1,37 @@
 {
   "domain": "ebay.com",
-  "version": "1",
-  "description": "eBay product search results",
+  "version": "2",
+  "description": "eBay product search results with normalized listing metadata",
   "pages": {
     "search": {
       "urlPattern": "/sch/",
       "description": "Search results listing page",
-      "container": ".s-card",
+      "container": "li.s-card:has(a[href^=\"https://www.ebay.com/itm/\"])",
       "fields": {
-        "title": { "selector": ".s-card__title", "type": "text" },
+        "itemId": { "selector": "@data-listingid", "type": "attribute" },
+        "url": { "selector": ".s-card__link", "type": "attribute", "attribute": "href" },
+        "title": { "selector": ".s-card__title .su-styled-text.primary", "type": "text" },
+        "condition": { "selector": ".s-card__subtitle-row .su-styled-text", "type": "text" },
+        "rating": { "selector": ".x-star-rating .clipped", "type": "text" },
+        "reviewCount": { "selector": ".s-card__reviews-count span[aria-hidden=\"false\"]", "type": "text" },
         "price": { "selector": ".s-card__price", "type": "text" },
-        "condition": { "selector": ".s-card__subtitle-row .su-styled-text", "type": "text" }
+        "details": { "selector": ".su-card-container__attributes__primary .s-card__attribute-row", "type": "textAll" },
+        "sellerInfo": { "selector": ".su-card-container__attributes__secondary .su-styled-text", "type": "textAll" }
       }
     }
   },
+  "variants": {
+    "prices": {
+      "description": "IDs, titles, price, and sale mechanics for quick price comparison",
+      "fields": ["itemId", "url", "title", "price", "details"]
+    },
+    "seller": {
+      "description": "Adds condition and seller reputation for trust filtering",
+      "fields": ["itemId", "url", "title", "condition", "price", "details", "sellerInfo"]
+    }
+  },
   "_notes": {
-    "promos": "First 1-2 cards are often 'Shop on eBay' promotional cards with no product data — consumers should filter these out"
+    "container": "The :has() container keeps real item cards and drops the repeated Shop on eBay promo cards found in the saved 2026-05-20 nvme 2230 pages.",
+    "postProcess": "The extension post-processor converts details/sellerInfo into listingType, bidCount, timeLeft, shipping, location, sold, returns, seller, sellerPositive, and sellerFeedbackCount, then drops the raw helper arrays."
   }
 }
