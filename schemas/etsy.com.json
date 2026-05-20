@@ -17,6 +17,6 @@
   },
   "_notes": {
     "unverified": "This schema was NOT verified against live DOM — Etsy blocked probing with CAPTCHA. Selectors are based on historical Etsy DOM structure and may be outdated. Both [data-listing-id] and .v2-listing-card returned 0 matches during probing.",
-    "fallback": "Raw text fallback is strongly recommended until this schema can be verified"
+    "fallback": "Raw MHTML capture is strongly recommended until this schema can be verified"
   }
 }

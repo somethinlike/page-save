@@ -16,6 +16,6 @@
   },
   "_notes": {
     "domStructure": "Products found via a[href*='/pdp/'] links. Cards use [data-hb-id='BoxV3'] containers but these may change. Title and price are in the link text. Rating is available via aria-label on star elements.",
-    "fallback": "Structured extraction is limited — Raw mode is recommended for full source capture plus raw-derived markdown"
+    "fallback": "Structured extraction is limited — Raw mode is recommended for the untouched MHTML source capture"
   }
 }

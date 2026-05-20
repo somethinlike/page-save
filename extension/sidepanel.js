@@ -109,7 +109,7 @@ function persistExtractionMode() {
 
 /**
  * Resolve a domain group's UI selection into extractor options.
- * Selections: "raw" → forceRaw, "schema" → default schema, "variant:<n>" → variant.
+ * Selections: "raw" → untouched MHTML, "schema" → Full schema, "variant:<n>" → use-case variant.
  */
 function modeToOptions(mode) {
   if (!mode || mode === 'raw') return { forceRaw: true };
@@ -222,10 +222,10 @@ function renderTabs() {
     const allSelected = group.tabs.every(t => selectedIds.has(t.tabId));
     const currentMode = extractionMode[schemaKey] || defaultModeFor(schemaKey);
 
-    // Build dropdown options: Raw is always default, then full schema, then variants
+    // Build dropdown options: Raw is always default, then Full schema, then variants
     const options = [{ value: 'raw', label: 'Raw' }];
     if (hasSchema) {
-      options.push({ value: 'schema', label: 'Schema (full)' });
+      options.push({ value: 'schema', label: 'Full' });
       for (const v of (schema.variants || [])) {
         options.push({
           value: `variant:${v.name}`,
@@ -457,7 +457,7 @@ function buildSetupPrompt(result = {}) {
     'Context:',
     `- The extension ID in this browser is: ${extensionId}`,
     `- The launch error shown by the extension was: ${launchError}`,
-    '- The extension can capture pages in the browser, but it needs a local Node.js bridge to write saved pages and reduced markdown files to disk.',
+    '- The extension can capture pages in the browser, but it needs a local Node.js bridge to write Raw captures and schema-reduced markdown files to disk.',
     '',
     'First, find and inspect the official GitHub repository for Page Save Bridge. The expected repository is:',
     'https://github.com/somethinlike/page-save',
@@ -483,7 +483,7 @@ function buildSetupPrompt(result = {}) {
     'Once the extension shows Connected, give me basic usage instructions:',
     '1. Open the Page Save side panel.',
     '2. Select the tabs I want to save or extract.',
-    '3. Choose Raw or a schema variant per domain when available.',
+    '3. Choose Raw, Full, or a use-case schema variant per domain when available.',
     '4. Click Save Selected.',
     '5. Keep the Page Save Local Server window open while using the extension; closing it stops the local server.',
   ].join('\n');

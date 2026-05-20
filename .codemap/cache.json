@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-20T11:27:23.190Z",
+  "generatedAt": "2026-05-20T14:07:16.592Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
-      "mtimeMs": 1779276233393.9294,
-      "size": 40468
+      "mtimeMs": 1779285776736.7095,
+      "size": 40477
     },
     "extension/service-worker.js": {
       "filePath": "extension/service-worker.js",
@@ -14,8 +14,8 @@
     },
     "extension/sidepanel.js": {
       "filePath": "extension/sidepanel.js",
-      "mtimeMs": 1778971391432.7786,
-      "size": 24950
+      "mtimeMs": 1779285787103.5505,
+      "size": 24978
     },
     "src/browser-extension-discovery.ts": {
       "filePath": "src/browser-extension-discovery.ts",
@@ -24,13 +24,8 @@
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",
-      "mtimeMs": 1778971288860.704,
-      "size": 14849
-    },
-    "src/defuddle-extractor.ts": {
-      "filePath": "src/defuddle-extractor.ts",
-      "mtimeMs": 1779143375567.535,
-      "size": 958
+      "mtimeMs": 1779285457760.4473,
+      "size": 14967
     },
     "src/diff.ts": {
       "filePath": "src/diff.ts",
@@ -49,13 +44,13 @@
     },
     "src/markdown-formatter.ts": {
       "filePath": "src/markdown-formatter.ts",
-      "mtimeMs": 1779276332726.5027,
-      "size": 5443
+      "mtimeMs": 1779285401870.4182,
+      "size": 4918
     },
     "src/mcp-server.ts": {
       "filePath": "src/mcp-server.ts",
-      "mtimeMs": 1779143328197.501,
-      "size": 5261
+      "mtimeMs": 1779285463995.0034,
+      "size": 5256
     },
     "src/native-host-wrapper.cs": {
       "filePath": "src/native-host-wrapper.cs",
@@ -79,13 +74,13 @@
     },
     "src/session-writer.ts": {
       "filePath": "src/session-writer.ts",
-      "mtimeMs": 1779143346397.4307,
-      "size": 25049
+      "mtimeMs": 1779285395061.1638,
+      "size": 21939
     },
     "src/types.ts": {
       "filePath": "src/types.ts",
-      "mtimeMs": 1779143114907.0989,
-      "size": 3390
+      "mtimeMs": 1779285756288.7766,
+      "size": 3514
     },
     "src/watch.ts": {
       "filePath": "src/watch.ts",

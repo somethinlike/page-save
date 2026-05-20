@@ -88,7 +88,7 @@ server.tool(
 
 server.tool(
   'extract',
-  'Extract data from a single tab (schema when available, source capture plus reduced markdown for raw)',
+  'Extract data from a single tab (Full schema when available, or untouched MHTML capture for raw)',
   { tab: z.string().describe('Tab ID or URL/title pattern to match') },
   async ({ tab }) => {
     const result = await sendCommand({ action: 'get-structured', tab });

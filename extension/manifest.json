@@ -3,7 +3,7 @@
   "name": "Page Save Bridge",
   "short_name": "page-save",
   "version": "2.0.0",
-  "description": "AI-optimized browsing assistant. Captures and reduces web content for AI consumption using domain-specific schemas.",
+  "description": "LLM-optimized browsing assistant. Captures Raw MHTML or reduced schema output for local LLM workflows.",
   "permissions": [
     "pageCapture",
     "tabs",

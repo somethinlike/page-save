@@ -66,8 +66,8 @@ export interface RawResult {
   url: string;
   title: string;
   tabId?: number;
-  text: string;
-  html?: string;
+  text: string; // preview/debug text only; not written as Raw output
+  html?: string; // injected DOM snapshot for debugging; never a Raw source substitute
   mhtml?: string; // base64 MHTML from chrome.pageCapture.saveAsMHTML()
   sourceCaptureError?: string;
 }

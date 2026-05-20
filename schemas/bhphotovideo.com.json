@@ -23,6 +23,6 @@
   },
   "_notes": {
     "domStructure": "B&H's DOM had no data-selenium, data-testid, or semantic class names on product card containers during probing. Product links (a[href*='/c/product/']) are the most reliable anchor. Parent cards contain title and price as plain text but lack distinguishing selectors for individual fields.",
-    "fallback": "Raw text fallback is recommended — structured extraction will be limited to title only"
+    "fallback": "Raw MHTML capture is recommended — structured extraction will be limited to title only"
   }
 }

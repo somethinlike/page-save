@@ -338,7 +338,7 @@ describe('applyDeltaAnnotations', () => {
 });
 
 describe('writeSessionFiles', () => {
-  it('writes raw MHTML source separately from raw-derived reduced markdown', async () => {
+  it('writes raw MHTML as the raw mode artifact without reduction', async () => {
     const session = makeTestSession();
     const source = 'MIME-Version: 1.0\r\nContent-Type: multipart/related\r\n\r\n<html><body>Untouched source</body></html>';
     const result: RawResult = {
@@ -354,19 +354,49 @@ describe('writeSessionFiles', () => {
       await writeSessionFiles(session, [result]);
 
       const rawFile = join(session.rawDir, 'example.com-1.mhtml');
-      const reducedFile = join(session.reducedDir, 'example.com-raw-1.md');
       const manifest = JSON.parse(readFileSync(join(session.dir, 'manifest.json'), 'utf-8'));
 
       expect(readFileSync(rawFile, 'utf-8')).toBe(source);
-      expect(readFileSync(reducedFile, 'utf-8')).toContain('Schema: none (raw-derived reduction)');
-      expect(existsSync(join(session.reducedDir, 'GUIDANCE.md'))).toBe(true);
+      expect(existsSync(join(session.reducedDir, 'example.com-raw-1.md'))).toBe(false);
+      expect(existsSync(join(session.reducedDir, 'GUIDANCE.md'))).toBe(false);
       expect(existsSync(join(session.rawDir, 'GUIDANCE.md'))).toBe(false);
       expect(manifest.raw).toBe(1);
-      expect(manifest.reduced).toBe(1);
+      expect(manifest.reduced).toBe(0);
       expect(manifest.rawSources).toBe(1);
-      expect(manifest.pages[0].file).toBe(reducedFile);
-      expect(manifest.pages[0].reducedFile).toBe(reducedFile);
+      expect(manifest.pages[0].file).toBe(rawFile);
+      expect(manifest.pages[0].reducedFile).toBeUndefined();
       expect(manifest.pages[0].rawFile).toBe(rawFile);
+    } finally {
+      rmSync(session.dir, { recursive: true, force: true });
+    }
+  });
+
+  it('does not treat injected HTML or text as a raw source capture', async () => {
+    const session = makeTestSession();
+    const result: RawResult = {
+      type: 'raw',
+      domain: 'example.com',
+      url: 'https://example.com/article',
+      title: 'Example Article',
+      text: 'Readable page text gathered for preview only.',
+      html: '<html><body>Injected DOM snapshot</body></html>',
+      sourceCaptureError: 'MHTML capture failed',
+    };
+
+    try {
+      await writeSessionFiles(session, [result]);
+
+      const manifest = JSON.parse(readFileSync(join(session.dir, 'manifest.json'), 'utf-8'));
+
+      expect(existsSync(join(session.rawDir, 'example.com-1.mhtml'))).toBe(false);
+      expect(existsSync(join(session.rawDir, 'example.com-1.html'))).toBe(false);
+      expect(existsSync(join(session.reducedDir, 'example.com-raw-1.md'))).toBe(false);
+      expect(manifest.raw).toBe(1);
+      expect(manifest.reduced).toBe(0);
+      expect(manifest.rawSources).toBe(0);
+      expect(manifest.pages[0].file).toBeNull();
+      expect(manifest.pages[0].rawFile).toBeUndefined();
+      expect(manifest.pages[0].rawSourceError).toBe('MHTML capture failed');
     } finally {
       rmSync(session.dir, { recursive: true, force: true });
     }

@@ -1,8 +1,7 @@
 import { mkdirSync, writeFileSync, copyFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SAVE_DIR } from './paths.ts';
-import { formatStructuredMarkdown, formatRawMarkdown } from './markdown-formatter.ts';
-import { extractWithDefuddle } from './defuddle-extractor.ts';
+import { formatStructuredMarkdown } from './markdown-formatter.ts';
 import { diffItems } from './diff.ts';
 import type { YoutubeResult } from './youtube-extractor.ts';
 import { formatYoutubeMarkdown } from './youtube-extractor.ts';
@@ -12,7 +11,6 @@ const SESSIONS_DIR = join(SAVE_DIR, 'sessions');
 
 // Template paths (live alongside this source file's project root)
 const TEMPLATES_DIR = join(import.meta.dirname, '..', 'templates');
-const GUIDANCE_SOURCE = join(TEMPLATES_DIR, 'GUIDANCE.md');
 const README_SOURCE = join(TEMPLATES_DIR, 'SAVED-PAGES-README.md');
 
 export interface SessionInfo {
@@ -27,7 +25,7 @@ interface WrittenPageFiles {
   file?: string;
   /** Markdown/token-reduced artifact for this page. */
   reducedFile?: string;
-  /** Untouched or closest-available browser source capture for this page. */
+  /** Untouched browser Save Page As / MHTML source capture for this page. */
   rawFile?: string;
 }
 
@@ -85,98 +83,18 @@ function writeStructured(session: SessionInfo, result: StructuredResult, index: 
 function writeRawSource(session: SessionInfo, result: RawResult, index: number): string | undefined {
   const basename = sanitizeFilename(`${result.domain}-${index + 1}`);
 
-  if (result.mhtml) {
-    const filepath = join(session.rawDir, `${basename}.mhtml`);
-    writeFileSync(filepath, Buffer.from(result.mhtml, 'base64'));
-    return filepath;
-  }
+  if (!result.mhtml) return undefined;
 
-  if (result.html) {
-    const filepath = join(session.rawDir, `${basename}.html`);
-    writeFileSync(filepath, result.html, 'utf-8');
-    return filepath;
-  }
-
-  return undefined;
-}
-
-/**
- * Write an LLM-readable reduction for a raw extraction result to reduced/.
- * If HTML is available, uses Defuddle for clean article extraction.
- */
-async function writeRawReduction(session: SessionInfo, result: RawResult, index: number): Promise<string> {
-  const filename = sanitizeFilename(
-    `${result.domain}-raw-${index + 1}.md`
-  );
-  const filepath = join(session.reducedDir, filename);
-
-  // Try Defuddle extraction if HTML is available
-  if (result.html) {
-    try {
-      const defuddled = await extractWithDefuddle(result.html, result.url);
-      if (defuddled.content && defuddled.wordCount > 50) {
-        // Defuddle produced meaningful content — use it
-        const header = [
-          `# ${defuddled.title || result.title}`,
-          `- Source: ${result.url}`,
-          defuddled.author ? `- Author: ${defuddled.author}` : '',
-          defuddled.description ? `- Description: ${defuddled.description}` : '',
-          `- Words: ${defuddled.wordCount}`,
-          '',
-        ].filter(Boolean).join('\n');
-
-        writeFileSync(filepath, header + '\n' + defuddled.content + '\n', 'utf-8');
-        return filepath;
-      }
-    } catch {
-      // Defuddle failed — fall through to text-derived markdown
-    }
-  }
-
-  // Fallback: text-derived markdown output
-  const markdown = formatRawMarkdown(result);
-  writeFileSync(filepath, markdown, 'utf-8');
+  const filepath = join(session.rawDir, `${basename}.mhtml`);
+  writeFileSync(filepath, Buffer.from(result.mhtml, 'base64'));
   return filepath;
 }
 
-/**
- * Write an LLM guidance note beside reduced markdown for raw results.
- */
-function writeGuidance(session: SessionInfo): void {
-  const dest = join(session.reducedDir, 'GUIDANCE.md');
-  if (existsSync(GUIDANCE_SOURCE)) {
-    copyFileSync(GUIDANCE_SOURCE, dest);
-  } else {
-    // Inline fallback if template file is missing
-    writeFileSync(dest, [
-      '# LLM Guidance for Raw-Derived Reductions',
-      '',
-      'These markdown files were derived from pages that did not match any known extraction schema.',
-      'Use the reduced markdown first. If fidelity matters, inspect the untouched source capture in ../raw/.',
-      '',
-      '## What to extract',
-      '- Product name / title',
-      '- Price (current, original, discount)',
-      '- Rating and review count',
-      '- Key specifications or features',
-      '- Availability / shipping info',
-      '',
-      '## Proposing a new schema',
-      'If you see a consistent pattern across multiple raw-derived reductions from the same domain,',
-      'you can propose a new schema. See `schemas/_template.json` in the page-save project',
-      'for the format specification.',
-      '',
-    ].join('\n'), 'utf-8');
-  }
-}
-
-async function writeRaw(session: SessionInfo, result: RawResult, index: number): Promise<WrittenPageFiles> {
+function writeRaw(session: SessionInfo, result: RawResult, index: number): WrittenPageFiles {
   const rawFile = writeRawSource(session, result, index);
-  const reducedFile = await writeRawReduction(session, result, index);
 
   return {
-    file: reducedFile,
-    reducedFile,
+    file: rawFile,
     rawFile,
   };
 }
@@ -523,23 +441,17 @@ export async function writeSessionFiles(session: SessionInfo, results: Extractio
 
   let structuredIndex = 0;
   let rawIndex = 0;
-  let hasRaw = false;
 
   for (const result of results) {
     if (result.type === 'structured') {
       const path = writeStructured(session, result, structuredIndex++);
       files.push({ file: path, reducedFile: path });
     } else if (result.type === 'raw') {
-      const written = await writeRaw(session, result, rawIndex++);
+      const written = writeRaw(session, result, rawIndex++);
       files.push(written);
-      hasRaw = true;
     } else {
       files.push({}); // error results get no file
     }
-  }
-
-  if (hasRaw) {
-    writeGuidance(session);
   }
 
   writeManifest(session, results, files, confidence);

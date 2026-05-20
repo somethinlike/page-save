@@ -1,4 +1,4 @@
-import type { StructuredResult, RawResult } from './types.ts';
+import type { StructuredResult } from './types.ts';
 
 /**
  * Format a timestamp for display in headers.
@@ -156,25 +156,5 @@ export function formatStructuredMarkdown(result: StructuredResult): string {
   }
 
   lines.push('');
-  return lines.join('\n');
-}
-
-/**
- * Format text captured from a raw page into LLM-readable markdown.
- */
-export function formatRawMarkdown(result: RawResult): string {
-  const lines: string[] = [];
-  const timestamp = formatTimestamp();
-
-  lines.push(`# ${result.title}`);
-  lines.push('');
-  lines.push(`Extracted: ${timestamp} | Schema: none (raw-derived reduction)`);
-  lines.push(`Source: ${result.url}`);
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-  lines.push(result.text);
-  lines.push('');
-
   return lines.join('\n');
 }

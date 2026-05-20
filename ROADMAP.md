@@ -1,7 +1,7 @@
 # Page-Save Competitive Feature Roadmap
 
 ## Context
-Competitive analysis of scraping products and AI-optimized content tools identified features that would strengthen page-save's position as an AI-optimized content preprocessor. None of these competitors optimize output for AI token consumption — page-save's core differentiator (symbol interning, reference tables, dedup, TSV formatting). These features add extraction quality, new content types, UX polish, and automation while keeping the AI-token-optimization focus.
+Competitive analysis of scraping products and LLM-optimized content tools identified features that would strengthen page-save's position as an LLM-optimized content preprocessor. None of these competitors optimize output for LLM token consumption — page-save's core differentiator (symbol interning, reference tables, dedup, TSV formatting). These features add extraction quality, new content types, UX polish, and automation while keeping the LLM-token-optimization focus.
 
 Key competitors analyzed: Thunderbit, Instant Data Scraper, Browse AI, Deep Scraper, Octoparse, PandaExtract, Simplescraper, Web Scraper, LLMFeeder, Markdownload, web2md, Obsidian Web Clipper, mcp-chrome, Defuddle, Firecrawl, Crawl4AI, markdownify-mcp.
 
@@ -11,9 +11,9 @@ Phase 1  (Confidence) ──── independent, zero risk
 Phase 2  (Pagination) ──── independent, enables Phase 4 patterns
 Phase 3  (Schema Suggest) ── independent
 Phase 4  (Batch URLs) ──── benefits from Phase 2 tab lifecycle patterns
-Phase 5  (Defuddle) ─────── independent, improves raw fallback quality
+Phase 5  (Raw MHTML) ────── retired Defuddle fallback, preserves browser capture literally
 Phase 6  (YouTube) ──────── independent, new extractor type
-Phase 7  (MCP Server) ──── wraps Phases 1-6 as native AI tools
+Phase 7  (MCP Server) ──── wraps Phases 1-6 as native LLM tools
 Phase 8  (Price Watch) ──── requires Phase 4 (batch URL extraction)
 Phase 9  (Session Accum.) ── independent, workflow change
 Phase 10 (Preview/Edit) ── independent, pairs with Phase 9
@@ -81,7 +81,7 @@ Phase 12 (More Schemas) ── parallel, ongoing, uses Phase 3
 
 ## Phase 3: Schema Suggest Command ✅ DONE (2026-04-09)
 
-**Value:** AI or user points at any page, gets a draft schema proposal. Accelerates schema creation from hours to seconds.
+**Value:** LLM or user points at any page, gets a draft schema proposal. Accelerates schema creation from hours to seconds.
 
 **What:** New CLI command that probes a page's DOM structure, identifies repeating patterns, and outputs a draft schema JSON.
 
@@ -124,30 +124,27 @@ page-save batch --urls "https://amazon.com/dp/B00E9M4XFI,https://amazon.com/dp/B
 
 ---
 
-## Phase 5: Defuddle Fallback Engine ✅ DONE (2026-04-09)
+## Phase 5: Defuddle Fallback Engine RETIRED (2026-05-20)
+<!-- superseded: 2026 May 20 09:04.2 -->
 
-**Value:** Raw text extraction (`document.body.innerText`) produces noisy output — nav bars, ads, sidebars, footers all included. Defuddle extracts main article content only, dramatically improving quality for domains without schemas.
+**Status:** Superseded by the Raw/Full/variant model. Raw now means the untouched browser "Save Page As" MHTML capture only. It does not generate Defuddle markdown, text-derived markdown, or injected-HTML fallbacks.
 
-**What:** Replace the raw text fallback path with Defuddle-powered extraction. When no schema matches, send raw HTML to the Node.js server, parse with `linkedom` (lightweight DOM), run Defuddle, output clean markdown.
+**Why:** Ryan clarified that Raw is a preservation mode, not a reduction mode. The reduction layer is the schema layer: Full for every broadly usable field, variants for narrower use cases.
 
-**Why Node.js side, not extension side:** Defuddle requires a DOM. Service workers have no DOM. Injecting Defuddle's browser bundle into content scripts would require a build step. Running it server-side with `linkedom` avoids adding build complexity to the extension.
+**Current behavior:**
+- Raw mode writes `.mhtml` files under `raw/` when Chromium can produce them.
+- Raw mode does not write `*.html` fallback files from injected DOM snapshots.
+- Raw mode does not write `*-raw-1.md` files under `reduced/`.
+- If MHTML capture fails, `manifest.json` records `rawSourceError`.
+- `reduced/` is reserved for Full schema output and schema variants.
 
-**Files:**
-- `src/defuddle-extractor.ts` — NEW module. `extractWithDefuddle(html: string, url: string): string`. Parses HTML with `linkedom`, runs Defuddle with `{ markdown: true }`, returns clean content.
-- `src/session-writer.ts` — route raw results through Defuddle before writing to `raw/` folder
-- `src/types.ts` — extend `RawResult` with optional `html` field (extension sends HTML alongside text)
-- `extension/service-worker.js` — when no schema matches, capture `document.documentElement.outerHTML` in addition to `innerText`
-- `package.json` — add `defuddle` and `linkedom` dependencies
-
-**New dependencies:** `defuddle`, `linkedom`
-
-**No new CLI commands.** Transparent improvement to existing `extract`, `extract-all`, and sidebar save flows.
+**Removed:** `src/defuddle-extractor.ts`, `templates/GUIDANCE.md`, and the `defuddle` package dependency.
 
 ---
 
 ## Phase 6: YouTube Subtitle Extraction ✅ DONE (2026-04-09)
 
-**Value:** YouTube is one of the most common research sources. Extracting subtitles as clean text makes video content AI-consumable without manual transcription.
+**Value:** YouTube is one of the most common research sources. Extracting subtitles as clean text makes video content LLM-consumable without manual transcription.
 
 **What:** Detect YouTube tabs, extract video ID, fetch subtitles via YouTube's timedtext API, format as session markdown with video metadata.
 
@@ -250,7 +247,7 @@ page-save session-status                   # Show active session info
 
 ## Phase 10: Sidebar Preview/Edit Before Save ✅ DONE (2026-04-09)
 
-**Value:** Users can't currently review extracted content before it's written to disk. A preview step lets users trim irrelevant sections, verify extraction quality, and catch schema errors before the data hits the AI pipeline.
+**Value:** Users can't currently review extracted content before it's written to disk. A preview step lets users trim irrelevant sections, verify extraction quality, and catch schema errors before the data hits the LLM pipeline.
 
 **What:** After extraction but before writing, show the extracted content in the sidebar. Users review, toggle sections on/off, then confirm save.
 
@@ -260,7 +257,7 @@ page-save session-status                   # Show active session info
 - `extension/sidepanel.css` — preview pane styling (markdown rendering, toggle states)
 - `extension/service-worker.js` — new `preview-extraction` action that returns results to sidebar instead of forwarding to server. Existing `get-structured` path unchanged for CLI usage.
 
-**No new CLI commands.** This is a sidebar-only UX enhancement. CLI extractions continue to write directly (no interactive preview needed when an AI is driving).
+**No new CLI commands.** This is a sidebar-only UX enhancement. CLI extractions continue to write directly (no interactive preview needed when an LLM session is driving).
 
 ---
 
@@ -288,14 +285,14 @@ CHG    B00E9M4XFI  $18.97  ~T1      (was $20.97)
 
 ## Phase 13: Schema Variants ✅ DONE (2026-04-27)
 
-**Value:** Same domain, different extraction goals. Cooking-research browse needs raw text; price comparison needs `[asin, title, price]`; quality filtering needs ratings too. Selecting a variant per domain group lets the user opt into the minimum-tokens projection that fits the current task.
+**Value:** Same domain, different extraction goals. Raw preserves the whole browser page; price comparison needs `[asin, title, price]`; quality filtering needs ratings too. Selecting Full or a variant per domain group lets the user opt into the projection that fits the current task.
 
 **What:**
 - Schema gets an optional `variants` block: `{ name: { description, fields: [...], fieldOverrides? } }`
 - Variant = projection of the base page fields (subset of names; future: per-page selector overrides)
-- Sidebar dropdown per domain group: `Raw` (default), `Schema (full)`, then one entry per variant
+- Sidebar dropdown per domain group: `Raw` (default), `Full`, then one entry per variant
 - Selection persists to `chrome.storage.local` keyed by canonical domain
-- CLI: `--variant <name>` projects fields; `--raw` (or `--variant raw`) forces raw fallback
+- CLI: `--variant <name>` projects fields; `--raw` (or `--variant raw`) forces untouched Raw MHTML capture
 - Default everywhere is **Raw** (Ryan's call: opt-in to schemas, never auto-apply unrequested)
 
 **Files:**
@@ -478,7 +475,7 @@ Each phase is independently testable:
 2. **Pagination:** Open one Amazon search tab → `extract-pages --tab amazon --max-pages 3` → verify 3 pages extracted from single tab
 3. **Schema Suggest:** Open any unsupported site → `schema-suggest --tab <pattern>` → verify valid JSON schema output
 4. **Batch URLs:** Create urls.txt with 3 Amazon product URLs → `batch --file urls.txt` → verify 3 product pages extracted
-5. **Defuddle:** Open a non-schema site (news article, blog post) → `extract --tab <pattern>` → verify raw/ output contains clean article content (no nav, ads, sidebars) instead of full innerText dump
+5. **Raw:** Open a non-schema site (news article, blog post) → `extract --tab <pattern>` → verify `raw/` contains untouched MHTML only, with no raw-derived markdown in `reduced/`
 6. **YouTube:** Open a YouTube video with subtitles → `youtube --tab youtube` → verify transcript output with timestamps and video metadata
 7. **MCP:** Configure in Claude Desktop → verify tools appear (including `youtube_transcript`) → call `extract` tool → verify session created
 8. **Watch:** `watch-add --url <amazon-product>` → `watch-run --all` → verify snapshot saved → change tab price → `watch-run` → verify change detected

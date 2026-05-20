@@ -1,6 +1,6 @@
 # Page Save Bridge
 
-Give AI coding assistants the ability to save and read any browser tab — even sites that block automation tools like Reddit, Twitter, and LinkedIn.
+Give LLM coding assistants the ability to save and read any browser tab — even sites that block automation tools like Reddit, Twitter, and LinkedIn.
 
 Built with care by [ESDF.gg](https://esdf.gg) and [The Open English Bible Ministry](https://logospraxis.church).
 
@@ -8,7 +8,7 @@ Built with care by [ESDF.gg](https://esdf.gg) and [The Open English Bible Minist
 
 ## The Problem
 
-Claude Code's browser tools (and similar AI automation) get blocked by Content Security Policy on many sites. Reddit, Twitter/X, LinkedIn — the AI can see the tab exists but can't read the content. You end up pressing Ctrl+S manually and pointing the AI at the saved file.
+LLM browser tools often get blocked by Content Security Policy on many sites. Reddit, Twitter/X, LinkedIn — the assistant can see the tab exists but can't read the content. You end up pressing Ctrl+S manually and pointing the LLM at the saved file.
 
 ## The Solution
 
@@ -16,7 +16,7 @@ Page Save Bridge uses `chrome.pageCapture.saveAsMHTML()` — a browser-engine-le
 
 **Two components:**
 1. **Chrome Extension** — connects to a local WebSocket server, handles save/text/list commands
-2. **Node.js Bridge** — CLI that your AI calls via Bash to trigger saves and read content
+2. **Node.js Bridge** — CLI that your LLM session calls via shell to trigger saves and read content
 
 ## Install
 <!-- revised: 2026 May 16 19:20.0 -->
@@ -116,9 +116,10 @@ npx page-save save
 **Keyboard shortcut:** Press `Alt+S` to save the active tab instantly.
 
 ## How It Works
+<!-- revised: 2026 May 20 09:04.2 -->
 
 ```
-AI Agent (Bash) → Node.js CLI (port 7224) ←WebSocket→ Chrome Extension
+LLM session (shell) → Node.js CLI (port 7224) ←WebSocket→ Chrome Extension
                        |
                   Writes MHTML to saved-pages/
 ```
@@ -127,16 +128,22 @@ The extension uses privileged Chrome APIs that sites cannot block:
 - `chrome.pageCapture.saveAsMHTML()` — captures full page with all resources
 - `chrome.scripting.executeScript()` — extracts text in an isolated world
 
-For extraction sessions, page-save separates source preservation from LLM
-ingestion:
+For extraction sessions, page-save now keeps Raw and schema output as separate
+concepts:
 
-- `raw/` contains the untouched browser capture, equivalent to "Save Page As"
-  MHTML when Chromium can provide it.
-- `reduced/` contains the LLM-readable markdown: schema output when a schema is
-  selected, or a reduced fallback derived from raw page text/HTML when Raw mode
-  is selected.
-- `manifest.json` points each page at its primary reduced `file` and, when
-  available, its source `rawFile`.
+- **Raw** means untouched browser capture, equivalent to the browser's "Save
+  Page As" MHTML output. Raw mode writes only `.mhtml` files under `raw/`; it
+  does not write an HTML/text fallback into `raw/` and does not generate a
+  reduced markdown file.
+- **Full** means the domain schema's broad useful extraction: every field the
+  schema can extract that is likely useful for LLM analysis.
+- **Variants** are narrower use-case schema outputs, such as price-only or
+  seller-focused views.
+- `reduced/` contains LLM-readable markdown only for Full schema output and
+  schema variants.
+- `manifest.json` points each page at its primary `file`; raw pages point at
+  their `.mhtml` source when Chromium captured one, while structured pages point
+  at their reduced markdown.
 
 ## Why Not Just Use Browser MCP / Chrome DevTools MCP?
 

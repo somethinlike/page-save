@@ -1,10 +1,11 @@
 # Schema Development Conventions
 
-This document is for AI assistants helping users create, update, or debug page-save extraction schemas. Read this before writing or modifying any schema.
+This document is for LLM assistants helping users create, update, or debug page-save extraction schemas. Read this before writing or modifying any schema.
 
 ## What page-save Does
+<!-- revised: 2026 May 20 09:04.2 -->
 
-page-save extracts structured data from web pages for AI consumption. A human opens browser tabs, selects them in the sidebar (or uses CLI), and page-save extracts product data, comments, or other structured content using domain-specific CSS selector schemas. The output is token-optimized: TSV tables for repeating items, compact key-value pairs for single items, with a reference table (`refs.txt`) for deduplication.
+page-save either preserves untouched Raw MHTML captures or extracts structured data from web pages for LLM consumption. A human opens browser tabs, selects them in the sidebar (or uses CLI), and page-save extracts product data, comments, or other structured content using domain-specific CSS selector schemas. The schema output is token-optimized: TSV tables for repeating items, compact key-value pairs for single items, with a reference table (`refs.txt`) for deduplication.
 
 ## Schema Architecture
 
@@ -49,6 +50,7 @@ When creating or updating a schema, **all three locations must be updated**: the
 ```
 
 ### Variants
+<!-- revised: 2026 May 20 09:04.2 -->
 
 `variants` is optional. Each variant defines a *projection* of the base page fields — a subset to keep — so the same underlying schema can serve different extraction goals (titles only, prices only, full quality view, etc.) without duplicating selectors.
 
@@ -57,8 +59,8 @@ When creating or updating a schema, **all three locations must be updated**: the
 - `fieldOverrides` (optional, advanced) — `{ pageType: { fieldName: fieldDef } }` to add fields not in the base or replace selectors for a specific page type. Use sparingly; prefer adding the field to the base schema if it's broadly useful.
 
 The dropdown options the user sees per domain group:
-1. **Raw** (default) — bypass schema entirely, dump cleaned innerText (Defuddle for raw fallback)
-2. **Schema (full)** — base page's full field set (today's auto-extract behavior)
+1. **Raw** (default) — bypass schema entirely and save the untouched browser MHTML capture, equivalent to Save Page As
+2. **Full** — base page's broad usable field set
 3. One entry per declared variant
 
 CLI mirrors this: `--variant <name>` for a named variant, `--raw` (or `--variant raw`) to force raw.
@@ -139,8 +141,9 @@ Check the output in `saved-pages/sessions/*/reduced/` for data quality.
 If extracted values need normalization (e.g., "4.6 out of 5 stars" → "4.6"), add a post-processor function in `extension/extractors.js` under `POST_PROCESSORS[domain]`. Post-processors run after extraction, before session writing.
 
 ## Quality Guidelines
+<!-- revised: 2026 May 20 09:04.2 -->
 
-These rules determine what data to extract and how to handle it. The goal is maximum utility for AI-assisted comparison shopping and research, with minimum token waste.
+These rules determine what data to extract and how to handle it. The goal is maximum utility for LLM-assisted comparison shopping and research, with minimum token waste.
 
 ### Must Extract (never omit these)
 - **Price** — current price, always. Original/list price if visible (for discount calculation).
@@ -200,6 +203,7 @@ These are applied automatically by the session writer, but schema authors should
 - Price may be split across multiple elements (dollars + cents) — use a parent selector that captures both
 
 ## Common Pitfalls
+<!-- revised: 2026 May 20 09:04.2 -->
 
 1. **Sponsored items have different DOM** — Amazon's sponsored products use `/sspa/click` URLs instead of `/dp/` links. The container selector catches them, but field selectors may fail. The extraction engine skips items where all fields are null.
 
@@ -207,7 +211,7 @@ These are applied automatically by the session writer, but schema authors should
 
 3. **React/SPA sites with empty DOM shells** — Target, Costco, and similar React apps render product cards via portals or lazy hydration. The container may exist but be empty. Use `:has()` selectors or target the rendered content directly. Mark these schemas as `"status": "experimental"`.
 
-4. **Sites that block automation** — Etsy, Cloudflare-protected sites may show CAPTCHAs. page-save uses `chrome.scripting.executeScript` in an isolated world, which bypasses CSP but not CAPTCHAs. If a site blocks extraction, it falls back to raw text.
+4. **Sites that block automation** — Etsy, Cloudflare-protected sites may show CAPTCHAs. page-save uses `chrome.scripting.executeScript` in an isolated world, which bypasses CSP but not CAPTCHAs. If schema extraction is not usable, choose Raw to preserve the browser's MHTML capture for audit/schema work.
 
 5. **Schema staleness** — Sites update their DOM structure. When extraction starts returning null fields, the schema selectors need updating. Increment the `version` field when updating selectors so it's clear which version is active.
 

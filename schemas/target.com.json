@@ -17,7 +17,7 @@
     }
   },
   "_notes": {
-    "reactPortals": "Target uses React portals — product card content is rendered outside the grid wrapper DOM. The :has() selector requires modern Chrome (105+). If container returns 0 matches, use Raw mode for source capture plus raw-derived markdown.",
+    "reactPortals": "Target uses React portals — product card content is rendered outside the grid wrapper DOM. The :has() selector requires modern Chrome (105+). If container returns 0 matches, use Raw mode for the untouched MHTML source capture.",
     "price": "data-test value includes the @ symbol literally — this is Target's internal naming convention"
   }
 }

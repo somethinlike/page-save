@@ -287,7 +287,7 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
         } else if (r.type === 'structured' && r.data?.item) {
           console.log(`  Schema: ${r.domain}/${r.pageType} — single item`);
         } else if (r.type === 'raw') {
-          console.log(`  Raw text: ${r.text?.length || 0} chars from ${r.domain}`);
+          console.log(`  Raw source: ${r.mhtml ? 'MHTML captured' : 'MHTML unavailable'} from ${r.domain}`);
         }
       }
     } else if (msg.path) {
@@ -364,10 +364,10 @@ if (cliArgs.action === 'serve') {
   page-save tabs                                               List all open Chrome tabs
   page-save save [--tab <id|pattern>] [--out <path>]           Save page as MHTML
   page-save text [--tab <id|pattern>]                          Extract page text
-  page-save extract [--tab <id|pattern>] [--variant <name>] [--raw]    Structured extraction (single tab)
-  page-save extract-all [--domain <pattern>] [--variant <name>] [--raw] Batch structured extraction
-  page-save extract-pages [--tab <id|pattern>] [--max-pages N] [--variant <name>] [--raw]  Paginated extraction
-  page-save batch --file <urls.txt> | --urls <url1,url2,...> [--variant <name>] [--raw]    Batch URL extraction
+  page-save extract [--tab <id|pattern>] [--variant <name>] [--raw]    Full schema extraction or raw MHTML capture
+  page-save extract-all [--domain <pattern>] [--variant <name>] [--raw] Batch full schema extraction or raw MHTML capture
+  page-save extract-pages [--tab <id|pattern>] [--max-pages N] [--variant <name>] [--raw]  Paginated full schema extraction or raw MHTML capture
+  page-save batch --file <urls.txt> | --urls <url1,url2,...> [--variant <name>] [--raw]    Batch full schema extraction or raw MHTML capture
   page-save schema-suggest [--tab <id|pattern>] [--save]       Probe DOM and suggest a schema
   page-save youtube [--tab <id|pattern>]                       Extract YouTube video transcript
   page-save session-start                                      Start an accumulating session

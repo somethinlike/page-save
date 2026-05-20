@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "license": "CC0-1.0",
-  "description": "Give AI coding assistants the ability to save and read any browser tab — even sites that block automation. Chrome Extension + Node.js bridge.",
+  "description": "Give LLM coding assistants the ability to save and read any browser tab, even sites that block automation. Chrome Extension + Node.js bridge.",
   "bin": {
     "page-save": "./bin/page-save.js",
     "page-save-mcp": "./bin/page-save-mcp.js"
@@ -20,7 +20,7 @@
   "keywords": [
     "claude",
     "claude-code",
-    "ai",
+    "llm",
     "browser",
     "page-save",
     "mhtml",
@@ -45,7 +45,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "defuddle": "^0.16.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {

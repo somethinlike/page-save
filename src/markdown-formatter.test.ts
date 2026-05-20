@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { formatStructuredMarkdown, formatRawMarkdown } from './markdown-formatter.ts';
-import type { StructuredResult, RawResult } from './types.ts';
+import { formatStructuredMarkdown } from './markdown-formatter.ts';
+import type { StructuredResult } from './types.ts';
 
 describe('formatStructuredMarkdown', () => {
   it('formats a multi-item result as TSV with headers', () => {
@@ -198,25 +198,5 @@ describe('formatStructuredMarkdown', () => {
     expect(md).toContain('Source: amazon.com/dp/B08N5WRWNW');
     expect(md).not.toContain('ref=');
     expect(md).not.toContain('dib=');
-  });
-});
-
-describe('formatRawMarkdown', () => {
-  it('formats raw-derived markdown with title, url, and separator', () => {
-    const result: RawResult = {
-      type: 'raw',
-      domain: 'example.com',
-      url: 'https://example.com/article',
-      title: 'Example Article',
-      text: 'This is the raw page content.',
-    };
-
-    const md = formatRawMarkdown(result);
-
-    expect(md).toContain('# Example Article');
-    expect(md).toContain('Schema: none (raw-derived reduction)');
-    expect(md).toContain('Source: https://example.com/article');
-    expect(md).toContain('---');
-    expect(md).toContain('This is the raw page content.');
   });
 });
