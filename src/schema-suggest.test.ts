@@ -5,8 +5,8 @@ import {
   deriveUrlPattern,
   guessPageType,
   scoreCandidate,
-} from './schema-suggest.ts';
-import type { DomProbeResult, DomProbeCandidate } from './types.ts';
+} from './schema-suggest.js';
+import type { DomProbeResult, DomProbeCandidate } from './types.js';
 
 describe('deriveUrlPattern', () => {
   it('extracts path + first query param when query string is present', () => {

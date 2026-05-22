@@ -5,10 +5,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const mcpPath = join(__dirname, '..', 'src', 'mcp-server.ts');
+const mcpPath = join(__dirname, '..', 'dist', 'mcp-server.js');
 
 try {
-  execFileSync(process.execPath, ['--experimental-strip-types', mcpPath], {
+  execFileSync(process.execPath, [mcpPath], {
     stdio: 'inherit',
     env: process.env,
   });

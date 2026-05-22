@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { diffItems, diffSingleItem, formatDiffSummary } from './diff.ts';
+import { diffItems, diffSingleItem, formatDiffSummary } from './diff.js';
 
 describe('diffItems', () => {
   it('detects added items (present in curr, absent in prev)', () => {

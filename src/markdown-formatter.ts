@@ -1,4 +1,4 @@
-import type { StructuredResult } from './types.ts';
+import type { StructuredResult } from './types.js';
 
 /**
  * Format a timestamp for display in headers.

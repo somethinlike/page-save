@@ -76,7 +76,7 @@ echo To stop Page Save, close this window.
 echo ============================================================
 echo.
 
-"%NODE_EXE%" --experimental-strip-types "%PROJECT_DIR%\src\cli.ts" serve >>"%OUT_LOG%" 2>>"%ERR_LOG%"
+"%NODE_EXE%" "%PROJECT_DIR%\dist\cli.js" serve >>"%OUT_LOG%" 2>>"%ERR_LOG%"
 set "EXIT_CODE=%ERRORLEVEL%"
 
 echo.

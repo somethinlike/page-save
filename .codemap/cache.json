@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-22T23:38:55.419Z",
+  "generatedAt": "2026-05-22T23:42:18.493Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -24,43 +24,43 @@
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",
-      "mtimeMs": 1779492839698.1648,
-      "size": 14971
+      "mtimeMs": 1779493240596.1655,
+      "size": 14941
     },
     "src/diff.ts": {
       "filePath": "src/diff.ts",
-      "mtimeMs": 1775852088548.8909,
+      "mtimeMs": 1779493220951.0303,
       "size": 4543
     },
     "src/file-writer.ts": {
       "filePath": "src/file-writer.ts",
-      "mtimeMs": 1778968358354.2222,
+      "mtimeMs": 1779493220951.0303,
       "size": 1095
     },
     "src/install-launcher.ts": {
       "filePath": "src/install-launcher.ts",
-      "mtimeMs": 1779492857703.4558,
-      "size": 19373
+      "mtimeMs": 1779493220952.036,
+      "size": 19341
     },
     "src/markdown-formatter.ts": {
       "filePath": "src/markdown-formatter.ts",
-      "mtimeMs": 1779285401870.4182,
+      "mtimeMs": 1779493220953.5469,
       "size": 4918
     },
     "src/mcp-server.ts": {
       "filePath": "src/mcp-server.ts",
-      "mtimeMs": 1779492843220.2512,
+      "mtimeMs": 1779493244520.3628,
       "size": 5237
     },
     "src/native-host-wrapper.cs": {
       "filePath": "src/native-host-wrapper.cs",
-      "mtimeMs": 1778958558376.4033,
-      "size": 13584
+      "mtimeMs": 1779493220954.5466,
+      "size": 13558
     },
     "src/native-launcher.ts": {
       "filePath": "src/native-launcher.ts",
-      "mtimeMs": 1778968482967.7898,
-      "size": 7631
+      "mtimeMs": 1779493220954.5466,
+      "size": 7527
     },
     "src/paths.ts": {
       "filePath": "src/paths.ts",
@@ -69,12 +69,12 @@
     },
     "src/schema-suggest.ts": {
       "filePath": "src/schema-suggest.ts",
-      "mtimeMs": 1775851846788.303,
+      "mtimeMs": 1779493220957.0603,
       "size": 5691
     },
     "src/session-writer.ts": {
       "filePath": "src/session-writer.ts",
-      "mtimeMs": 1779285395061.1638,
+      "mtimeMs": 1779493220959.0574,
       "size": 21939
     },
     "src/types.ts": {
@@ -84,12 +84,12 @@
     },
     "src/watch.ts": {
       "filePath": "src/watch.ts",
-      "mtimeMs": 1778968358519.6377,
+      "mtimeMs": 1779493220959.564,
       "size": 4784
     },
     "src/ws-handler.ts": {
       "filePath": "src/ws-handler.ts",
-      "mtimeMs": 1779492853008.9692,
+      "mtimeMs": 1779493251872.1792,
       "size": 27148
     },
     "src/youtube-extractor.ts": {

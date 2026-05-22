@@ -113,14 +113,14 @@ public static class PageSaveNativeHostWrapper
 
         string binDir = AppDomain.CurrentDomain.BaseDirectory;
         string root = Path.GetFullPath(Path.Combine(binDir, ".."));
-        string scriptPath = Path.Combine(root, "src", "cli.ts");
+        string scriptPath = Path.Combine(root, "dist", "cli.js");
         if (!File.Exists(scriptPath))
         {
-            error = "cli.ts not found at " + scriptPath;
+            error = "cli.js not found at " + scriptPath;
             return false;
         }
 
-        string commandLine = QuoteArgument(nodePath) + " --experimental-strip-types " + QuoteArgument(scriptPath) + " serve";
+        string commandLine = QuoteArgument(nodePath) + " " + QuoteArgument(scriptPath) + " serve";
         string outPath = Path.Combine(root, ".page-save-launched-server.out.log");
         string errPath = Path.Combine(root, ".page-save-launched-server.err.log");
         uint flags = CreateNewProcessGroup | CreateNoWindow | CreateBreakawayFromJob;

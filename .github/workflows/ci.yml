@@ -32,8 +32,26 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Build
+        run: npm run build
+
       - name: Test
         run: npm test
 
       - name: Validate launcher install targets
-        run: node --experimental-strip-types src/cli.ts setup --extension-id lekikondcgipaabofcppaifgmfbekhlf --dry-run
+        run: node dist/cli.js setup --extension-id lekikondcgipaabofcppaifgmfbekhlf --dry-run
+
+      - name: Validate packed install
+        shell: bash
+        run: |
+          npm pack
+          mkdir "$RUNNER_TEMP/page-save-pack-test"
+          npm install --prefix "$RUNNER_TEMP/page-save-pack-test" ./page-save-*.tgz
+          "$RUNNER_TEMP/page-save-pack-test/node_modules/.bin/page-save" setup --extension-id lekikondcgipaabofcppaifgmfbekhlf --dry-run
+
+      - name: Validate packed POSIX launcher writes
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir "$RUNNER_TEMP/page-save-home"
+          HOME="$RUNNER_TEMP/page-save-home" "$RUNNER_TEMP/page-save-pack-test/node_modules/.bin/page-save" setup --extension-id lekikondcgipaabofcppaifgmfbekhlf

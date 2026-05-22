@@ -1,14 +1,14 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { randomUUID } from 'node:crypto';
 import { createServer, type Server as HttpServer } from 'node:http';
-import { HOST, PORT, WS_URL } from './types.ts';
-import type { WsRequest, WsResponse, TabInfo, SavePageResult, GetTextResult, ExtractionResult, BatchResult, DomProbeResult, YoutubeHtmlResult } from './types.ts';
-import { writeMhtml } from './file-writer.ts';
-import { writeSession, writeSessionWithDelta, writeYoutubeSession, openSession, appendToSession, finalizeSession, getSessionStatus } from './session-writer.ts';
-import { generateSchema, formatSchemaSummary, saveSchema } from './schema-suggest.ts';
-import { extractSubtitles } from './youtube-extractor.ts';
-import { createWatch, listWatches, processWatchResult } from './watch.ts';
-import { SAVE_DIR } from './paths.ts';
+import { HOST, PORT, WS_URL } from './types.js';
+import type { WsRequest, WsResponse, TabInfo, SavePageResult, GetTextResult, ExtractionResult, BatchResult, DomProbeResult, YoutubeHtmlResult } from './types.js';
+import { writeMhtml } from './file-writer.js';
+import { writeSession, writeSessionWithDelta, writeYoutubeSession, openSession, appendToSession, finalizeSession, getSessionStatus } from './session-writer.js';
+import { generateSchema, formatSchemaSummary, saveSchema } from './schema-suggest.js';
+import { extractSubtitles } from './youtube-extractor.js';
+import { createWatch, listWatches, processWatchResult } from './watch.js';
+import { SAVE_DIR } from './paths.js';
 
 let activeServer: { httpServer: HttpServer; wss: WebSocketServer } | null = null;
 

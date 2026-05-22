@@ -5,8 +5,8 @@ import {
   extractCaptionTracks,
   extractVideoMeta,
   formatYoutubeMarkdown,
-} from './youtube-extractor.ts';
-import type { YoutubeResult } from './youtube-extractor.ts';
+} from './youtube-extractor.js';
+import type { YoutubeResult } from './youtube-extractor.js';
 
 describe('extractVideoId', () => {
   it('extracts ID from standard watch URL', () => {

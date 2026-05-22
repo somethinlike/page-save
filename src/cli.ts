@@ -1,10 +1,10 @@
 import { WebSocket } from 'ws';
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { HOST, PORT } from './types.ts';
-import type { TabInfo } from './types.ts';
-import { startServer } from './ws-handler.ts';
-import { installLauncher } from './install-launcher.ts';
+import { HOST, PORT } from './types.js';
+import type { TabInfo } from './types.js';
+import { startServer } from './ws-handler.js';
+import { installLauncher } from './install-launcher.js';
 
 // --- Argument Parsing ---
 
@@ -136,8 +136,8 @@ async function connectToServer(port: number): Promise<WebSocket> {
 }
 
 async function tryAutoStartServer(): Promise<boolean> {
-  const serverScript = new URL('./cli.ts', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
-  const child = spawn(process.execPath, ['--experimental-strip-types', serverScript, 'serve'], {
+  const serverScript = new URL('./cli.js', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
+  const child = spawn(process.execPath, [serverScript, 'serve'], {
     detached: true,
     stdio: 'ignore',
   });

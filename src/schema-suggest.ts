@@ -7,7 +7,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { DomProbeResult, DomProbeCandidate } from './types.ts';
+import type { DomProbeResult, DomProbeCandidate } from './types.js';
 
 interface DraftSchema {
   domain: string;

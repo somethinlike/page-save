@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { formatStructuredMarkdown } from './markdown-formatter.ts';
-import type { StructuredResult } from './types.ts';
+import { formatStructuredMarkdown } from './markdown-formatter.js';
+import type { StructuredResult } from './types.js';
 
 describe('formatStructuredMarkdown', () => {
   it('formats a multi-item result as TSV with headers', () => {

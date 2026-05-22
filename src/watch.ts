@@ -14,9 +14,9 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { SAVE_DIR } from './paths.ts';
-import type { WatchConfig, DiffResult } from './types.ts';
-import { diffItems, formatDiffSummary } from './diff.ts';
+import { SAVE_DIR } from './paths.js';
+import type { WatchConfig, DiffResult } from './types.js';
+import { diffItems, formatDiffSummary } from './diff.js';
 
 const WATCHES_DIR = join(SAVE_DIR, 'watches');
 

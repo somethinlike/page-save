@@ -5,7 +5,7 @@
  * removed items) and by delta mode to annotate repeat extractions.
  */
 
-import type { DiffResult, DiffChange } from './types.ts';
+import type { DiffResult, DiffChange } from './types.js';
 
 /**
  * Normalize a value for diff comparison.
