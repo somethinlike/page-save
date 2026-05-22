@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-20T14:16:54.303Z",
+  "generatedAt": "2026-05-22T23:38:55.419Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -9,13 +9,13 @@
     },
     "extension/service-worker.js": {
       "filePath": "extension/service-worker.js",
-      "mtimeMs": 1779286401553.125,
-      "size": 30610
+      "mtimeMs": 1779492939797.7085,
+      "size": 30574
     },
     "extension/sidepanel.js": {
       "filePath": "extension/sidepanel.js",
-      "mtimeMs": 1779285787103.5505,
-      "size": 24978
+      "mtimeMs": 1779492918936.9712,
+      "size": 24996
     },
     "src/browser-extension-discovery.ts": {
       "filePath": "src/browser-extension-discovery.ts",
@@ -24,8 +24,8 @@
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",
-      "mtimeMs": 1779285457760.4473,
-      "size": 14967
+      "mtimeMs": 1779492839698.1648,
+      "size": 14971
     },
     "src/diff.ts": {
       "filePath": "src/diff.ts",
@@ -39,8 +39,8 @@
     },
     "src/install-launcher.ts": {
       "filePath": "src/install-launcher.ts",
-      "mtimeMs": 1778971317312.9995,
-      "size": 19364
+      "mtimeMs": 1779492857703.4558,
+      "size": 19373
     },
     "src/markdown-formatter.ts": {
       "filePath": "src/markdown-formatter.ts",
@@ -49,8 +49,8 @@
     },
     "src/mcp-server.ts": {
       "filePath": "src/mcp-server.ts",
-      "mtimeMs": 1779285463995.0034,
-      "size": 5256
+      "mtimeMs": 1779492843220.2512,
+      "size": 5237
     },
     "src/native-host-wrapper.cs": {
       "filePath": "src/native-host-wrapper.cs",
@@ -79,8 +79,8 @@
     },
     "src/types.ts": {
       "filePath": "src/types.ts",
-      "mtimeMs": 1779285756288.7766,
-      "size": 3514
+      "mtimeMs": 1779492836055.2185,
+      "size": 3593
     },
     "src/watch.ts": {
       "filePath": "src/watch.ts",
@@ -89,8 +89,8 @@
     },
     "src/ws-handler.ts": {
       "filePath": "src/ws-handler.ts",
-      "mtimeMs": 1778968651519.8606,
-      "size": 26445
+      "mtimeMs": 1779492853008.9692,
+      "size": 27148
     },
     "src/youtube-extractor.ts": {
       "filePath": "src/youtube-extractor.ts",

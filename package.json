@@ -12,6 +12,8 @@
     "src/",
     "bin/",
     "README.md",
+    "PRIVACY.md",
+    "SECURITY.md",
     "LICENSE"
   ],
   "engines": {

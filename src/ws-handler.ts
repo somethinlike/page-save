@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { randomUUID } from 'node:crypto';
 import { createServer, type Server as HttpServer } from 'node:http';
-import { PORT } from './types.ts';
+import { HOST, PORT, WS_URL } from './types.ts';
 import type { WsRequest, WsResponse, TabInfo, SavePageResult, GetTextResult, ExtractionResult, BatchResult, DomProbeResult, YoutubeHtmlResult } from './types.ts';
 import { writeMhtml } from './file-writer.ts';
 import { writeSession, writeSessionWithDelta, writeYoutubeSession, openSession, appendToSession, finalizeSession, getSessionStatus } from './session-writer.ts';
@@ -18,6 +18,14 @@ interface PendingRequest {
 }
 
 const DEFAULT_TIMEOUT_MS = 15000;
+
+function isLoopbackAddress(address: string | undefined): boolean {
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
+}
+
+function isAllowedBrowserOrigin(origin: string | undefined): boolean {
+  return !origin || origin.startsWith('chrome-extension://');
+}
 
 function sendToExtension(
   extensionSocket: WebSocket,
@@ -625,13 +633,26 @@ export function startServer(): void {
   if (activeServer) return;
 
   const httpServer = createServer();
-  const wss = new WebSocketServer({ server: httpServer });
+  const wss = new WebSocketServer({
+    server: httpServer,
+    verifyClient: ({ origin, req }, done) => {
+      if (!isLoopbackAddress(req.socket.remoteAddress)) {
+        done(false, 403, 'Page Save only accepts loopback WebSocket clients.');
+        return;
+      }
+      if (!isAllowedBrowserOrigin(origin)) {
+        done(false, 403, 'Page Save rejects website-origin WebSocket clients.');
+        return;
+      }
+      done(true);
+    },
+  });
   activeServer = { httpServer, wss };
   let extensionSocket: WebSocket | null = null;
   const pendingRequests = new Map<string, PendingRequest>();
 
-  httpServer.listen(PORT, () => {
-    console.log(`[page-save] Server listening on port ${PORT}`);
+  httpServer.listen(PORT, HOST, () => {
+    console.log(`[page-save] Server listening on ${WS_URL}`);
   });
   httpServer.on('close', () => {
     if (activeServer?.httpServer === httpServer) activeServer = null;

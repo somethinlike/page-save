@@ -1,6 +1,7 @@
 importScripts('extractors.js');
 
-const WS_URL = 'ws://localhost:7224';
+const WS_URL = 'ws://127.0.0.1:7224';
+const WS_PORT = '7224';
 const PROTOCOL_LAUNCH_URL = 'page-save://start';
 const STATUS_ALARM = 'page-save-status-check';
 const KEEPALIVE_ALARM = 'page-save-keepalive';
@@ -725,7 +726,7 @@ async function handleLaunchServer() {
       return {
         ok: false,
         stage: 'port-conflict',
-        error: `Port ${WS_URL.replace('ws://localhost:', '')} is in use by something that isn't page-save.`,
+        error: `Port ${WS_PORT} is in use by something that isn't page-save.`,
       };
     }
   } catch (err) {
@@ -781,7 +782,7 @@ async function handleLaunchServer() {
         return {
           ok: false,
           stage: 'port-conflict',
-          error: `Port ${WS_URL.replace('ws://localhost:', '')} is in use by something that isn't page-save.`,
+          error: `Port ${WS_PORT} is in use by something that isn't page-save.`,
         };
       }
     }

@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws';
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { PORT } from './types.ts';
+import { HOST, PORT } from './types.ts';
 import type { TabInfo } from './types.ts';
 import { startServer } from './ws-handler.ts';
 import { installLauncher } from './install-launcher.ts';
@@ -129,7 +129,7 @@ function parseArgs(argv: string[]): CliArgs {
 
 async function connectToServer(port: number): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
-    const socket = new WebSocket(`ws://localhost:${port}`);
+    const socket = new WebSocket(`ws://${HOST}:${port}`);
     socket.on('open', () => resolve(socket));
     socket.on('error', (err) => reject(err));
   });

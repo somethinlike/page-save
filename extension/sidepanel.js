@@ -464,7 +464,7 @@ function buildSetupPrompt(result = {}) {
     '',
     'Before installing anything, explain what will be downloaded or changed:',
     '- the npm package / GitHub project named page-save',
-    '- a local Node.js server that listens only on localhost port 7224',
+    '- a local Node.js server that listens only on explicit loopback 127.0.0.1 port 7224',
     '- a Chromium native messaging host registered for this extension ID',
     '- on Windows, user-level registry entries plus a page-save:// protocol handler and scheduled task',
     '- on macOS/Linux, user-level NativeMessagingHosts manifests plus generated shell launcher scripts',

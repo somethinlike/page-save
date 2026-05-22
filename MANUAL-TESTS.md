@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.05.20 (Phases 1-20 complete)
+**Updated:** 2026.05.22 (Phases 1-20 complete; security hardening added)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -499,10 +499,10 @@
 ### 23.3 Launch With Server Offline
 - [ ] Stop any running `page-save serve` process
 - [ ] Open the side panel — status pill = "Server offline" (red), footer button reads **"Launch Local Server"** in blue
-- [ ] Inspect the extension error list/service-worker console — the offline state should not create a `WebSocket connection to 'ws://localhost:7224/' failed: net::ERR_CONNECTION_REFUSED` entry
+- [ ] Inspect the extension error list/service-worker console — the offline state should not create a `WebSocket connection to 'ws://127.0.0.1:7224/' failed: net::ERR_CONNECTION_REFUSED` entry
 - [ ] Click — button changes to "Launching server…" (disabled)
 - [ ] On Windows, if the browser asks to open Page Save, accept the prompt
-- [ ] A Page Save Local Server terminal/command window opens with a readable banner explaining what the local bridge does, that it must stay open while the extension is in use, that closing the window stops the server, and that it is listening on `ws://localhost:7224`
+- [ ] A Page Save Local Server terminal/command window opens with a readable banner explaining what the local bridge does, that it must stay open while the extension is in use, that closing the window stops the server, and that it is listening on `ws://127.0.0.1:7224`
 - [ ] Within ~2s, status flips to "Connected" and the button transitions back to "Save Selected (0)"
 - [ ] Windows: `netstat -ano | findstr 7224` shows a LISTENING entry — the spawned server is owned by Task Scheduler and survives the URL launcher exiting
 - [ ] macOS/Linux: `lsof -iTCP:7224 -sTCP:LISTEN` or `ss -ltnp | grep 7224` shows the server listener
@@ -551,7 +551,7 @@
 - [ ] Dialog text includes a copyable prompt for an LLM assistant
 - [ ] The prompt contains the current `chrome.runtime.id`
 - [ ] The prompt tells the LLM to find and inspect `https://github.com/somethinlike/page-save`
-- [ ] The prompt tells the LLM to explain the local Node.js server, localhost port 7224, native messaging host, OS-specific registration, and saved output folder before installation
+- [ ] The prompt tells the LLM to explain the local Node.js server, explicit loopback port 7224, native messaging host, OS-specific registration, and saved output folder before installation
 - [ ] The prompt tells the LLM to ask for permission before running install commands
 - [ ] The prompt gives `npx page-save setup --extension-id <id>` and the fallback `npx page-save install-launcher --extension-id <id>`
 - [ ] Click **Copy Prompt** — clipboard receives the full prompt
@@ -634,3 +634,27 @@
 - [ ] Save with `Raw`; output should be untouched MHTML only
 - [ ] Save with `Full`; output should be compact markdown containing the broad usable schema fields
 - [ ] Save with a variant; output should be the narrower use-case field set
+
+---
+
+## 29. Security Boundary Hardening
+<!-- added: 2026 May 22 18:34.3 -->
+
+### 29.1 Explicit Loopback Listener
+- [ ] Start the server with `page-save serve`
+- [ ] Server output says `Server listening on ws://127.0.0.1:7224`
+- [ ] Windows: `netstat -ano | findstr 7224` shows a listener bound to `127.0.0.1:7224`, not `0.0.0.0:7224`
+- [ ] macOS/Linux: `lsof -iTCP:7224 -sTCP:LISTEN` or `ss -ltnp | grep 7224` shows a loopback listener, not a wildcard network listener
+
+### 29.2 Website-Origin WebSocket Rejection
+- [ ] With the server running, run:
+  `node -e "const WebSocket=require('ws'); const ws=new WebSocket('ws://127.0.0.1:7224',{headers:{Origin:'https://example.com'}}); ws.on('open',()=>console.log('unexpected open')); ws.on('unexpected-response',(_,res)=>console.log('rejected '+res.statusCode)); ws.on('error',e=>console.log(e.message));"`
+- [ ] Output should report `rejected 403` or an equivalent rejected-handshake error
+- [ ] `page-save tabs` still works from the local CLI client
+- [ ] The Chromium extension still connects and the side panel status shows `Connected`
+
+### 29.3 Security Docs Published
+- [ ] `README.md` contains a `Security Model and Approvals` section
+- [ ] `SECURITY.md` exists and documents the browser, native launcher, loopback, web-origin, LLM, and output boundaries
+- [ ] `PRIVACY.md` says the bridge uses `127.0.0.1:7224` and rejects non-loopback / ordinary website-origin clients
+- [ ] `npm pack --dry-run` includes `README.md`, `PRIVACY.md`, `SECURITY.md`, and `LICENSE`

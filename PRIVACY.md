@@ -1,6 +1,6 @@
 # Privacy Policy — Page Save Bridge
 
-**Last updated:** April 2, 2026
+**Last updated:** May 22, 2026
 
 ## Data Collection
 
@@ -8,9 +8,10 @@ Page Save Bridge collects **no data**. Zero. None.
 
 ## How It Works
 
-- The extension communicates exclusively with a **local WebSocket server** running on your own machine (`localhost:7224`).
+- The extension communicates exclusively with a **local WebSocket server** running on your own machine (`127.0.0.1:7224`).
+- The local bridge rejects non-loopback WebSocket clients and rejects ordinary website origins.
 - No data is sent to any external server, cloud service, or third party.
-- Page content captured via `chrome.pageCapture.saveAsMHTML()` is sent only to your local machine over localhost.
+- Page content captured via `chrome.pageCapture.saveAsMHTML()` is sent only to your local machine over explicit loopback.
 - The extension does not track browsing history, collect analytics, or transmit telemetry.
 
 ## Permissions Used

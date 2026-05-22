@@ -14,7 +14,7 @@ set "OUT_LOG=%PROJECT_DIR%\.page-save-launched-server.out.log"
 set "ERR_LOG=%PROJECT_DIR%\.page-save-launched-server.err.log"
 set "SERVER_PORT=7224"
 
-title Page Save Local Server - ws://localhost:%SERVER_PORT%
+title Page Save Local Server - ws://127.0.0.1:%SERVER_PORT%
 
 if not exist "%NODE_EXE%" (
   for /f "delims=" %%I in ('where node 2^>nul') do (
@@ -31,7 +31,7 @@ if not exist "%NODE_EXE%" (
 
 powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$client = New-Object Net.Sockets.TcpClient; try { $client.Connect('127.0.0.1', %SERVER_PORT%); if ($client.Connected) { $client.Close(); exit 0 } } catch {} exit 1" >nul 2>nul
 if "%ERRORLEVEL%"=="0" (
-  echo Page Save already appears to be running on ws://localhost:%SERVER_PORT%.
+  echo Page Save already appears to be running on ws://127.0.0.1:%SERVER_PORT%.
   echo No second local server was started.
   timeout /t 3 >nul
   exit /b 0
@@ -56,7 +56,7 @@ echo close this window, the local server stops and the extension will return to
 echo its offline state until you launch the server again.
 echo.
 echo Connection:
-echo   WebSocket URL : ws://localhost:%SERVER_PORT%
+echo   WebSocket URL : ws://127.0.0.1:%SERVER_PORT%
 echo   Port          : %SERVER_PORT%
 echo.
 echo Runtime:

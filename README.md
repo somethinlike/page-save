@@ -30,7 +30,7 @@ You need Node.js 22.6+ installed. Then run via `npx` — no global install neede
 works the same on Windows, macOS, and Linux:
 
 ```bash
-npx page-save serve   # starts the server on localhost:7224
+npx page-save serve   # starts the server on 127.0.0.1:7224
 ```
 
 Saved output defaults to `~/Documents/saved-pages` on Windows, macOS, and
@@ -152,9 +152,34 @@ concepts:
 
 Those tools inject content scripts into pages, which gets blocked by CSP on sites like Reddit. Page Save operates at the browser engine level — there's nothing for the site to block.
 
+## Security Model and Approvals
+<!-- added: 2026 May 22 18:34.3 -->
+
+Page Save is intentionally local-first:
+
+- The bridge listens on `ws://127.0.0.1:7224`, not a public network interface.
+- The WebSocket server rejects non-loopback clients.
+- Browser-origin WebSocket clients are rejected unless they come from a Chromium extension origin, which prevents ordinary websites from talking to the local bridge.
+- The native messaging launcher is registered for specific extension IDs via Chromium's `allowed_origins` mechanism.
+- The extension can see browser tabs because the user installed it and granted browser permissions; the Node.js bridge and LLM session only see the output the extension sends back.
+
+There are two usage modes with different approval boundaries:
+
+- **Side panel workflow:** the user selects tabs in the extension UI, previews the extracted results, then confirms the save.
+- **CLI/MCP workflow:** an LLM session can request tab listing, extraction, and saves only if that LLM runtime's own sandbox and command approvals allow it to invoke `page-save`.
+
+Treat these commands as sensitive in LLM agent configs: `page-save save`,
+`page-save text`, `page-save extract`, `page-save extract-all`,
+`page-save extract-pages`, `page-save batch`, `page-save youtube`,
+`page-save session-add`, and `page-save watch-run`. Raw captures may include
+authenticated page content, equivalent to what the user would get from the
+browser's **Save Page As** flow.
+
+See [SECURITY.md](SECURITY.md) for the full trust-boundary notes.
+
 ## Privacy
 
-Zero data collection. All communication is localhost-only. No analytics, no tracking, no external requests. See [PRIVACY.md](PRIVACY.md).
+Zero data collection. All communication is explicit-loopback only. No analytics, no tracking, no external requests. See [PRIVACY.md](PRIVACY.md).
 
 ## License
 

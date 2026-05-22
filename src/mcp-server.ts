@@ -13,7 +13,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { WebSocket } from 'ws';
-import { PORT } from './types.ts';
+import { WS_URL } from './types.ts';
 
 // --- WebSocket Client ---
 
@@ -26,13 +26,13 @@ function ensureConnection(): Promise<WebSocket> {
       return;
     }
 
-    const socket = new WebSocket(`ws://localhost:${PORT}`);
+    const socket = new WebSocket(WS_URL);
     socket.on('open', () => {
       ws = socket;
       resolve(socket);
     });
     socket.on('error', (err) => {
-      reject(new Error(`Cannot connect to page-save server on port ${PORT}. Start it with: page-save serve`));
+      reject(new Error(`Cannot connect to page-save server at ${WS_URL}. Start it with: page-save serve`));
     });
     socket.on('close', () => {
       ws = null;

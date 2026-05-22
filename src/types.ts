@@ -165,4 +165,6 @@ export interface DiffResult {
   unchanged: number;
 }
 
+export const HOST = '127.0.0.1';
 export const PORT = 7224;
+export const WS_URL = `ws://${HOST}:${PORT}`;
