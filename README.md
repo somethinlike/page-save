@@ -201,7 +201,7 @@ It documents the schema format, quality bar, token-efficiency rules, and test
 checklist.
 
 ## Security Model and Approvals
-<!-- revised: 2026 May 22 19:21.9 -->
+<!-- revised: 2026 May 22 20:01.1 -->
 
 Page Save is intentionally local-first:
 
@@ -212,6 +212,7 @@ Page Save is intentionally local-first:
 - The native messaging launcher is registered for specific extension IDs via Chromium's `allowed_origins` mechanism.
 - The extension can see browser tabs because the user installed it and granted browser permissions; the Node.js bridge and LLM session only see the output the extension sends back.
 - Background batch/watch URL capture opens only `http://` and `https://` URLs; browser-internal, extension, file, script, and data URLs are rejected.
+- CLI/MCP extraction commands return saved session paths and compact summaries; raw `html`, preview `text`, and base64 `mhtml` payloads are written to disk when appropriate, not echoed back into the LLM tool response.
 
 There are two usage modes with different approval boundaries:
 

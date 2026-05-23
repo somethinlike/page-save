@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-23T00:28:31.777Z",
+  "generatedAt": "2026-05-23T01:04:12.942Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -24,8 +24,8 @@
     },
     "src/cli.ts": {
       "filePath": "src/cli.ts",
-      "mtimeMs": 1779493240596.1655,
-      "size": 14941
+      "mtimeMs": 1779497989083.0857,
+      "size": 15256
     },
     "src/diff.ts": {
       "filePath": "src/diff.ts",
@@ -69,18 +69,18 @@
     },
     "src/schema-suggest.ts": {
       "filePath": "src/schema-suggest.ts",
-      "mtimeMs": 1779493220957.0603,
-      "size": 5691
+      "mtimeMs": 1779498035501.4807,
+      "size": 5795
     },
     "src/session-writer.ts": {
       "filePath": "src/session-writer.ts",
-      "mtimeMs": 1779493220959.0574,
-      "size": 21939
+      "mtimeMs": 1779498020810.6682,
+      "size": 22507
     },
     "src/types.ts": {
       "filePath": "src/types.ts",
-      "mtimeMs": 1779492836055.2185,
-      "size": 3593
+      "mtimeMs": 1779498065050.0735,
+      "size": 3432
     },
     "src/url-policy.ts": {
       "filePath": "src/url-policy.ts",
@@ -94,8 +94,8 @@
     },
     "src/ws-handler.ts": {
       "filePath": "src/ws-handler.ts",
-      "mtimeMs": 1779495521590.333,
-      "size": 29123
+      "mtimeMs": 1779498001922.7546,
+      "size": 30599
     },
     "src/youtube-extractor.ts": {
       "filePath": "src/youtube-extractor.ts",

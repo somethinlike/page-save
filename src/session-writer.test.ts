@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   computeConfidence,
+  formatSessionTimestamp,
   parseTsvFromMarkdown,
   applyDeltaAnnotations,
   writeSessionFiles,
@@ -42,6 +43,13 @@ function makeTestSession() {
 
   return session;
 }
+
+describe('formatSessionTimestamp', () => {
+  it('includes seconds so rapid sessions are less likely to collide', () => {
+    const date = new Date(2026, 4, 22, 19, 45, 7);
+    expect(formatSessionTimestamp(date)).toBe('2026-05-22_194507');
+  });
+});
 
 describe('computeConfidence', () => {
   it('computes 100% confidence when all fields are populated', () => {

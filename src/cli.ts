@@ -162,9 +162,13 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
   try {
     socket = await connectToServer(PORT);
   } catch {
-    console.error('Error: page-save server not running on port 7224.');
-    console.error('Start it manually: page-save serve');
-    process.exit(1);
+    const started = await tryAutoStartServer();
+    if (!started) {
+      console.error('Error: page-save server not running on port 7224.');
+      console.error('Start it manually: page-save serve');
+      process.exit(1);
+    }
+    socket = await connectToServer(PORT);
   }
 
   const actionMap: Record<string, string> = {
@@ -282,12 +286,14 @@ async function runCli(cliArgs: CliArgs): Promise<void> {
       }
       if (msg.result) {
         const r = msg.result;
-        if (r.type === 'structured' && r.data?.items) {
-          console.log(`  Schema: ${r.domain}/${r.pageType} — ${r.data.count} items`);
-        } else if (r.type === 'structured' && r.data?.item) {
+        if (r.type === 'structured' && r.dataShape === 'items') {
+          console.log(`  Schema: ${r.domain}/${r.pageType} — ${r.itemCount ?? 0} items`);
+        } else if (r.type === 'structured' && r.dataShape === 'item') {
           console.log(`  Schema: ${r.domain}/${r.pageType} — single item`);
+        } else if (r.type === 'structured' && r.dataShape === 'error') {
+          console.log(`  Schema: ${r.domain}/${r.pageType} — error: ${r.error}`);
         } else if (r.type === 'raw') {
-          console.log(`  Raw source: ${r.mhtml ? 'MHTML captured' : 'MHTML unavailable'} from ${r.domain}`);
+          console.log(`  Raw source: ${r.rawSourceCaptured ? 'MHTML captured' : 'MHTML unavailable'} from ${r.domain}`);
         }
       }
     } else if (msg.path) {

@@ -30,12 +30,11 @@ interface WrittenPageFiles {
 }
 
 /**
- * Create a new session directory with reduced/ and raw/ subdirs.
- * Timestamp format: YYYY-MM-DD_HHmm (CST approximation via local time)
+ * Format a session timestamp.
+ * Format: YYYY-MM-DD_HHmmss.
  */
-export function createSession(): SessionInfo {
-  const now = new Date();
-  const timestamp = [
+export function formatSessionTimestamp(now: Date = new Date()): string {
+  return [
     now.getFullYear(),
     '-',
     String(now.getMonth() + 1).padStart(2, '0'),
@@ -44,14 +43,38 @@ export function createSession(): SessionInfo {
     '_',
     String(now.getHours()).padStart(2, '0'),
     String(now.getMinutes()).padStart(2, '0'),
+    String(now.getSeconds()).padStart(2, '0'),
   ].join('');
+}
 
-  const dir = join(SESSIONS_DIR, timestamp);
+function reserveSessionDir(baseTimestamp: string): { timestamp: string; dir: string } {
+  mkdirSync(SESSIONS_DIR, { recursive: true });
+
+  for (let attempt = 0; ; attempt++) {
+    const timestamp = attempt === 0 ? baseTimestamp : `${baseTimestamp}-${attempt + 1}`;
+    const dir = join(SESSIONS_DIR, timestamp);
+
+    try {
+      mkdirSync(dir);
+      return { timestamp, dir };
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'EEXIST') continue;
+      throw err;
+    }
+  }
+}
+
+/**
+ * Create a new session directory with reduced/ and raw/ subdirs.
+ */
+export function createSession(): SessionInfo {
+  const { timestamp, dir } = reserveSessionDir(formatSessionTimestamp());
+
   const reducedDir = join(dir, 'reduced');
   const rawDir = join(dir, 'raw');
 
-  mkdirSync(reducedDir, { recursive: true });
-  mkdirSync(rawDir, { recursive: true });
+  mkdirSync(reducedDir);
+  mkdirSync(rawDir);
 
   return { dir, reducedDir, rawDir, timestamp };
 }

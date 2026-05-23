@@ -33,18 +33,23 @@ export function deriveUrlPattern(url: string): string {
     const path = parsed.pathname;
     const search = parsed.search;
 
-    // If there's a query string, use the path + first query key
+    // If there's a query string, use the path + first query key without
+    // baking the sampled search term into the generated schema.
     if (search) {
-      const firstParam = search.split('&')[0];
-      return path + firstParam;
+      const firstKey = parsed.searchParams.keys().next().value;
+      return firstKey ? `${path}?${firstKey}=` : `${path}?`;
     }
 
-    // Otherwise use the path (first 2 segments)
     const segments = path.split('/').filter(Boolean);
-    if (segments.length >= 2) {
-      return '/' + segments.slice(0, 2).join('/');
+    if (segments.length === 0) {
+      return '/';
     }
-    return path || '/';
+
+    if (segments.length >= 2) {
+      return `/${segments[0]}/`;
+    }
+
+    return path;
   } catch {
     return '/';
   }

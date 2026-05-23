@@ -55,6 +55,51 @@ function sendToExtension(
   });
 }
 
+function summarizeExtractionResult(result: ExtractionResult): Record<string, unknown> {
+  if (result.type === 'error') {
+    return {
+      type: 'error',
+      tabId: result.tabId,
+      error: result.error,
+    };
+  }
+
+  if (result.type === 'raw') {
+    return {
+      type: 'raw',
+      domain: result.domain,
+      url: result.url,
+      title: result.title,
+      tabId: result.tabId,
+      rawSourceCaptured: Boolean(result.mhtml),
+      rawSourceError: result.sourceCaptureError,
+    };
+  }
+
+  const itemCount = result.data.items?.length ?? (result.data.item ? 1 : 0);
+  const dataShape = result.data.error
+    ? 'error'
+    : result.data.items
+      ? 'items'
+      : result.data.item
+        ? 'item'
+        : 'empty';
+
+  return {
+    type: 'structured',
+    domain: result.domain,
+    pageType: result.pageType,
+    schemaVersion: result.schemaVersion,
+    variant: result.variant,
+    url: result.url,
+    title: result.title,
+    tabId: result.tabId,
+    dataShape,
+    itemCount,
+    error: result.data.error,
+  };
+}
+
 async function handleCliCommand(
   cliSocket: WebSocket,
   msg: Record<string, unknown>,
@@ -66,11 +111,6 @@ async function handleCliCommand(
       cliSocket.send(JSON.stringify(data));
     }
   };
-
-  if (!extensionSocket || extensionSocket.readyState !== WebSocket.OPEN) {
-    respond({ error: 'Chrome extension not connected. Load the extension and verify it appears in chrome://extensions.' });
-    return;
-  }
 
   const action = msg.action as string;
   const tab = msg.tab as string | undefined;
@@ -92,6 +132,11 @@ async function handleCliCommand(
 
   // --- session-add: add extraction to the active session ---
   if (action === 'session-add') {
+    if (!extensionSocket || extensionSocket.readyState !== WebSocket.OPEN) {
+      respond({ error: 'Chrome extension not connected. Load the extension and verify it appears in chrome://extensions.' });
+      return;
+    }
+
     let resolvedTabId: number | undefined;
     let warning: string | undefined;
 
@@ -179,6 +224,11 @@ async function handleCliCommand(
   if (action === 'watch-list') {
     const watches = listWatches();
     respond({ watches, count: watches.length });
+    return;
+  }
+
+  if (!extensionSocket || extensionSocket.readyState !== WebSocket.OPEN) {
+    respond({ error: 'Chrome extension not connected. Load the extension and verify it appears in chrome://extensions.' });
     return;
   }
 
@@ -546,7 +596,7 @@ async function handleCliCommand(
 
     const result = response.result as ExtractionResult;
     const sessionDir = await writeSession([result]);
-    respond({ sessionDir, result, ...(warning && { warning }) });
+    respond({ sessionDir, result: summarizeExtractionResult(result), ...(warning && { warning }) });
     return;
   }
 
@@ -769,7 +819,11 @@ export function startServer(): void {
 
       // CLI command
       if (msg.type === 'cli-command') {
-        handleCliCommand(socket, msg, extensionSocket, pendingRequests);
+        handleCliCommand(socket, msg, extensionSocket, pendingRequests).catch((err) => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ error: (err as Error).message || String(err) }));
+          }
+        });
         return;
       }
     });

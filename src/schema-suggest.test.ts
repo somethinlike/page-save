@@ -9,12 +9,12 @@ import {
 import type { DomProbeResult, DomProbeCandidate } from './types.js';
 
 describe('deriveUrlPattern', () => {
-  it('extracts path + first query param when query string is present', () => {
-    expect(deriveUrlPattern('https://amazon.com/s?k=creatine&ref=nb_sb_noss')).toBe('/s?k=creatine');
+  it('extracts path + first query key when query string is present', () => {
+    expect(deriveUrlPattern('https://amazon.com/s?k=creatine&ref=nb_sb_noss')).toBe('/s?k=');
   });
 
-  it('returns first two path segments when no query string', () => {
-    expect(deriveUrlPattern('https://amazon.com/dp/B00E9M4XFI')).toBe('/dp/B00E9M4XFI');
+  it('returns the first path segment as a structural pattern when no query string', () => {
+    expect(deriveUrlPattern('https://amazon.com/dp/B00E9M4XFI')).toBe('/dp/');
   });
 
   it('returns path as-is when there is only one segment', () => {

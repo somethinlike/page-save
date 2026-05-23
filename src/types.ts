@@ -106,13 +106,6 @@ export interface WsResponseError {
 
 export type WsResponse = WsResponseSuccess | WsResponseError;
 
-export interface CliCommand {
-  action: 'serve' | 'tabs' | 'save' | 'text' | 'extract' | 'extract-all';
-  tab?: string;
-  domain?: string;
-  output?: string;
-}
-
 // --- Confidence scoring types ---
 
 export interface FieldConfidence {

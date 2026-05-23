@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.05.22 (Phases 1-20 complete; second security hardening pass added)
+**Updated:** 2026.05.22 (Phases 1-20 complete; maintainability fixes added)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -91,7 +91,7 @@
 ### 5.1 Single Tab — Amazon Search
 - [ ] Open an Amazon search results page (e.g., search for "creatine")
 - [ ] Run `page-save extract --tab amazon`
-- [ ] Should print "Session saved: ...sessions/YYYY-MM-DD_HHmm"
+- [ ] Should print "Session saved: ...sessions/YYYY-MM-DD_HHmmss" (or `YYYY-MM-DD_HHmmss-N` on rapid same-second collisions)
 - [ ] Should print "Schema: amazon.com/search — N items"
 - [ ] Session folder contains `reduced/amazon.com-search-1.md`
 - [ ] Markdown file has table with: asin, price, prime, rating, reviewCount, title
@@ -120,7 +120,7 @@
 - [ ] `manifest.json` shows correct type for each page
 
 ### 5.5 Session Folder Structure
-- [ ] After any extraction, verify folder: `saved-pages/sessions/YYYY-MM-DD_HHmm/`
+- [ ] After any extraction, verify folder: `saved-pages/sessions/YYYY-MM-DD_HHmmss/` (or `YYYY-MM-DD_HHmmss-N` on rapid same-second collisions)
 - [ ] Contains `manifest.json`, `reduced/`, `raw/`
 - [ ] First session ever creates `saved-pages/README.md`
 - [ ] Raw result entries in `manifest.json` include `file` and `rawFile` pointing at the `.mhtml` when MHTML capture succeeds
@@ -215,6 +215,7 @@
 - [ ] Exit code 1
 
 ### 8.4 Server Not Running
+<!-- revised: 2026 May 22 20:01.1 -->
 - [ ] Stop the server
 - [ ] Run `page-save tabs`
 - [ ] Should auto-start the server and complete the command
@@ -329,6 +330,13 @@
 - [ ] Verify tools appear: list_tabs, extract, extract_all, extract_pages, batch_urls, schema_suggest, youtube_transcript
 - [ ] Call `list_tabs` — should return open Chrome tabs
 - [ ] Call `extract` with a tab pattern — should create session
+
+### 16.2 MCP Response Payload Boundary
+<!-- added: 2026 May 22 20:01.1 -->
+- [ ] Open a page with no schema and call MCP `extract`
+- [ ] Response should include the session path and a compact result summary
+- [ ] Response should not include raw `html`, raw `text`, or base64 `mhtml` payload fields
+- [ ] The raw source should exist on disk under the returned session's `raw/` folder when MHTML capture succeeds
 
 ---
 
