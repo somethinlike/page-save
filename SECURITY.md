@@ -1,5 +1,5 @@
 # Security Model — Page Save Bridge
-<!-- added: 2026 May 22 18:34.3 -->
+<!-- revised: 2026 May 22 19:21.9 -->
 
 Page Save exists to let a local LLM workflow capture browser pages that ordinary browser automation cannot read because of CSP or site scripting restrictions. That means the security boundary has to be explicit.
 
@@ -9,6 +9,9 @@ Page Save exists to let a local LLM workflow capture browser pages that ordinary
 - **Native launcher boundary:** the optional launcher is registered through Chromium native messaging and is scoped to specific extension IDs through `allowed_origins`.
 - **Network boundary:** the Node.js bridge listens on `ws://127.0.0.1:7224` and rejects WebSocket clients whose TCP peer is not loopback.
 - **Web origin boundary:** the bridge rejects browser-origin WebSocket clients unless the `Origin` header is a `chrome-extension://...` origin. Ordinary websites should not be able to use a victim's browser as a client for the local bridge.
+- **Extension socket boundary:** extension-only message types, including sidebar session saves and keyboard-shortcut saves, require a successful Chromium-extension-origin handshake. A no-Origin local CLI/MCP socket is not allowed to impersonate the extension connection.
+- **Background URL boundary:** batch extraction and watch runs open only `http://` and `https://` URLs in background tabs. Browser-internal, extension, file, script, data, and malformed URLs are rejected before they reach `chrome.tabs.create`.
+- **Side panel rendering boundary:** tab titles, URLs, extracted page text, and preview snippets are rendered as text nodes in the extension UI, not inserted as HTML.
 - **LLM boundary:** an LLM session does not get browser cookies, profile storage, or direct tab internals. It can only see the tab list and capture/extraction output if its runtime is allowed to invoke the Page Save CLI or MCP tools.
 
 ## Approval Model
@@ -43,7 +46,9 @@ Raw mode writes Chromium MHTML output, which should be treated like the file pro
 ## Current Limits
 
 - Page Save does not yet provide a built-in per-request browser approval prompt for CLI/MCP commands.
-- A process running as the same local user can connect as a local, no-Origin WebSocket client. That is the same-user local process trust boundary used by most developer tools.
+- A process running as the same local user can connect as a local, no-Origin WebSocket CLI/MCP client. That is the same-user local process trust boundary used by most developer tools, but that client path cannot send extension-only sidebar/shortcut messages.
+- WebSocket `Origin` checks are a browser-origin defense, not cryptographic authentication against arbitrary same-user processes that can craft custom headers.
+- Another installed Chromium extension could still attempt to connect from its own `chrome-extension://...` origin. Native messaging launch is pinned by `allowed_origins`, and the WebSocket handshake checks extension-origin shape, but Page Save does not yet maintain a persisted allow-list for WebSocket extension IDs.
 - The extension has broad host permissions so it can work on arbitrary pages. Users who need a narrower policy should install it only in a dedicated browser profile.
 
 ## Reporting

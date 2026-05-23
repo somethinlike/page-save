@@ -37,7 +37,7 @@ function connect() {
     chrome.alarms.clear(STATUS_ALARM);
     chrome.alarms.create(KEEPALIVE_ALARM, { periodInMinutes: 0.4 });
     // Use local ref to avoid race with a second connect() overwriting ws
-    socket.send(JSON.stringify({ type: 'extension-hello' }));
+    socket.send(JSON.stringify({ type: 'extension-hello', extensionId: chrome.runtime.id }));
   };
 
   socket.onmessage = async (event) => {
@@ -135,6 +135,31 @@ function send(msg) {
     return;
   }
   ws.send(JSON.stringify(msg));
+}
+
+function isHttpOrHttpsUrl(value) {
+  if (typeof value !== 'string' || value.trim() !== value || value.length === 0) {
+    return false;
+  }
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function validateCaptureUrls(urls) {
+  if (!Array.isArray(urls) || urls.length === 0) {
+    return { error: 'urls must be a non-empty array' };
+  }
+  const invalid = urls.filter((url) => !isHttpOrHttpsUrl(url));
+  if (invalid.length > 0) {
+    return {
+      error: `Only http:// and https:// URLs can be opened for background capture. Rejected: ${String(invalid[0]).slice(0, 120)}`,
+    };
+  }
+  return { urls };
 }
 
 // --- Alarm Handler (reconnect + keepalive) ---
@@ -323,10 +348,12 @@ async function handleGetYoutubeHtml(id, tabId) {
 }
 
 async function handleBatchUrls(id, urls, options = {}) {
-  if (!Array.isArray(urls) || urls.length === 0) {
-    send({ id, error: 'urls must be a non-empty array' });
+  const validated = validateCaptureUrls(urls);
+  if (validated.error) {
+    send({ id, error: validated.error });
     return;
   }
+  urls = validated.urls;
 
   const results = [];
   const CONCURRENCY = 3;

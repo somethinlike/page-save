@@ -10,7 +10,12 @@
   },
   "files": [
     "dist/",
-    "bin/",
+    "bin/page-save.js",
+    "bin/page-save-mcp.js",
+    "bin/page-save-launcher.bat",
+    "bin/page-save-server-start.bat",
+    "bin/page-save-server-start.vbs",
+    "bin/page-save-url-launcher.vbs",
     "extension/",
     "src/native-host-wrapper.cs",
     "README.md",

@@ -9,6 +9,7 @@ import { generateSchema, formatSchemaSummary, saveSchema } from './schema-sugges
 import { extractSubtitles } from './youtube-extractor.js';
 import { createWatch, listWatches, processWatchResult } from './watch.js';
 import { SAVE_DIR } from './paths.js';
+import { isHttpOrHttpsUrl, validateCaptureUrls } from './url-policy.js';
 
 let activeServer: { httpServer: HttpServer; wss: WebSocketServer } | null = null;
 
@@ -19,12 +20,22 @@ interface PendingRequest {
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
-function isLoopbackAddress(address: string | undefined): boolean {
+export function isLoopbackAddress(address: string | undefined): boolean {
   return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
 }
 
-function isAllowedBrowserOrigin(origin: string | undefined): boolean {
-  return !origin || origin.startsWith('chrome-extension://');
+export function getExtensionIdFromOrigin(origin: string | undefined): string | null {
+  if (!origin) return null;
+  const match = origin.match(/^chrome-extension:\/\/([a-p]{32})$/);
+  return match?.[1] ?? null;
+}
+
+export function isChromeExtensionOrigin(origin: string | undefined): boolean {
+  return getExtensionIdFromOrigin(origin) !== null;
+}
+
+export function isAllowedBrowserOrigin(origin: string | undefined): boolean {
+  return !origin || isChromeExtensionOrigin(origin);
 }
 
 function sendToExtension(
@@ -154,6 +165,10 @@ async function handleCliCommand(
       respond({ error: 'No URL provided. Use --url.' });
       return;
     }
+    if (!isHttpOrHttpsUrl(url)) {
+      respond({ error: `Only http:// and https:// URLs can be watched. Rejected: ${url.slice(0, 120)}` });
+      return;
+    }
     const fields = msg.fields as string[] | undefined;
     const config = createWatch(url, fields);
     respond({ watchId: config.id, url: config.url, fields: config.fields });
@@ -182,6 +197,11 @@ async function handleCliCommand(
 
     const results = [];
     for (const watch of targets) {
+      if (!isHttpOrHttpsUrl(watch.url)) {
+        results.push({ watchId: watch.id, error: `Watch URL is not http:// or https://: ${watch.url}` });
+        continue;
+      }
+
       // Use batch-urls to extract the watch URL
       const request: WsRequest = {
         id: randomUUID(),
@@ -276,11 +296,12 @@ async function handleCliCommand(
 
   // --- batch: extract from a list of URLs via background tabs ---
   if (action === 'batch') {
-    const urls = msg.urls as string[] | undefined;
-    if (!urls || urls.length === 0) {
-      respond({ error: 'No URLs provided. Use --urls or --file.' });
+    const validated = validateCaptureUrls(msg.urls);
+    if (validated.error) {
+      respond({ error: validated.error });
       return;
     }
+    const urls = validated.urls!;
 
     const request: WsRequest = {
       id: randomUUID(),
@@ -662,8 +683,12 @@ export function startServer(): void {
     if (activeServer?.httpServer === httpServer) activeServer = null;
   });
 
-  wss.on('connection', (socket) => {
+  wss.on('connection', (socket, req) => {
     let isExtension = false;
+    const connectionOrigin = Array.isArray(req.headers.origin)
+      ? req.headers.origin[0]
+      : req.headers.origin;
+    const connectionExtensionId = getExtensionIdFromOrigin(connectionOrigin);
 
     socket.on('message', async (raw) => {
       let msg: Record<string, unknown>;
@@ -675,14 +700,27 @@ export function startServer(): void {
 
       // Extension handshake
       if (msg.type === 'extension-hello') {
+        if (!connectionExtensionId) {
+          socket.close(1008, 'Extension handshake requires a Chromium extension origin.');
+          return;
+        }
+        const claimedExtensionId = typeof msg.extensionId === 'string' ? msg.extensionId : undefined;
+        if (claimedExtensionId && claimedExtensionId !== connectionExtensionId) {
+          socket.close(1008, 'Extension origin did not match the claimed extension ID.');
+          return;
+        }
         extensionSocket = socket;
         isExtension = true;
-        console.log('[page-save] Chrome extension connected');
+        console.log(`[page-save] Chrome extension connected (${connectionExtensionId})`);
         return;
       }
 
       // Shortcut-initiated save (unsolicited from extension)
       if (msg.type === 'shortcut-save' && msg.result) {
+        if (!isExtension) {
+          socket.close(1008, 'Shortcut saves are accepted only from the extension connection.');
+          return;
+        }
         const result = msg.result as SavePageResult;
         const filePath = writeMhtml(result.data, result.title);
         console.log(`[page-save] Shortcut save: ${filePath}`);
@@ -691,6 +729,14 @@ export function startServer(): void {
 
       // Panel-initiated session save (extraction results from sidebar)
       if (msg.type === 'panel-save-session' && msg.id && msg.results) {
+        if (!isExtension) {
+          socket.send(JSON.stringify({
+            id: msg.id,
+            error: 'Panel saves are accepted only from the extension connection.',
+          }));
+          socket.close(1008, 'Panel saves are accepted only from the extension connection.');
+          return;
+        }
         try {
           const results = msg.results as ExtractionResult[];
           const sessionDir = await writeSession(results);
@@ -711,7 +757,7 @@ export function startServer(): void {
       }
 
       // Extension response to a pending request
-      if (msg.id && isExtension) {
+      if (msg.id && isExtension && socket === extensionSocket) {
         const pending = pendingRequests.get(msg.id as string);
         if (pending) {
           clearTimeout(pending.timeout);
@@ -729,7 +775,7 @@ export function startServer(): void {
     });
 
     socket.on('close', () => {
-      if (isExtension) {
+      if (isExtension && socket === extensionSocket) {
         console.log('[page-save] Chrome extension disconnected');
         extensionSocket = null;
         for (const [id, pending] of pendingRequests) {

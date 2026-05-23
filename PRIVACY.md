@@ -10,6 +10,8 @@ Page Save Bridge collects **no data**. Zero. None.
 
 - The extension communicates exclusively with a **local WebSocket server** running on your own machine (`127.0.0.1:7224`).
 - The local bridge rejects non-loopback WebSocket clients and rejects ordinary website origins.
+- Sidebar and keyboard-shortcut saves are accepted only from the Chromium extension WebSocket connection.
+- Batch/watch URL capture opens only `http://` and `https://` URLs; local files, browser-internal pages, extension pages, script URLs, and malformed URLs are rejected.
 - No data is sent to any external server, cloud service, or third party.
 - Page content captured via `chrome.pageCapture.saveAsMHTML()` is sent only to your local machine over explicit loopback.
 - The extension does not track browsing history, collect analytics, or transmit telemetry.

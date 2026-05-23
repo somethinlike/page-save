@@ -201,15 +201,17 @@ It documents the schema format, quality bar, token-efficiency rules, and test
 checklist.
 
 ## Security Model and Approvals
-<!-- added: 2026 May 22 18:34.3 -->
+<!-- revised: 2026 May 22 19:21.9 -->
 
 Page Save is intentionally local-first:
 
 - The bridge listens on `ws://127.0.0.1:7224`, not a public network interface.
 - The WebSocket server rejects non-loopback clients.
 - Browser-origin WebSocket clients are rejected unless they come from a Chromium extension origin, which prevents ordinary websites from talking to the local bridge.
+- Extension-only messages, such as sidebar saves and keyboard-shortcut saves, are accepted only after an extension-origin handshake, and the claimed extension ID must match the WebSocket origin when present.
 - The native messaging launcher is registered for specific extension IDs via Chromium's `allowed_origins` mechanism.
 - The extension can see browser tabs because the user installed it and granted browser permissions; the Node.js bridge and LLM session only see the output the extension sends back.
+- Background batch/watch URL capture opens only `http://` and `https://` URLs; browser-internal, extension, file, script, and data URLs are rejected.
 
 There are two usage modes with different approval boundaries:
 

@@ -49,6 +49,14 @@ const setupCopyStatus = document.getElementById('setup-copy-status');
 
 // --- Communication with service worker ---
 
+function renderEmptyState(parent, text) {
+  parent.textContent = '';
+  const empty = document.createElement('div');
+  empty.className = 'empty-state';
+  empty.textContent = text;
+  parent.appendChild(empty);
+}
+
 function sendMessage(msg) {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(msg, (response) => {
@@ -95,7 +103,7 @@ async function loadTabs() {
 
     renderTabs();
   } catch (err) {
-    tabList.innerHTML = `<div class="empty-state">Error loading tabs: ${err.message}</div>`;
+    renderEmptyState(tabList, `Error loading tabs: ${err.message}`);
   }
 }
 
@@ -206,11 +214,11 @@ function renderTabs() {
   const sorted = Array.from(groups.values()).sort((a, b) => b.tabs.length - a.tabs.length);
 
   if (sorted.length === 0) {
-    tabList.innerHTML = '<div class="empty-state">No open tabs</div>';
+    renderEmptyState(tabList, 'No open tabs');
     return;
   }
 
-  tabList.innerHTML = '';
+  tabList.textContent = '';
 
   for (const group of sorted) {
     const groupEl = document.createElement('div');
@@ -293,13 +301,18 @@ function renderTabs() {
       const item = document.createElement('div');
       item.className = 'tab-item';
 
-      const checked = selectedIds.has(tab.tabId) ? 'checked' : '';
-      item.innerHTML = `
-        <input type="checkbox" data-tab-id="${tab.tabId}" ${checked}>
-        <span class="tab-title" title="${tab.url}">${tab.title || tab.url}</span>
-      `;
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.dataset.tabId = String(tab.tabId);
+      checkbox.checked = selectedIds.has(tab.tabId);
+      item.appendChild(checkbox);
 
-      const checkbox = item.querySelector('input[type="checkbox"]');
+      const titleEl = document.createElement('span');
+      titleEl.className = 'tab-title';
+      titleEl.title = tab.url;
+      titleEl.textContent = tab.title || tab.url;
+      item.appendChild(titleEl);
+
       checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
           selectedIds.add(tab.tabId);
@@ -594,7 +607,7 @@ function hidePreview() {
 }
 
 function renderPreview() {
-  previewList.innerHTML = '';
+  previewList.textContent = '';
   const included = previewIncluded.size;
   const total = previewResults.length;
   previewCount.textContent = `${included}/${total} included`;
@@ -612,16 +625,32 @@ function renderPreview() {
                       result.data?.item ? '1 item' :
                       result.text ? `${result.text.length} chars` : '';
 
-    item.innerHTML = `
-      <div class="preview-item-header">
-        <input type="checkbox" data-idx="${i}" ${isIncluded ? 'checked' : ''}>
-        <span class="preview-item-title" title="${result.url || ''}">${title}</span>
-        <span class="preview-item-meta">${type} ${itemCount}</span>
-      </div>
-      <div class="preview-item-content">${getPreviewContent(result)}</div>
-    `;
+    const header = document.createElement('div');
+    header.className = 'preview-item-header';
+    item.appendChild(header);
 
-    const checkbox = item.querySelector('input[type="checkbox"]');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.dataset.idx = String(i);
+    checkbox.checked = isIncluded;
+    header.appendChild(checkbox);
+
+    const titleEl = document.createElement('span');
+    titleEl.className = 'preview-item-title';
+    titleEl.title = result.url || '';
+    titleEl.textContent = title;
+    header.appendChild(titleEl);
+
+    const metaEl = document.createElement('span');
+    metaEl.className = 'preview-item-meta';
+    metaEl.textContent = `${type} ${itemCount}`.trim();
+    header.appendChild(metaEl);
+
+    const contentEl = document.createElement('div');
+    contentEl.className = 'preview-item-content';
+    contentEl.textContent = getPreviewContent(result);
+    item.appendChild(contentEl);
+
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) {
         previewIncluded.add(i);
@@ -633,7 +662,6 @@ function renderPreview() {
       previewCount.textContent = `${previewIncluded.size}/${total} included`;
     });
 
-    const header = item.querySelector('.preview-item-header');
     header.addEventListener('click', (e) => {
       if (e.target === checkbox) return;
       checkbox.checked = !checkbox.checked;

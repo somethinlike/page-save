@@ -12,58 +12,71 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { WebSocket } from 'ws';
+import { WebSocket, type RawData } from 'ws';
 import { WS_URL } from './types.js';
+import { isHttpOrHttpsUrl } from './url-policy.js';
 
 // --- WebSocket Client ---
 
-let ws: WebSocket | null = null;
-
-function ensureConnection(): Promise<WebSocket> {
-  return new Promise((resolve, reject) => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      resolve(ws);
-      return;
-    }
-
-    const socket = new WebSocket(WS_URL);
-    socket.on('open', () => {
-      ws = socket;
-      resolve(socket);
-    });
-    socket.on('error', (err) => {
-      reject(new Error(`Cannot connect to page-save server at ${WS_URL}. Start it with: page-save serve`));
-    });
-    socket.on('close', () => {
-      ws = null;
-    });
-  });
+function rawDataToString(raw: RawData): string {
+  if (typeof raw === 'string') return raw;
+  if (Buffer.isBuffer(raw)) return raw.toString();
+  if (Array.isArray(raw)) return Buffer.concat(raw).toString();
+  return Buffer.from(raw).toString();
 }
 
 function sendCommand(command: Record<string, unknown>, timeoutMs = 30000): Promise<Record<string, unknown>> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const socket = await ensureConnection();
-      const timer = setTimeout(() => {
-        reject(new Error('Command timed out'));
-      }, timeoutMs);
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(WS_URL);
+    let settled = false;
 
-      const handler = (raw: Buffer) => {
-        clearTimeout(timer);
-        socket.off('message', handler);
-        const msg = JSON.parse(raw.toString());
+    const timer = setTimeout(() => {
+      fail(new Error('Command timed out'));
+    }, timeoutMs);
+
+    function cleanup(): void {
+      clearTimeout(timer);
+      socket.removeAllListeners();
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+        socket.close();
+      }
+    }
+
+    function fail(err: Error): void {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(err);
+    }
+
+    socket.once('open', () => {
+      socket.send(JSON.stringify({ type: 'cli-command', ...command }));
+    });
+
+    socket.once('message', (raw) => {
+      if (settled) return;
+      settled = true;
+      try {
+        const msg = JSON.parse(rawDataToString(raw));
+        cleanup();
         if (msg.error) {
           reject(new Error(msg.error));
         } else {
           resolve(msg);
         }
-      };
+      } catch (err) {
+        cleanup();
+        reject(err);
+      }
+    });
 
-      socket.on('message', handler);
-      socket.send(JSON.stringify({ type: 'cli-command', ...command }));
-    } catch (err) {
-      reject(err);
-    }
+    socket.once('error', () => {
+      fail(new Error(`Cannot connect to page-save server at ${WS_URL}. Start it with: page-save serve`));
+    });
+
+    socket.once('close', () => {
+      fail(new Error('Connection to page-save server closed before a response arrived.'));
+    });
   });
 }
 
@@ -72,6 +85,10 @@ function sendCommand(command: Record<string, unknown>, timeoutMs = 30000): Promi
 const server = new McpServer({
   name: 'page-save',
   version: '1.0.0',
+});
+
+const captureUrlSchema = z.string().refine(isHttpOrHttpsUrl, {
+  message: 'Only http:// and https:// URLs can be opened for background capture.',
 });
 
 // --- Tools ---
@@ -123,7 +140,7 @@ server.tool(
 server.tool(
   'batch_urls',
   'Extract from a list of URLs by opening background tabs',
-  { urls: z.array(z.string()).describe('List of URLs to extract from') },
+  { urls: z.array(captureUrlSchema).describe('List of http:// or https:// URLs to extract from') },
   async ({ urls }) => {
     const timeoutMs = urls.length * 20000 + 10000;
     const result = await sendCommand({ action: 'batch', urls }, timeoutMs);

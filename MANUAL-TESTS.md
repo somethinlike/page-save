@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.05.22 (Phases 1-20 complete; security hardening added)
+**Updated:** 2026.05.22 (Phases 1-20 complete; second security hardening pass added)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -658,3 +658,25 @@
 - [ ] `SECURITY.md` exists and documents the browser, native launcher, loopback, web-origin, LLM, and output boundaries
 - [ ] `PRIVACY.md` says the bridge uses `127.0.0.1:7224` and rejects non-loopback / ordinary website-origin clients
 - [ ] `npm pack --dry-run` includes `README.md`, `PRIVACY.md`, `SECURITY.md`, and `LICENSE`
+- [ ] `npm pack --dry-run` does not include generated local launcher artifacts such as `bin/com.pagesave.launcher.json`, `bin/page-save-native-host.exe`, `bin/page-save-native-host.sh`, or `bin/page-save-server-start.local.sh`
+
+### 29.4 Extension-Only Message Rejection
+<!-- added: 2026 May 22 19:21.9 -->
+- [ ] With the server running, run:
+  `node -e "const WebSocket=require('ws'); const ws=new WebSocket('ws://127.0.0.1:7224'); ws.on('open',()=>ws.send(JSON.stringify({type:'panel-save-session',id:'spoof',results:[]}))); ws.on('message',m=>console.log(m.toString())); ws.on('close',(code,reason)=>console.log('closed '+code+' '+reason)); ws.on('error',e=>console.log(e.message));"`
+- [ ] Output should include `Panel saves are accepted only from the extension connection` and close with policy code `1008`
+- [ ] No session folder should be created from the spoofed no-Origin client
+- [ ] The real side panel should still save selected tabs successfully
+
+### 29.5 Background URL Protocol Rejection
+<!-- added: 2026 May 22 19:21.9 -->
+- [ ] With server and extension connected, run `page-save batch --urls "file:///C:/Users/Ryan/secret.txt"`
+- [ ] Command should fail before opening a tab, with an error saying only `http://` and `https://` URLs can be opened for background capture
+- [ ] Run `page-save watch-add --url "chrome://extensions"` — it should fail with the same protocol restriction
+- [ ] Run `page-save batch --urls "https://example.com"` — a normal web URL should still open, extract, close, and write a session
+
+### 29.6 Side Panel Text Rendering
+<!-- added: 2026 May 22 19:21.9 -->
+- [ ] Open or create a page whose title or body text contains literal markup such as `<img src=x onerror=alert(1)>`
+- [ ] Open the side panel and verify the tab title displays as literal text, not rendered markup
+- [ ] Select the tab, preview it, and verify the preview content displays literal text, not rendered markup
