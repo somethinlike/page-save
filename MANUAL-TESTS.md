@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.05.22 (Phases 1-20 complete; maintainability fixes added)
+**Updated:** 2026.05.22 (Phases 1-20 complete; Gemini conversation schema revised)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -589,16 +589,24 @@
 ---
 
 ## 25. Gemini Conversation Schema (Phase 17)
-<!-- added: 2026 May 18 17:16.0 -->
+<!-- revised: 2026 May 22 20:15.1 -->
 
-### 25.1 Assistant Responses Only
+### 25.1 Full Conversation Turns
 - [ ] Open a Gemini conversation at `gemini.google.com/gem/...` or `gemini.google.com/app/...`
 - [ ] Reload the extension so `extension/schemas/gemini.google.com.json` is loaded
 - [ ] Run `page-save extract --tab gemini` or select the Gemini tab in the side panel with `Full` selected
 - [ ] Output uses schema `gemini.google.com/gemConversation` or `gemini.google.com/appConversation`
-- [ ] Each item has a `response` field containing only Gemini/model response text
+- [ ] Each item represents one conversation turn with a `prompt` field and a `response` field
+- [ ] `prompt` contains user prompt text without the hidden `You said` accessibility label
+- [ ] `response` contains Gemini/model response text from the markdown response body
 - [ ] Output does not include Gemini UI labels such as `You said`, `Copy prompt`, `Listen`, `Share`, or sidebar text
-- [ ] User prompts such as `Continue` are not emitted in the default schema output
+- [ ] Multi-paragraph responses stay on a single TSV row instead of splitting the table
+
+### 25.2 Gemini Variants
+- [ ] Set the Gemini schema dropdown to `responses` or run `page-save extract --tab gemini --variant responses`
+- [ ] Output contains only the `response` column for each turn
+- [ ] Set the Gemini schema dropdown to `prompts` or run `page-save extract --tab gemini --variant prompts`
+- [ ] Output contains only the `prompt` column for each turn
 
 ---
 

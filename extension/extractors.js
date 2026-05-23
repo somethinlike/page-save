@@ -343,6 +343,44 @@ const BUILTIN_SCHEMAS = [
     },
   },
   {
+    domain: 'gemini.google.com',
+    version: '2',
+    status: 'experimental',
+    description: 'Google Gemini conversations — extracts user prompts and assistant responses from each conversation turn',
+    pages: {
+      gemConversation: {
+        urlPattern: '/gem/',
+        description: 'Gemini custom Gem conversation page',
+        scrollDepth: 'none',
+        container: '.conversation-container.message-actions-hover-boundary',
+        fields: {
+          prompt: { selector: 'user-query .query-text-line', type: 'textAll' },
+          response: { selector: 'model-response .markdown.markdown-main-panel', type: 'text' },
+        },
+      },
+      appConversation: {
+        urlPattern: '/app/',
+        description: 'Gemini app conversation page',
+        scrollDepth: 'none',
+        container: '.conversation-container.message-actions-hover-boundary',
+        fields: {
+          prompt: { selector: 'user-query .query-text-line', type: 'textAll' },
+          response: { selector: 'model-response .markdown.markdown-main-panel', type: 'text' },
+        },
+      },
+    },
+    variants: {
+      responses: {
+        description: 'Assistant responses only',
+        fields: ['response'],
+      },
+      prompts: {
+        description: 'User prompts only',
+        fields: ['prompt'],
+      },
+    },
+  },
+  {
     domain: 'reddit.com',
     version: '2',
     description: 'Reddit posts — rewrites to old.reddit.com for stable, server-rendered DOM',

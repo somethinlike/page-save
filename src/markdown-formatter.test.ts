@@ -128,6 +128,32 @@ describe('formatStructuredMarkdown', () => {
     expect(md).not.toContain('reviewCount');
   });
 
+  it('normalizes multiline table cells so TSV rows stay single-line', () => {
+    const result: StructuredResult = {
+      type: 'structured',
+      domain: 'gemini.google.com',
+      pageType: 'appConversation',
+      schemaVersion: '2',
+      url: 'https://gemini.google.com/app/example',
+      title: 'Gemini Conversation',
+      data: {
+        items: [
+          {
+            prompt: ['first prompt line', 'second prompt line'],
+            response: 'First paragraph.\n\nSecond\tparagraph.',
+          },
+        ],
+        count: 1,
+      },
+    };
+
+    const md = formatStructuredMarkdown(result);
+
+    expect(md).toContain('prompt\tresponse');
+    expect(md).toContain('first prompt line; second prompt line\tFirst paragraph. Second paragraph.');
+    expect(md).not.toContain('First paragraph.\n\nSecond');
+  });
+
   it('formats error result', () => {
     const result: StructuredResult = {
       type: 'structured',

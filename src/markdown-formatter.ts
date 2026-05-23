@@ -70,8 +70,8 @@ const REDUNDANT_FIELDS: Record<string, string[]> = {
 function formatCell(value: unknown): string {
   if (value === null || value === undefined) return '';
   if (typeof value === 'boolean') return value ? 'Y' : 'N';
-  if (Array.isArray(value)) return value.join('; ');
-  return String(value).trim();
+  if (Array.isArray(value)) return value.map(v => formatCell(v)).filter(Boolean).join('; ');
+  return String(value).replace(/[\t\r\n]+/g, ' ').replace(/ {2,}/g, ' ').trim();
 }
 
 /**

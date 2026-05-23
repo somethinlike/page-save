@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-23T01:04:12.942Z",
+  "generatedAt": "2026-05-23T01:18:55.379Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
-      "mtimeMs": 1779285776736.7095,
-      "size": 40477
+      "mtimeMs": 1779498949721.973,
+      "size": 41798
     },
     "extension/service-worker.js": {
       "filePath": "extension/service-worker.js",
@@ -44,8 +44,8 @@
     },
     "src/markdown-formatter.ts": {
       "filePath": "src/markdown-formatter.ts",
-      "mtimeMs": 1779493220953.5469,
-      "size": 4918
+      "mtimeMs": 1779498963559.5806,
+      "size": 5008
     },
     "src/mcp-server.ts": {
       "filePath": "src/mcp-server.ts",

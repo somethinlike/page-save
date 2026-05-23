@@ -1,8 +1,8 @@
 {
   "domain": "gemini.google.com",
-  "version": "1",
+  "version": "2",
   "status": "experimental",
-  "description": "Google Gemini conversations — extracts only assistant response text from each conversation turn",
+  "description": "Google Gemini conversations — extracts user prompts and assistant responses from each conversation turn",
   "pages": {
     "gemConversation": {
       "urlPattern": "/gem/",
@@ -10,6 +10,10 @@
       "scrollDepth": "none",
       "container": ".conversation-container.message-actions-hover-boundary",
       "fields": {
+        "prompt": {
+          "selector": "user-query .query-text-line",
+          "type": "textAll"
+        },
         "response": {
           "selector": "model-response .markdown.markdown-main-panel",
           "type": "text"
@@ -22,11 +26,25 @@
       "scrollDepth": "none",
       "container": ".conversation-container.message-actions-hover-boundary",
       "fields": {
+        "prompt": {
+          "selector": "user-query .query-text-line",
+          "type": "textAll"
+        },
         "response": {
           "selector": "model-response .markdown.markdown-main-panel",
           "type": "text"
         }
       }
+    }
+  },
+  "variants": {
+    "responses": {
+      "description": "Assistant responses only",
+      "fields": ["response"]
+    },
+    "prompts": {
+      "description": "User prompts only",
+      "fields": ["prompt"]
     }
   }
 }
