@@ -199,15 +199,16 @@ function getSchemaKey(hostname) {
 }
 
 function renderTabs() {
-  // Group by base domain
+  // Group by the schema key. This keeps exact subdomain schemas visible
+  // (gemini.google.com) while still collapsing www.amazon.com to amazon.com.
   const groups = new Map();
   for (const tab of allTabs) {
     const domain = getDomain(tab.url);
-    const base = getBaseDomain(domain);
-    if (!groups.has(base)) {
-      groups.set(base, { domain: base, tabs: [] });
+    const groupKey = getSchemaKey(domain);
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, { domain: groupKey, tabs: [] });
     }
-    groups.get(base).tabs.push(tab);
+    groups.get(groupKey).tabs.push(tab);
   }
 
   // Sort by tab count (most tabs first)

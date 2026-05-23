@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-05-23T01:18:55.379Z",
+  "generatedAt": "2026-05-23T03:54:53.274Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
@@ -14,8 +14,8 @@
     },
     "extension/sidepanel.js": {
       "filePath": "extension/sidepanel.js",
-      "mtimeMs": 1779495575987.4175,
-      "size": 25655
+      "mtimeMs": 1779508347634.8293,
+      "size": 25799
     },
     "src/browser-extension-discovery.ts": {
       "filePath": "src/browser-extension-discovery.ts",

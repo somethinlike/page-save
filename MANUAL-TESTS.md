@@ -1,5 +1,5 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.05.22 (Phases 1-20 complete; Gemini conversation schema revised)
+**Updated:** 2026.05.22 (Phases 1-20 complete; Gemini sidebar grouping fixed)
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)
@@ -160,6 +160,8 @@
 ### 6.2 Tab Grouping
 - [ ] Open tabs from multiple domains (Amazon, Walmart, eBay, etc.)
 - [ ] Sidebar groups tabs by domain
+- [ ] Exact subdomain schemas stay visible: a `gemini.google.com/app/...` tab appears under `gemini.google.com`, not `google.com`
+- [ ] Parent-domain schemas still collapse normal `www` hosts: a `www.amazon.com` tab appears under `amazon.com`
 - [ ] Domains sorted by tab count (most first)
 - [ ] Each domain shows schema badge: green "Schema" or yellow "Raw"
 

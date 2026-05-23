@@ -16,8 +16,8 @@
 | `src/watch.ts` | 1 | 3 |
 | `src/file-writer.ts` | 1 | 1 |
 | `src/install-launcher.ts` | 1 | 1 |
-| `src/schema-suggest.ts` | 1 | 1 |
 | `src/markdown-formatter.ts` | 1 | 1 |
+| `src/schema-suggest.ts` | 1 | 1 |
 | `src/browser-extension-discovery.ts` | 1 | 0 |
 | `src/cli.ts` | 0 | 3 |
 | `src/mcp-server.ts` | 0 | 2 |
