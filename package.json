@@ -14,7 +14,9 @@
     "extension/",
     "src/native-host-wrapper.cs",
     "README.md",
+    "CONTRIBUTING.md",
     "PRIVACY.md",
+    "SCHEMA-CONVENTIONS.md",
     "SECURITY.md",
     "LICENSE"
   ],

@@ -7,6 +7,23 @@ This document is for LLM assistants helping users create, update, or debug page-
 
 page-save either preserves untouched Raw MHTML captures or extracts structured data from web pages for LLM consumption. A human opens browser tabs, selects them in the sidebar (or uses CLI), and page-save extracts product data, comments, or other structured content using domain-specific CSS selector schemas. The schema output is token-optimized: TSV tables for repeating items, compact key-value pairs for single items, with a reference table (`refs.txt`) for deduplication.
 
+## Contribute Schemas Upstream
+<!-- added: 2026 May 22 19:08.4 -->
+
+If you build or improve a schema for a website, contribute it back to the
+project repo:
+
+<https://github.com/somethinlike/page-save>
+
+Schema work is reusable infrastructure. Keeping a good selector set local means
+the next user has to rediscover the same DOM structure. Open a pull request or
+issue with the domain, page types, public sample URLs, and what the schema
+extracts.
+
+Do not include private saved pages, authenticated captures, cookies, account
+data, or personal browsing output. If the site requires login, describe the
+page shape and redact anything account-specific.
+
 ## Schema Architecture
 
 ### File Locations
@@ -261,3 +278,4 @@ Post-processors should:
 - [ ] Output checked: all fields populated, no nulls on expected data
 - [ ] Token efficiency checked: no tracking URLs, no marketing paragraphs
 - [ ] Extension reloaded and verified
+- [ ] Contributed upstream via pull request or issue if the schema is useful beyond your local machine

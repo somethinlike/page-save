@@ -6,6 +6,19 @@ Built with care by [ESDF.gg](https://esdf.gg) and [The Open English Bible Minist
 
 *"'You shall love the Lord your God with all your heart and with all your soul and with all your mind.' This is the greatest and first commandment. And a second is like it: 'You shall love your neighbor as yourself.'"* — Matthew 22:37-39 (NRSVue)
 
+## Public Domain Project
+<!-- added: 2026 May 22 19:08.4 -->
+
+Page Save Bridge is an open-source, public-domain project under
+[CC0 1.0](LICENSE). Use it, fork it, package it, modify it, and ship it.
+
+Project repo: <https://github.com/somethinlike/page-save>
+
+Schema contributions are especially welcome. If you build or improve an
+extraction schema for a site, please contribute it back to the project so other
+LLM workflows can benefit from the same selector work. See
+[Contributing Schemas](#contributing-schemas) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## The Problem
 
 LLM browser tools often get blocked by Content Security Policy on many sites. Reddit, Twitter/X, LinkedIn — the assistant can see the tab exists but can't read the content. You end up pressing Ctrl+S manually and pointing the LLM at the saved file.
@@ -22,7 +35,19 @@ Page Save Bridge uses `chrome.pageCapture.saveAsMHTML()` — a browser-engine-le
 <!-- revised: 2026 May 16 19:20.0 -->
 
 ### 1. Chrome Extension
-Install from the [Chrome Web Store](https://chromewebstore.google.com/) or load unpacked from the `extension/` folder.
+Load the unpacked extension from the `extension/` folder.
+
+You can get that folder from the public GitHub repo or from the npm package:
+
+```bash
+git clone https://github.com/somethinlike/page-save.git
+```
+
+Then open `chrome://extensions`, enable Developer mode, choose **Load
+unpacked**, and select `page-save/extension`.
+
+The npm package also includes the unpacked extension source. `npx page-save`
+runs the CLI/server; it does not install the browser extension automatically.
 
 ### 2. Node.js Bridge
 
@@ -152,6 +177,29 @@ concepts:
 
 Those tools inject content scripts into pages, which gets blocked by CSP on sites like Reddit. Page Save operates at the browser engine level — there's nothing for the site to block.
 
+## Contributing Schemas
+<!-- added: 2026 May 22 19:08.4 -->
+
+Schemas are the highest-leverage contribution to Page Save. A good schema turns
+a noisy rendered page into compact, LLM-readable data for everyone.
+
+If you make a schema for a website, please upload or contribute it to the
+project repo instead of keeping it local:
+
+- Open a pull request at <https://github.com/somethinlike/page-save>.
+- Include the domain, page types, and a short note about what the schema
+  extracts.
+- Update `schemas/{domain}.json`, `extension/schemas/{domain}.json`, and
+  `extension/schemas/manifest.json`.
+- If the schema needs normalization, add the post-processor in
+  `extension/extractors.js`.
+- Do not include private saved pages, authenticated captures, cookies, account
+  data, or personal browsing output in issues or pull requests.
+
+Read [SCHEMA-CONVENTIONS.md](SCHEMA-CONVENTIONS.md) before writing selectors.
+It documents the schema format, quality bar, token-efficiency rules, and test
+checklist.
+
 ## Security Model and Approvals
 <!-- added: 2026 May 22 18:34.3 -->
 
@@ -183,4 +231,5 @@ Zero data collection. All communication is explicit-loopback only. No analytics,
 
 ## License
 
-CC0 1.0 — Public Domain. Do whatever you want with it.
+CC0 1.0 — Public Domain. Do whatever you want with it. Contributions are
+accepted under the same CC0 terms.
