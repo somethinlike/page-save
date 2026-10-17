@@ -1,0 +1,58 @@
+{
+  "domain": "genius.com",
+  "version": "1",
+  "description": "Album track rows and song lyrics, grounded in saved legacy album and React song layouts. Full retains useful metadata and all saved lyric blocks; variants support playlist preparation and narrower reading. React class prefixes are used instead of generated suffixes.",
+  "pages": {
+    "album": {
+      "urlPattern": "/albums/",
+      "urlPathPattern": "^/albums/[^/]+/[^/]+/?$",
+      "description": "Ordered album tracks with page-level artist and album context. Observed legacy chart_row album layout.",
+      "container": ".chart_row",
+      "scrollDepth": "none",
+      "requiredFields": ["itemId", "title", "artist", "album"],
+      "fields": {
+        "trackNumber": { "selector": ".chart_row-number_container-number", "type": "text" },
+        "title": { "selector": ".chart_row-content-title", "type": "text", "exclude": ".chart_row-content-title-subtitle" },
+        "itemId": { "selector": ".chart_row-content a[href]", "type": "attribute", "attribute": "href" },
+        "artist": { "selector": ".header_with_cover_art-primary_info-primary_artist", "type": "text", "scope": "page" },
+        "artistUrl": { "selector": ".header_with_cover_art-primary_info-primary_artist", "type": "attribute", "attribute": "href", "scope": "page" },
+        "album": { "selector": ".header_with_cover_art-primary_info-title", "type": "text", "scope": "page" },
+        "albumUrl": { "selector": "link[rel='canonical']", "type": "attribute", "attribute": "href", "scope": "page" },
+        "releaseDate": { "selector": ".header_with_cover_art-primary_info .metadata_unit", "type": "text", "scope": "page" }
+      }
+    },
+    "song": {
+      "urlPattern": "-lyrics",
+      "urlPathPattern": "^/[^/]+-lyrics/?$",
+      "description": "Song metadata and all lyric blocks. Stable data attributes select lyrics; current React header and sidebar class prefixes supply metadata. Song-info credits are optional because only two of ten inspected captures contain them.",
+      "scrollDepth": "none",
+      "requiredFields": ["title", "artist", "lyrics"],
+      "fields": {
+        "title": { "selector": "[class*='SongHeader-desktop__Title-']", "type": "text", "exclude": "[data-exclude-from-selection='true']" },
+        "artist": { "selector": "[class*='SongHeader-desktop__SongDetails-'] > [class*='SongHeader-desktop__CreditList-'] a[href*='/artists/']", "type": "text" },
+        "artistUrl": { "selector": "[class*='SongHeader-desktop__SongDetails-'] > [class*='SongHeader-desktop__CreditList-'] a[href*='/artists/']", "type": "attribute", "attribute": "href" },
+        "trackNumber": { "selector": "[class*='SongHeader-desktop__AlbumCredit-'] [class*='HeaderCredit__Label-']", "type": "text" },
+        "album": { "selector": "[class*='SongHeader-desktop__AlbumCredit-'] [class*='HoverMarquee__Container-']", "type": "text" },
+        "albumUrl": { "selector": "[class*='PrimaryAlbum__Title-']", "type": "attribute", "attribute": "href" },
+        "itemId": { "selector": "link[rel='canonical']", "type": "attribute", "attribute": "href" },
+        "songId": { "selector": "meta[property='twitter:app:url:iphone']", "type": "attribute", "attribute": "content" },
+        "credits": { "selector": "[data-testid='song-info'] [class*='Credit__Container-']", "type": "textAll" },
+        "lyrics": { "selector": "[data-lyrics-container='true']", "type": "textAll", "exclude": "[data-exclude-from-selection='true'], [hidden], [aria-hidden='true'], script, style, template" }
+      }
+    }
+  },
+  "variants": {
+    "playlist": {
+      "description": "Track order, song title, artist, album and canonical song link for playlist preparation; no lyrics or credits.",
+      "fields": ["trackNumber", "title", "artist", "album", "itemId"]
+    },
+    "metadata": {
+      "description": "All available identifiers, album and artist links, track order, release date and credits, without lyric text.",
+      "fields": ["trackNumber", "title", "artist", "artistUrl", "album", "albumUrl", "itemId", "songId", "releaseDate", "credits"]
+    },
+    "lyrics": {
+      "description": "Lyrics with song, artist and album context. Album pages retain their ordered track list because lyric text belongs to the song pages.",
+      "fields": ["trackNumber", "title", "artist", "album", "itemId", "lyrics"]
+    }
+  }
+}
