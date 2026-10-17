@@ -1,4 +1,4 @@
-# Dependency Graph (2026-05-23)
+# Dependency Graph (2026-10-17)
 
 **Internal edges:** 27 | **Files with imports:** 16
 

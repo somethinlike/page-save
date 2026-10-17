@@ -1,5 +1,19 @@
 # Page Save — Manual Test Guide
-**Updated:** 2026.05.22 (Phases 1-20 complete; Gemini sidebar grouping fixed)
+
+**Updated:** October 17, 2026 (Genius offline checks added; existing browser checklist retained)
+
+## Genius schema (added October 17, 2026)
+
+- Run `npm test -- src/genius-extractors.test.ts src/schema-files.test.ts` for synthetic DOM extraction and schema-registration checks.
+- Reload the Page Save extension; open an existing Genius album or song tab when browser interaction is permitted.
+- Confirm the Genius group offers Raw, Full, playlist, metadata and lyrics. Raw remains the default.
+- On an album, choose playlist: verify track order, paired title/song URL, artist and album; lyric text should be absent.
+- On a song, choose Full or lyrics: verify every lyric block and explicit line break, with no contributor/header UI mixed into the lyric text.
+- Metadata should still work without lyric blocks when its required identity fields are present.
+- Missing optional credits remain empty. An empty/challenge page reports missing required content.
+- Unsupported artist/search routes retain Raw behavior; `-lyrics` in a query string must not match a song schema.
+
+The implementation was verified against eleven saved captures without controlling a browser. Installed-extension reload and live extraction remain manual checks.
 
 ## Prerequisites
 - Chrome Dev Profile with extension loaded (Developer mode, Load unpacked from `extension/`)

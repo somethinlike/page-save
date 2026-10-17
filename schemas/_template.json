@@ -26,5 +26,13 @@
     "@data-asin": "Shorthand: '@' prefix reads an attribute directly from the container element itself",
     "h2 a span": "Standard CSS selector scoped to each container (or document if no container)",
     "#productTitle": "ID selectors work best for single-item product pages"
+  },
+  "_optionalPageProperties": {
+    "urlPathPattern": "Anchored regular expression against the pathname, replacing full-URL substring matching when present",
+    "requiredFields": "Array of non-empty field names required by this page, intersected with active variant fields"
+  },
+  "_optionalFieldProperties": {
+    "scope": "Use page to read from document instead of the repeating container",
+    "exclude": "CSS selector removed from a detached text-field clone; explicit BR elements remain newlines"
   }
 }

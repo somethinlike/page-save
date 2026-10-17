@@ -122,6 +122,18 @@ Don't abuse this — the array form is for **legitimate DOM variation**, not for
   - `"pages:N"`: scroll N viewport-heights. Use when you want partial lazy content.
 - **`urlRewrite`** — Navigate the tab to a different hostname before extraction. The tab is restored to the original URL after extraction completes. Use when an alternative version of the site has a better DOM structure (e.g., `old.reddit.com`).
 
+### Optional Routing and Content Requirements
+
+- **`urlPathPattern`** — JavaScript regular expression against the parsed URL pathname, replacing full-URL substring matching when present. Anchor fixed routes. Genius uses it to distinguish album/song routes from artist/search paths and query-string false positives. Existing schemas without it retain their current behavior. Malformed patterns are skipped.
+- **`requiredFields`** — Array of field names that must be non-empty. Missing required content produces an extraction error, including when a required repeating container has no matches. Requirements are intersected with the selected variant's fields: metadata does not require omitted lyrics. Keep genuinely optional credits out of this list.
+
+### Field Context and Text Exclusions
+
+- **`scope: "page"`** reads a field from `document`, even inside a repeating item. Use it for artist/album context on track rows. Omit it for container-relative selectors. Page-scoped attributes need a CSS selector and `attribute`; `@attribute` is intended for element containers.
+- **`exclude`** is an optional CSS selector for `text` and `textAll`. Matching descendants are removed from a detached clone before text is read; explicit `<br>` elements become newlines. This removes Genius selection headers and hidden interface text without changing the live page. It does not reproduce CSS-generated text or arbitrary block layout; use it where explicit line breaks have been inspected.
+
+See [the Genius schema guide](docs/genius-schema.md) and `src/genius-extractors.test.ts` for tested examples.
+
 ## How to Build a Schema for a New Site
 
 ### Step 1: Identify Page Types

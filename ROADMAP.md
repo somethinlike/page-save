@@ -1,5 +1,15 @@
 # Page-Save Competitive Feature Roadmap
 
+## Genius schema — implemented October 17, 2026
+
+- Added album and song schemas, synchronized extension/built-in copies, and playlist/metadata/lyrics projections.
+- Added optional pathname matching, page-scoped fields, text exclusions and required-content validation.
+- Offline replay passed for eleven saved captures, with ten correctly paired album tracks. Synthetic DOM tests cover extraction and existing behavior; full tests, typecheck and build passed.
+- Next diagnostic: reload the installed Page Save extension and save one Genius album in playlist mode plus one song in Full. Browser interaction was intentionally not performed during implementation.
+- Dependency follow-up: online npm audit reported 15 advisories (1 low, 4 moderate, 9 high, 1 critical). All reported package versions were already present in the original lockfile; the new test-only DOM parser introduced none of these reported findings. Existing dependency remediation remains separate work.
+
+See `docs/genius-schema.md` for fields, observed layouts and verification limits.
+
 ## Context
 Competitive analysis of scraping products and LLM-optimized content tools identified features that would strengthen page-save's position as an LLM-optimized content preprocessor. None of these competitors optimize output for LLM token consumption — page-save's core differentiator (symbol interning, reference tables, dedup, TSV formatting). These features add extraction quality, new content types, UX polish, and automation while keeping the LLM-token-optimization focus.
 

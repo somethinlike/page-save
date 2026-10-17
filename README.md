@@ -200,6 +200,14 @@ Read [SCHEMA-CONVENTIONS.md](SCHEMA-CONVENTIONS.md) before writing selectors.
 It documents the schema format, quality bar, token-efficiency rules, and test
 checklist.
 
+## Genius Albums and Songs
+
+Genius has a domain schema for album track lists and individual song pages. **Full** saves available metadata and lyric blocks. **playlist** keeps ordered titles, artists, albums and canonical song links; **metadata** retains additional identifiers and credits without lyrics; **lyrics** keeps lyric text with song context. Raw remains available and remains the sidebar default.
+
+The schema was checked offline against one saved album and ten saved song pages. It preserves explicit lyric line breaks and excludes selection headers and hidden interface text. Missing required content produces an extraction error. Reload the installed Page Save extension before using the new schema.
+
+See [Genius schema details](docs/genius-schema.md) for supported layouts, fields and verification limits.
+
 ## Security Model and Approvals
 <!-- revised: 2026 May 22 20:01.1 -->
 

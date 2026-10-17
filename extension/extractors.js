@@ -16,6 +16,166 @@ const schemaRegistry = new Map();
 
 const BUILTIN_SCHEMAS = [
   {
+    "domain": "genius.com",
+    "version": "1",
+    "description": "Album track rows and song lyrics, grounded in saved legacy album and React song layouts. Full retains useful metadata and all saved lyric blocks; variants support playlist preparation and narrower reading. React class prefixes are used instead of generated suffixes.",
+    "pages": {
+      "album": {
+        "urlPattern": "/albums/",
+        "urlPathPattern": "^/albums/[^/]+/[^/]+/?$",
+        "description": "Ordered album tracks with page-level artist and album context. Observed legacy chart_row album layout.",
+        "container": ".chart_row",
+        "scrollDepth": "none",
+        "requiredFields": [
+          "itemId",
+          "title",
+          "artist",
+          "album"
+        ],
+        "fields": {
+          "trackNumber": {
+            "selector": ".chart_row-number_container-number",
+            "type": "text"
+          },
+          "title": {
+            "selector": ".chart_row-content-title",
+            "type": "text",
+            "exclude": ".chart_row-content-title-subtitle"
+          },
+          "itemId": {
+            "selector": ".chart_row-content a[href]",
+            "type": "attribute",
+            "attribute": "href"
+          },
+          "artist": {
+            "selector": ".header_with_cover_art-primary_info-primary_artist",
+            "type": "text",
+            "scope": "page"
+          },
+          "artistUrl": {
+            "selector": ".header_with_cover_art-primary_info-primary_artist",
+            "type": "attribute",
+            "attribute": "href",
+            "scope": "page"
+          },
+          "album": {
+            "selector": ".header_with_cover_art-primary_info-title",
+            "type": "text",
+            "scope": "page"
+          },
+          "albumUrl": {
+            "selector": "link[rel='canonical']",
+            "type": "attribute",
+            "attribute": "href",
+            "scope": "page"
+          },
+          "releaseDate": {
+            "selector": ".header_with_cover_art-primary_info .metadata_unit",
+            "type": "text",
+            "scope": "page"
+          }
+        }
+      },
+      "song": {
+        "urlPattern": "-lyrics",
+        "urlPathPattern": "^/[^/]+-lyrics/?$",
+        "description": "Song metadata and all lyric blocks. Stable data attributes select lyrics; current React header and sidebar class prefixes supply metadata. Song-info credits are optional because only two of ten inspected captures contain them.",
+        "scrollDepth": "none",
+        "requiredFields": [
+          "title",
+          "artist",
+          "lyrics"
+        ],
+        "fields": {
+          "title": {
+            "selector": "[class*='SongHeader-desktop__Title-']",
+            "type": "text",
+            "exclude": "[data-exclude-from-selection='true']"
+          },
+          "artist": {
+            "selector": "[class*='SongHeader-desktop__SongDetails-'] > [class*='SongHeader-desktop__CreditList-'] a[href*='/artists/']",
+            "type": "text"
+          },
+          "artistUrl": {
+            "selector": "[class*='SongHeader-desktop__SongDetails-'] > [class*='SongHeader-desktop__CreditList-'] a[href*='/artists/']",
+            "type": "attribute",
+            "attribute": "href"
+          },
+          "trackNumber": {
+            "selector": "[class*='SongHeader-desktop__AlbumCredit-'] [class*='HeaderCredit__Label-']",
+            "type": "text"
+          },
+          "album": {
+            "selector": "[class*='SongHeader-desktop__AlbumCredit-'] [class*='HoverMarquee__Container-']",
+            "type": "text"
+          },
+          "albumUrl": {
+            "selector": "[class*='PrimaryAlbum__Title-']",
+            "type": "attribute",
+            "attribute": "href"
+          },
+          "itemId": {
+            "selector": "link[rel='canonical']",
+            "type": "attribute",
+            "attribute": "href"
+          },
+          "songId": {
+            "selector": "meta[property='twitter:app:url:iphone']",
+            "type": "attribute",
+            "attribute": "content"
+          },
+          "credits": {
+            "selector": "[data-testid='song-info'] [class*='Credit__Container-']",
+            "type": "textAll"
+          },
+          "lyrics": {
+            "selector": "[data-lyrics-container='true']",
+            "type": "textAll",
+            "exclude": "[data-exclude-from-selection='true'], [hidden], [aria-hidden='true'], script, style, template"
+          }
+        }
+      }
+    },
+    "variants": {
+      "playlist": {
+        "description": "Track order, song title, artist, album and canonical song link for playlist preparation; no lyrics or credits.",
+        "fields": [
+          "trackNumber",
+          "title",
+          "artist",
+          "album",
+          "itemId"
+        ]
+      },
+      "metadata": {
+        "description": "All available identifiers, album and artist links, track order, release date and credits, without lyric text.",
+        "fields": [
+          "trackNumber",
+          "title",
+          "artist",
+          "artistUrl",
+          "album",
+          "albumUrl",
+          "itemId",
+          "songId",
+          "releaseDate",
+          "credits"
+        ]
+      },
+      "lyrics": {
+        "description": "Lyrics with song, artist and album context. Album pages retain their ordered track list because lyric text belongs to the song pages.",
+        "fields": [
+          "trackNumber",
+          "title",
+          "artist",
+          "album",
+          "itemId",
+          "lyrics"
+        ]
+      }
+    }
+  },
+  {
     domain: 'amazon.com',
     version: '4',
     description: 'Amazon product search results and detail pages',
@@ -487,8 +647,11 @@ function applyVariant(schema, pageType, basePage, variantName) {
  */
 function matchSchema(url) {
   let hostname;
+  let pathname;
   try {
-    hostname = new URL(url).hostname;
+    const parsed = new URL(url);
+    hostname = parsed.hostname;
+    pathname = parsed.pathname;
   } catch {
     return null;
   }
@@ -505,7 +668,18 @@ function matchSchema(url) {
     if (!schema || !schema.pages) continue;
 
     for (const [pageType, pageDef] of Object.entries(schema.pages)) {
-      if (url.includes(pageDef.urlPattern)) {
+      // Optional anchored path matching avoids classifying query parameters
+      // and unrelated Genius routes as album/song pages. Existing schemas
+      // retain their substring matching behavior.
+      let matches;
+      try {
+        matches = pageDef.urlPathPattern
+          ? new RegExp(pageDef.urlPathPattern).test(pathname)
+          : url.includes(pageDef.urlPattern);
+      } catch {
+        continue; // A malformed optional pattern must not break other schemas.
+      }
+      if (matches) {
         return { schema, page: pageDef, pageType };
       }
     }
@@ -530,7 +704,18 @@ function buildExtractionScript(pageDef) {
      * Extract a field given a single selector. Pulled out of extractField so
      * the multi-selector fallback path can call it in a loop.
      */
-    function extractFieldOnce(element, selector, type, attribute) {
+    function readText(element, exclude) {
+      if (!exclude) return element.innerText.trim();
+      if (element.matches(exclude)) return '';
+      // Work on a detached clone: never remove interface elements from the
+      // user's page. Explicit BRs are retained even without rendered layout.
+      const clone = element.cloneNode(true);
+      clone.querySelectorAll(exclude).forEach(node => node.remove());
+      clone.querySelectorAll('br').forEach(node => node.replaceWith('\n'));
+      return clone.textContent.trim();
+    }
+
+    function extractFieldOnce(element, selector, type, attribute, exclude) {
       // @attr shorthand: read attribute from the element itself
       if (selector.startsWith('@')) {
         const attrName = selector.slice(1);
@@ -540,12 +725,12 @@ function buildExtractionScript(pageDef) {
 
       if (type === 'text') {
         const el = element.querySelector(selector);
-        return el ? el.innerText.trim() : null;
+        return el ? readText(el, exclude) : null;
       }
 
       if (type === 'textAll') {
         const els = element.querySelectorAll(selector);
-        return Array.from(els).map(el => el.innerText.trim()).filter(Boolean);
+        return Array.from(els).map(el => readText(el, exclude)).filter(Boolean);
       }
 
       if (type === 'attribute') {
@@ -583,11 +768,11 @@ function buildExtractionScript(pageDef) {
      * fixed-price spans vs. price-range spans on multi-variant listings).
      */
     function extractField(element, fieldDef) {
-      const { selector, type, attribute } = fieldDef;
+      const { selector, type, attribute, exclude } = fieldDef;
 
       const selectors = Array.isArray(selector) ? selector : [selector];
       for (const sel of selectors) {
-        const result = extractFieldOnce(element, sel, type, attribute);
+        const result = extractFieldOnce(element, sel, type, attribute, exclude);
         if (!isEmpty(result, type)) return result;
       }
       return Array.isArray(selector) ? null : null;
@@ -596,20 +781,32 @@ function buildExtractionScript(pageDef) {
     function extractFromElement(element, fields) {
       const result = {};
       for (const [fieldName, fieldDef] of Object.entries(fields)) {
-        result[fieldName] = extractField(element, fieldDef);
+        const root = fieldDef.scope === 'page' ? document : element;
+        result[fieldName] = extractField(root, fieldDef);
       }
       return result;
     }
 
     try {
-      const { container, fields } = pageDef;
+      const { container, fields, requiredFields = [] } = pageDef;
+      const missingFields = item => requiredFields.filter(name => {
+        const value = item[name];
+        return value == null || value === '' || (Array.isArray(value) && value.length === 0);
+      });
 
       if (container) {
         // Repeating items (e.g., search results)
         const containers = document.querySelectorAll(container);
+        if (requiredFields.length && containers.length === 0) {
+          return { error: 'No items matched the required page container' };
+        }
         const items = [];
         for (const el of containers) {
           const item = extractFromElement(el, fields);
+          const missing = missingFields(item);
+          if (missing.length) {
+            return { error: `Required fields missing from item ${items.length + 1}: ${missing.join(', ')}` };
+          }
           // Skip items where all fields are null (empty/sponsored placeholders)
           const hasData = Object.values(item).some(v => v !== null && v !== false);
           if (hasData) {
@@ -620,6 +817,8 @@ function buildExtractionScript(pageDef) {
       } else {
         // Single-item page (e.g., product detail)
         const item = extractFromElement(document, fields);
+        const missing = missingFields(item);
+        if (missing.length) return { error: `Required fields missing: ${missing.join(', ')}` };
         return { item };
       }
     } catch (err) {
@@ -647,6 +846,38 @@ function normalizeCommon(item) {
  * Each function receives the extracted item and the URL, mutates in place.
  */
 const POST_PROCESSORS = {
+  'genius.com': (item, url) => {
+    const cleanUrl = value => {
+      if (!value) return null;
+      try {
+        const parsed = new URL(value, url);
+        if (!['http:', 'https:'].includes(parsed.protocol)
+            || !['genius.com', 'www.genius.com'].includes(parsed.hostname)) return null;
+        return `https://genius.com${parsed.pathname}`;
+      } catch {
+        return null;
+      }
+    };
+    for (const key of ['itemId', 'artistUrl', 'albumUrl']) {
+      if (key in item) item[key] = cleanUrl(item[key]);
+    }
+    for (const key of ['title', 'artist', 'album']) {
+      if (typeof item[key] === 'string') item[key] = item[key].replace(/\s+/g, ' ').trim();
+    }
+    if (item.trackNumber) {
+      const number = String(item.trackNumber).match(/\d+/);
+      item.trackNumber = number ? Number(number[0]) : null;
+    }
+    if (item.releaseDate) item.releaseDate = item.releaseDate.replace(/^Released\s*/i, '').trim();
+    if (item.songId) {
+      const id = item.songId.match(/^genius:\/\/songs\/(\d+)$/);
+      item.songId = id ? id[1] : null;
+    }
+    if (Array.isArray(item.lyrics)) {
+      item.lyrics = item.lyrics.map(block => block.replace(/\r\n?/g, '\n').trim()).filter(Boolean);
+    }
+    return item;
+  },
   'reddit.com': (item, url) => {
     // Clean up score text: "X points" → "X"
     if (item.score && typeof item.score === 'string') {
@@ -898,6 +1129,7 @@ async function extractStructured(tabId, url, options = {}) {
   if (match) {
     const { schema, page: basePage, pageType } = match;
     const page = variant ? applyVariant(schema, pageType, basePage, variant) : basePage;
+    const requiredFields = (page.requiredFields || []).filter(name => name in page.fields);
 
     // URL rewrite: navigate tab to a different URL before extracting
     // (e.g., reddit.com → old.reddit.com for server-rendered content)
@@ -933,7 +1165,12 @@ async function extractStructured(tabId, url, options = {}) {
     const results = await chrome.scripting.executeScript({
       target: { tabId },
       func: buildExtractionScript(page),
-      args: [{ container: page.container, fields: page.fields }],
+      args: [{
+        container: page.container,
+        fields: page.fields,
+        // Variant projections intentionally omit some base fields.
+        requiredFields,
+      }],
       world: 'ISOLATED',
     });
 
@@ -942,6 +1179,19 @@ async function extractStructured(tabId, url, options = {}) {
     // Apply domain-specific post-processing (normalize ratings, clean brands, etc.)
     if (data && !data.error) {
       data = postProcess(schema.domain, data, url);
+      // Normalization can reject invalid identities (for example, a foreign
+      // host in a required Genius song link). Do not report those as success.
+      const records = data.items || (data.item ? [data.item] : []);
+      for (const [index, record] of records.entries()) {
+        const missing = requiredFields.filter(name => {
+          const value = record[name];
+          return value == null || value === '' || (Array.isArray(value) && value.length === 0);
+        });
+        if (missing.length) {
+          data = { error: `Required fields missing after normalization in item ${index + 1}: ${missing.join(', ')}` };
+          break;
+        }
+      }
     }
 
     // Restore original URL if we rewrote it (don't leave user on a different site)
