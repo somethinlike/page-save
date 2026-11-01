@@ -154,15 +154,33 @@ describe('America’s Test Kitchen recipe extraction', () => {
     expect(markdown).not.toContain('Recommendation ingredient');
   });
 
-  it('falls back to the print layout when responsive cooking content is absent', async () => {
+  it('combines the practical recipe content under the exact full instructions option', async () => {
+    const { extractors } = await harness();
+    const result = await extractors.extractStructured(1, recipeUrl, { variant: 'full instructions' });
+    expect(result.data.error).toBeUndefined();
+    expect(result.variant).toBe('full instructions');
+    expect(result.data.item).toEqual({
+      title: 'Synthetic Loaf', itemId: recipeUrl, recipeId: '9001',
+      time: 'Total Time 2 hours, plus 1 hour cooling', yield: 'Makes 1 sample loaf',
+      ingredients: ingredientTexts,
+      beforeYouBegin: ['Use a sample pan.'],
+      instructions: [
+        '1. MIX\n\nCombine the invented ingredients.\nRest 20 minutes.',
+        '2. Bake the sample loaf.\nCool completely.',
+      ],
+    });
+  });
+
+  it.each(['cooking', 'full instructions'])('falls back to the print layout for %s when responsive cooking content is absent', async variant => {
     const { document, extractors } = await harness();
     document.querySelector('#recipe-v2-layout')?.remove();
     const before = document.toString();
-    const result = await extractors.extractStructured(1, recipeUrl, { variant: 'cooking' });
+    const result = await extractors.extractStructured(1, recipeUrl, { variant });
     expect(result.data.error).toBeUndefined();
     expect(result.data.item?.ingredients).toEqual(ingredientTexts);
     expect(result.data.item?.time).toContain('plus 1 hour cooling');
     expect(result.data.item?.yield).toBe('Makes 1 sample loaf');
+    expect(result.data.item?.beforeYouBegin).toEqual(['Use a sample pan.']);
     expect(result.data.item?.instructions).toEqual([
       '1. MIX\n\nCombine the invented ingredients.\nRest 20 minutes.',
       '2. Bake the sample loaf.\nCool completely.',
@@ -179,8 +197,8 @@ describe('America’s Test Kitchen recipe extraction', () => {
     expect(result.data.item?.ingredients).toEqual(ingredientTexts);
   });
 
-  it.each(['ingredients', 'instructions'])('rejects partial Full and cooking records missing %s', async field => {
-    for (const variant of [undefined, 'cooking']) {
+  it.each(['ingredients', 'instructions'])('rejects incomplete combined recipe views missing %s', async field => {
+    for (const variant of [undefined, 'cooking', 'full instructions']) {
       const { document, extractors } = await harness();
       const selectors = field === 'ingredients'
         ? "[class*='Ingredients_ingredient__'], [class*='recipePrintBody_ingredient__']"

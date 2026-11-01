@@ -202,7 +202,7 @@ checklist.
 
 ## America's Test Kitchen Recipes
 
-ATK recipe pages have Full, cooking, ingredients and metadata views. Full retains recipe identity, author, time, yield, ratings, ingredients, preparation notes, complete numbered instructions and recipe explanation. Cooking keeps the practical recipe; ingredients keeps quantities and yield; metadata omits the method and ingredient text. One responsive ingredient list is selected, and print markup supplies inspected fallbacks. Raw remains the sidebar default.
+ATK recipe pages have Full, full instructions, cooking, ingredients and metadata views. Full retains recipe identity, author, time, yield, ratings, ingredients, preparation notes, complete numbered instructions and recipe explanation. **full instructions** combines the ingredient list and complete cooking method, including preparation notes, time and yield; cooking retains the same combined fields. Ingredients keeps quantities and yield; metadata omits the method and ingredient text. One responsive ingredient list is selected, and print markup supplies inspected fallbacks. Raw remains the sidebar default.
 
 The schema passed offline replay against three saved bread recipes. Reload the installed Page Save extension before using it. See [ATK recipe schema details](docs/atk-schema.md) for supported layouts, validation and the remaining live check.
 

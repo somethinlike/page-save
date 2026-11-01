@@ -1,13 +1,13 @@
 # Page Save — Manual Test Guide
 
-**Updated:** October 31, 2026 (ATK offline checks added; existing browser checklist retained)
+**Updated:** November 1, 2026 (ATK full instructions view added; existing browser checklist retained)
 
 ## America's Test Kitchen recipes (added October 31, 2026)
 
 - Run `npm test -- src/atk-extractors.test.ts src/schema-files.test.ts` for synthetic DOM, projection and registration checks.
 - Reload the installed Page Save extension and use an already accessible ATK recipe tab.
-- Confirm Raw, Full, cooking, ingredients and metadata appear; Raw remains the default.
-- Save cooking and verify one ingredient list with original quantities, preparation notes and complete numbered instructions. Check named step headings, paragraphs and inline fractions.
+- Confirm Raw, Full, full instructions, cooking, ingredients and metadata appear; Raw remains the default.
+- Save full instructions and verify one ingredient list with original quantities, preparation notes and complete numbered instructions. Check named step headings, paragraphs and inline fractions. Cooking should retain the same combined fields.
 - Full should additionally retain author, ratings, publication date and recipe explanation. Time must retain resting/cooling qualifiers.
 - Ingredients should omit instructions. Metadata should omit ingredients and instructions. Missing core content should report an error for views that require it.
 - Search and article pages should retain Raw behavior, even when a recipe path appears in a query parameter.

@@ -17,7 +17,7 @@ const schemaRegistry = new Map();
 const BUILTIN_SCHEMAS = [
   {
     "domain": "americastestkitchen.com",
-    "version": "1",
+    "version": "2",
     "description": "Recipe details grounded in three saved ATK bread recipes. Select one responsive ingredient list, retain complete ordered instructions and preparation notes, and omit recommendations, account controls and comments. CSS module prefixes avoid generated suffixes; print markup supplies inspected fallbacks.",
     "pages": {
       "recipe": {
@@ -119,6 +119,19 @@ const BUILTIN_SCHEMAS = [
       }
     },
     "variants": {
+      "full instructions": {
+        "description": "Ingredients and complete numbered cooking instructions together, including original quantities, preparation notes, time, yield and recipe identity.",
+        "fields": [
+          "title",
+          "itemId",
+          "recipeId",
+          "time",
+          "yield",
+          "ingredients",
+          "beforeYouBegin",
+          "instructions"
+        ]
+      },
       "cooking": {
         "description": "Complete cooking view: quantities, yield, unabridged time, preparation notes and numbered instructions, with recipe identity.",
         "fields": [
