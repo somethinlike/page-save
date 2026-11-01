@@ -15,4 +15,6 @@ For recipe pages, select one responsive ingredient list with ordered fallbacks; 
 
 Verify source/extension/built-in registration, supported and unsupported URL routes, required-content failures, text preservation, unchanged source DOM and unrelated-domain behavior. Run `npm test`, `npm run typecheck`, and `npm run build` after implementation. Record any runtime restriction and verified temporary route in project guidance.
 
+After pushing, inspect hosted CI for the pushed commit, including both push and pull-request runs; local success does not establish hosted success. See `docs/ci-verification.md` for verified commands and the Windows LF/CRLF source-boundary regression.
+
 Offline replay verifies selectors against snapshots. Installed-extension reload and live extraction are separate checks; respect the user's current browser-interaction constraints and report any unperformed checks. Contribute the schema according to project guidance without uploading private captures or credentials.

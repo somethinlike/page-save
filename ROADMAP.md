@@ -1,5 +1,11 @@
 # Page-Save Competitive Feature Roadmap
 
+## Windows CI test repair — implemented November 1, 2026
+
+- Fixed an LF-only source-boundary search in the sidebar grouping test. The original behavior assertions now run against LF and CRLF source; recipe and product extraction code are unchanged.
+- Local checks passed 175 tests, typecheck and build. Review both hosted push and PR runs for the pushed commit using `docs/ci-verification.md`; Windows checkout behavior caused the earlier local/hosted discrepancy.
+- Notification diagnosis: the existing workflow triggers on both push and pull_request, so one branch update can produce two failure notices. Notification settings and workflow triggers were not changed.
+
 ## America's Test Kitchen recipe schema — implemented October 31, 2026
 
 - November 1 update: schema v2 adds the explicitly named full instructions view combining ingredients, preparation notes and the complete cooking method with time/yield. Cooking remains available with the same combined fields. Saved-capture replay, all 174 tests, typecheck and build passed.

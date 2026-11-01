@@ -38,5 +38,6 @@ Vitest's worker/temporary-file operations can fail under the Codex sandbox. A ta
 - `MANUAL-TESTS.md`: browser checks; `ROADMAP.md`: implemented history and remaining work.
 - `docs/genius-schema.md`: Genius page types, observed selectors, variants, and verification limits.
 - `docs/atk-schema.md`: ATK recipe views, responsive/print fallbacks, text boundaries and remaining live verification.
+- `docs/ci-verification.md`: hosted CI checks after pushing, duplicate push/PR events and the Windows LF/CRLF test repair. Verify hosted results as well as local checks.
 
 The legacy shared Gemini-rule pointer has been retired from this guidance. Retain recovery files without invoking deprecated agents or maintaining parallel instruction variants.
