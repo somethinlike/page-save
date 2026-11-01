@@ -16,6 +16,149 @@ const schemaRegistry = new Map();
 
 const BUILTIN_SCHEMAS = [
   {
+    "domain": "americastestkitchen.com",
+    "version": "1",
+    "description": "Recipe details grounded in three saved ATK bread recipes. Select one responsive ingredient list, retain complete ordered instructions and preparation notes, and omit recommendations, account controls and comments. CSS module prefixes avoid generated suffixes; print markup supplies inspected fallbacks.",
+    "pages": {
+      "recipe": {
+        "urlPattern": "/recipes/",
+        "urlPathPattern": "^/recipes/[0-9]+-[^/]+/?$",
+        "description": "Single recipe from the inspected RecipeV2 layout. Full requires title, ingredients and instructions; metadata can describe an incomplete capture without claiming a complete recipe.",
+        "scrollDepth": "none",
+        "requiredFields": [
+          "title",
+          "ingredients",
+          "instructions"
+        ],
+        "fields": {
+          "title": {
+            "selector": [
+              "[class*='RecipeHeader_headingH1__']",
+              "[class*='recipePrintHeader_headerContent__'] h2"
+            ],
+            "type": "text",
+            "exclude": "button, svg, script, style, template"
+          },
+          "itemId": {
+            "selector": "link[rel='canonical']",
+            "type": "attribute",
+            "attribute": "href"
+          },
+          "recipeId": {
+            "selector": "link[rel='canonical']",
+            "type": "attribute",
+            "attribute": "href"
+          },
+          "author": {
+            "selector": "meta[name='author']",
+            "type": "attribute",
+            "attribute": "content"
+          },
+          "time": {
+            "selector": [
+              "[class*='TimeAndYield_card__']:first-child > span",
+              "[class*='recipePrintHeader_recipeInformation__']:first-of-type > p"
+            ],
+            "type": "text",
+            "exclude": "button, svg, script, style, template"
+          },
+          "yield": {
+            "selector": [
+              "[class*='TimeAndYield_card__']:nth-child(2) > span",
+              "[class*='recipePrintHeader_recipeInformation__']:nth-of-type(2) > p"
+            ],
+            "type": "text",
+            "exclude": "button, svg, script, style, template"
+          },
+          "rating": {
+            "selector": "[class*='RecipeStats_statCard__'][href$='#ratings-section'] [class*='RecipeStats_row__']:first-child > span:first-child",
+            "type": "text"
+          },
+          "ratingCount": {
+            "selector": "[class*='RecipeStats_statCard__'][href$='#ratings-section'] [class*='RecipeStats_row__']:first-child > span:nth-child(2)",
+            "type": "text"
+          },
+          "published": {
+            "selector": "[class*='recipePrintHeader_recipePublishedOn__']",
+            "type": "text",
+            "exclude": "script, style, template"
+          },
+          "ingredients": {
+            "selector": [
+              "[class*='RecipeV2Layout_desktop__'] [class*='Ingredients_ingredient__']",
+              "[class*='RecipeV2Layout_tablet__'] [class*='Ingredients_ingredient__']",
+              "[class*='RecipeV2Layout_mobile__'] [class*='Ingredients_ingredient__']",
+              "[class*='recipePrintBody_ingredient__']"
+            ],
+            "type": "textAll",
+            "exclude": "input, button, svg, [aria-hidden='true'], script, style, template"
+          },
+          "beforeYouBegin": {
+            "selector": [
+              "[class*='beforeYouBegin_beforeYouBeginTextWrapper__'] p",
+              "[class*='recipePrintBody_beforeYouBeginBlocks__'] p"
+            ],
+            "type": "textAll",
+            "exclude": "button, svg, [aria-hidden='true'], script, style, template"
+          },
+          "instructions": {
+            "selector": [
+              "[class*='instructions_instructionWrapper__']",
+              "[class*='recipePrintBody_instructionWrapper__']"
+            ],
+            "type": "textAll",
+            "exclude": "button, svg, [aria-hidden='true'], script, style, template, [class*='InstructionIctStep_ictCard__']",
+            "lineBreakBefore": "li, p"
+          },
+          "whyThisWorks": {
+            "selector": "[class*='RecipeV2Layout_wtrw__'] p",
+            "type": "textAll",
+            "exclude": "button, svg, [aria-hidden='true'], script, style, template"
+          }
+        }
+      }
+    },
+    "variants": {
+      "cooking": {
+        "description": "Complete cooking view: quantities, yield, unabridged time, preparation notes and numbered instructions, with recipe identity.",
+        "fields": [
+          "title",
+          "itemId",
+          "recipeId",
+          "time",
+          "yield",
+          "ingredients",
+          "beforeYouBegin",
+          "instructions"
+        ]
+      },
+      "ingredients": {
+        "description": "One ingredient list with original quantities, recipe yield and identity; no method or editorial text.",
+        "fields": [
+          "title",
+          "itemId",
+          "recipeId",
+          "yield",
+          "ingredients"
+        ]
+      },
+      "metadata": {
+        "description": "Recipe identity, author, full time description, yield, rating count and publication date; no ingredient or instruction text.",
+        "fields": [
+          "title",
+          "itemId",
+          "recipeId",
+          "author",
+          "time",
+          "yield",
+          "rating",
+          "ratingCount",
+          "published"
+        ]
+      }
+    }
+  },
+  {
     "domain": "genius.com",
     "version": "1",
     "description": "Album track rows and song lyrics, grounded in saved legacy album and React song layouts. Full retains useful metadata and all saved lyric blocks; variants support playlist preparation and narrower reading. React class prefixes are used instead of generated suffixes.",
@@ -704,18 +847,23 @@ function buildExtractionScript(pageDef) {
      * Extract a field given a single selector. Pulled out of extractField so
      * the multi-selector fallback path can call it in a loop.
      */
-    function readText(element, exclude) {
-      if (!exclude) return element.innerText.trim();
-      if (element.matches(exclude)) return '';
+    function readText(element, exclude, lineBreakBefore) {
+      if (!exclude && !lineBreakBefore) return element.innerText.trim();
+      if (exclude && element.matches(exclude)) return '';
       // Work on a detached clone: never remove interface elements from the
       // user's page. Explicit BRs are retained even without rendered layout.
       const clone = element.cloneNode(true);
-      clone.querySelectorAll(exclude).forEach(node => node.remove());
+      if (exclude) clone.querySelectorAll(exclude).forEach(node => node.remove());
+      // Opt-in structural boundaries preserve a recipe's sibling heading and
+      // instruction paragraphs without changing text handling for other sites.
+      if (lineBreakBefore) {
+        clone.querySelectorAll(lineBreakBefore).forEach(node => node.before('\n'));
+      }
       clone.querySelectorAll('br').forEach(node => node.replaceWith('\n'));
       return clone.textContent.trim();
     }
 
-    function extractFieldOnce(element, selector, type, attribute, exclude) {
+    function extractFieldOnce(element, selector, type, attribute, exclude, lineBreakBefore) {
       // @attr shorthand: read attribute from the element itself
       if (selector.startsWith('@')) {
         const attrName = selector.slice(1);
@@ -725,12 +873,12 @@ function buildExtractionScript(pageDef) {
 
       if (type === 'text') {
         const el = element.querySelector(selector);
-        return el ? readText(el, exclude) : null;
+        return el ? readText(el, exclude, lineBreakBefore) : null;
       }
 
       if (type === 'textAll') {
         const els = element.querySelectorAll(selector);
-        return Array.from(els).map(el => readText(el, exclude)).filter(Boolean);
+        return Array.from(els).map(el => readText(el, exclude, lineBreakBefore)).filter(Boolean);
       }
 
       if (type === 'attribute') {
@@ -768,11 +916,11 @@ function buildExtractionScript(pageDef) {
      * fixed-price spans vs. price-range spans on multi-variant listings).
      */
     function extractField(element, fieldDef) {
-      const { selector, type, attribute, exclude } = fieldDef;
+      const { selector, type, attribute, exclude, lineBreakBefore } = fieldDef;
 
       const selectors = Array.isArray(selector) ? selector : [selector];
       for (const sel of selectors) {
-        const result = extractFieldOnce(element, sel, type, attribute, exclude);
+        const result = extractFieldOnce(element, sel, type, attribute, exclude, lineBreakBefore);
         if (!isEmpty(result, type)) return result;
       }
       return Array.isArray(selector) ? null : null;
@@ -846,6 +994,35 @@ function normalizeCommon(item) {
  * Each function receives the extracted item and the URL, mutates in place.
  */
 const POST_PROCESSORS = {
+  'americastestkitchen.com': (item, url) => {
+    const cleanRecipeUrl = value => {
+      try {
+        const parsed = new URL(value, url);
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
+        if (!['americastestkitchen.com', 'www.americastestkitchen.com'].includes(parsed.hostname)) return null;
+        const match = parsed.pathname.match(/^\/recipes\/([0-9]+)-[^/]+\/?$/);
+        if (!match) return null;
+        return { url: 'https://www.americastestkitchen.com' + parsed.pathname.replace(/\/$/, ''), id: match[1] };
+      } catch {
+        return null;
+      }
+    };
+    const identity = cleanRecipeUrl(item.itemId) || cleanRecipeUrl(url);
+    if ('itemId' in item) item.itemId = identity?.url || null;
+    if ('recipeId' in item) item.recipeId = identity?.id || null;
+    const cleanText = value => String(value).replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    for (const name of ['ingredients', 'beforeYouBegin', 'whyThisWorks', 'instructions']) {
+      if (Array.isArray(item[name])) {
+        item[name] = item[name].map(cleanText).filter(Boolean);
+      }
+    }
+    if (Array.isArray(item.instructions)) {
+      item.instructions = item.instructions.map((step, index) => `${index + 1}. ${step}`);
+    }
+    if (typeof item.ratingCount === 'string') item.ratingCount = item.ratingCount.replace(/[(),\s]/g, '');
+    if (typeof item.published === 'string') item.published = item.published.replace(/^Published on\s*/i, '');
+    return item;
+  },
   'genius.com': (item, url) => {
     const cleanUrl = value => {
       if (!value) return null;
