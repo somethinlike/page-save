@@ -43,10 +43,14 @@ function collectTextByClass(element: FakeElement, className: string): string[] {
 }
 
 describe('side panel domain grouping', () => {
-  it('keeps exact subdomain schemas visible while collapsing www parent-domain schemas', () => {
-    const source = readFileSync(join(process.cwd(), 'extension', 'sidepanel.js'), 'utf-8');
+  it.each([
+    ['LF', '\n'],
+    ['CRLF', '\r\n'],
+  ])('keeps exact subdomain schemas visible while collapsing www parent-domain schemas with %s source line endings', (_name, lineEnding) => {
+    const source = readFileSync(join(process.cwd(), 'extension', 'sidepanel.js'), 'utf-8')
+      .replace(/\r\n?/g, '\n').replace(/\n/g, lineEnding);
     const start = source.indexOf('function getDomain');
-    const end = source.indexOf('/**\n * The footer primary button');
+    const end = source.search(/\/\*\*\r?\n \* The footer primary button/);
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
 

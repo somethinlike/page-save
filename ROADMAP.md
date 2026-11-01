@@ -1,5 +1,23 @@
 # Page-Save Competitive Feature Roadmap
 
+## Windows CI test repair — implemented November 1, 2026
+
+- Fixed an LF-only source-boundary search in the sidebar grouping test. The original behavior assertions now run against LF and CRLF source; recipe and product extraction code are unchanged.
+- Local checks passed 175 tests, typecheck and build. Review both hosted push and PR runs for the pushed commit using `docs/ci-verification.md`; Windows checkout behavior caused the earlier local/hosted discrepancy.
+- Notification diagnosis: the existing workflow triggers on both push and pull_request, so one branch update can produce two failure notices. Notification settings and workflow triggers were not changed.
+
+## America's Test Kitchen recipe schema — implemented October 31, 2026
+
+- November 1 update: schema v2 adds the explicitly named full instructions view combining ingredients, preparation notes and the complete cooking method with time/yield. Cooking remains available with the same combined fields. Saved-capture replay, all 174 tests, typecheck and build passed.
+
+- Added the recipe schema and synchronized source, extension manifest/copy and built-in fallback. Full/cooking/ingredients/metadata views preserve original recipe content while selecting one responsive ingredient list.
+- Added opt-in `lineBreakBefore` text boundaries for sibling headings and paragraphs; domain post-processing numbers method steps and normalizes recipe identity.
+- Offline replay passed for three latest saved bread recipes, every variant and isolated print subtrees. Full tests passed 172/172, with typecheck and build passing through the documented scoped validation route.
+- Next diagnostic: reload the installed extension and save an already accessible ATK recipe in full instructions mode. Verify one ingredient list, numbered method, preparation notes, complete time and yield. This establishes whether the installed extension has loaded the schema and produces the expected live output.
+- Coverage follow-up: obtain a multipart recipe capture before extending ingredient-group handling. Current selectors are verified on the inspected RecipeV2 bread layout, not search/listing pages or every ATK recipe layout.
+
+See `docs/atk-schema.md` for selectors, views, saved-capture evidence and verification limits.
+
 ## Genius schema — implemented October 17, 2026
 
 - Added album and song schemas, synchronized extension/built-in copies, and playlist/metadata/lyrics projections.

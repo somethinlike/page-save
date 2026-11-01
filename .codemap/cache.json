@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "generatedAt": "2026-10-17T07:03:26.125Z",
+  "generatedAt": "2026-11-01T10:19:59.772Z",
   "files": {
     "extension/extractors.js": {
       "filePath": "extension/extractors.js",
-      "mtimeMs": 1792220323324.059,
-      "size": 51381
+      "mtimeMs": 1793528333703.6316,
+      "size": 59232
     },
     "extension/service-worker.js": {
       "filePath": "extension/service-worker.js",

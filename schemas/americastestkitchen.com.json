@@ -1,0 +1,91 @@
+{
+  "domain": "americastestkitchen.com",
+  "version": "2",
+  "description": "Recipe details grounded in three saved ATK bread recipes. Select one responsive ingredient list, retain complete ordered instructions and preparation notes, and omit recommendations, account controls and comments. CSS module prefixes avoid generated suffixes; print markup supplies inspected fallbacks.",
+  "pages": {
+    "recipe": {
+      "urlPattern": "/recipes/",
+      "urlPathPattern": "^/recipes/[0-9]+-[^/]+/?$",
+      "description": "Single recipe from the inspected RecipeV2 layout. Full requires title, ingredients and instructions; metadata can describe an incomplete capture without claiming a complete recipe.",
+      "scrollDepth": "none",
+      "requiredFields": ["title", "ingredients", "instructions"],
+      "fields": {
+        "title": {
+          "selector": ["[class*='RecipeHeader_headingH1__']", "[class*='recipePrintHeader_headerContent__'] h2"],
+          "type": "text",
+          "exclude": "button, svg, script, style, template"
+        },
+        "itemId": { "selector": "link[rel='canonical']", "type": "attribute", "attribute": "href" },
+        "recipeId": { "selector": "link[rel='canonical']", "type": "attribute", "attribute": "href" },
+        "author": { "selector": "meta[name='author']", "type": "attribute", "attribute": "content" },
+        "time": {
+          "selector": ["[class*='TimeAndYield_card__']:first-child > span", "[class*='recipePrintHeader_recipeInformation__']:first-of-type > p"],
+          "type": "text",
+          "exclude": "button, svg, script, style, template"
+        },
+        "yield": {
+          "selector": ["[class*='TimeAndYield_card__']:nth-child(2) > span", "[class*='recipePrintHeader_recipeInformation__']:nth-of-type(2) > p"],
+          "type": "text",
+          "exclude": "button, svg, script, style, template"
+        },
+        "rating": {
+          "selector": "[class*='RecipeStats_statCard__'][href$='#ratings-section'] [class*='RecipeStats_row__']:first-child > span:first-child",
+          "type": "text"
+        },
+        "ratingCount": {
+          "selector": "[class*='RecipeStats_statCard__'][href$='#ratings-section'] [class*='RecipeStats_row__']:first-child > span:nth-child(2)",
+          "type": "text"
+        },
+        "published": {
+          "selector": "[class*='recipePrintHeader_recipePublishedOn__']",
+          "type": "text",
+          "exclude": "script, style, template"
+        },
+        "ingredients": {
+          "selector": [
+            "[class*='RecipeV2Layout_desktop__'] [class*='Ingredients_ingredient__']",
+            "[class*='RecipeV2Layout_tablet__'] [class*='Ingredients_ingredient__']",
+            "[class*='RecipeV2Layout_mobile__'] [class*='Ingredients_ingredient__']",
+            "[class*='recipePrintBody_ingredient__']"
+          ],
+          "type": "textAll",
+          "exclude": "input, button, svg, [aria-hidden='true'], script, style, template"
+        },
+        "beforeYouBegin": {
+          "selector": ["[class*='beforeYouBegin_beforeYouBeginTextWrapper__'] p", "[class*='recipePrintBody_beforeYouBeginBlocks__'] p"],
+          "type": "textAll",
+          "exclude": "button, svg, [aria-hidden='true'], script, style, template"
+        },
+        "instructions": {
+          "selector": ["[class*='instructions_instructionWrapper__']", "[class*='recipePrintBody_instructionWrapper__']"],
+          "type": "textAll",
+          "exclude": "button, svg, [aria-hidden='true'], script, style, template, [class*='InstructionIctStep_ictCard__']",
+          "lineBreakBefore": "li, p"
+        },
+        "whyThisWorks": {
+          "selector": "[class*='RecipeV2Layout_wtrw__'] p",
+          "type": "textAll",
+          "exclude": "button, svg, [aria-hidden='true'], script, style, template"
+        }
+      }
+    }
+  },
+  "variants": {
+    "full instructions": {
+      "description": "Ingredients and complete numbered cooking instructions together, including original quantities, preparation notes, time, yield and recipe identity.",
+      "fields": ["title", "itemId", "recipeId", "time", "yield", "ingredients", "beforeYouBegin", "instructions"]
+    },
+    "cooking": {
+      "description": "Complete cooking view: quantities, yield, unabridged time, preparation notes and numbered instructions, with recipe identity.",
+      "fields": ["title", "itemId", "recipeId", "time", "yield", "ingredients", "beforeYouBegin", "instructions"]
+    },
+    "ingredients": {
+      "description": "One ingredient list with original quantities, recipe yield and identity; no method or editorial text.",
+      "fields": ["title", "itemId", "recipeId", "yield", "ingredients"]
+    },
+    "metadata": {
+      "description": "Recipe identity, author, full time description, yield, rating count and publication date; no ingredient or instruction text.",
+      "fields": ["title", "itemId", "recipeId", "author", "time", "yield", "rating", "ratingCount", "published"]
+    }
+  }
+}

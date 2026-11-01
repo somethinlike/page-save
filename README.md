@@ -200,6 +200,12 @@ Read [SCHEMA-CONVENTIONS.md](SCHEMA-CONVENTIONS.md) before writing selectors.
 It documents the schema format, quality bar, token-efficiency rules, and test
 checklist.
 
+## America's Test Kitchen Recipes
+
+ATK recipe pages have Full, full instructions, cooking, ingredients and metadata views. Full retains recipe identity, author, time, yield, ratings, ingredients, preparation notes, complete numbered instructions and recipe explanation. **full instructions** combines the ingredient list and complete cooking method, including preparation notes, time and yield; cooking retains the same combined fields. Ingredients keeps quantities and yield; metadata omits the method and ingredient text. One responsive ingredient list is selected, and print markup supplies inspected fallbacks. Raw remains the sidebar default.
+
+The schema passed offline replay against three saved bread recipes. Reload the installed Page Save extension before using it. See [ATK recipe schema details](docs/atk-schema.md) for supported layouts, validation and the remaining live check.
+
 ## Genius Albums and Songs
 
 Genius has a domain schema for album track lists and individual song pages. **Full** saves available metadata and lyric blocks. **playlist** keeps ordered titles, artists, albums and canonical song links; **metadata** retains additional identifiers and credits without lyrics; **lyrics** keeps lyric text with song context. Raw remains available and remains the sidebar default.
