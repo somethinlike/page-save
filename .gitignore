@@ -12,3 +12,6 @@ bin/page-save-native-host.exe
 bin/page-save-native-host.sh
 bin/page-save-server-start.local.sh
 bin/com.pagesave.launcher.json
+
+# Local Understand Anything index cache
+.understand-anything/
