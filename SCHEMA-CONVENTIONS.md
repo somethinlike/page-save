@@ -131,8 +131,11 @@ Don't abuse this — the array form is for **legitimate DOM variation**, not for
 
 - **`scope: "page"`** reads a field from `document`, even inside a repeating item. Use it for artist/album context on track rows. Omit it for container-relative selectors. Page-scoped attributes need a CSS selector and `attribute`; `@attribute` is intended for element containers.
 - **`exclude`** is an optional CSS selector for `text` and `textAll`. Matching descendants are removed from a detached clone before text is read; explicit `<br>` elements become newlines. This removes Genius selection headers and hidden interface text without changing the live page. It does not reproduce CSS-generated text or arbitrary block layout; use it where explicit line breaks have been inspected.
+- **`lineBreakBefore`** is an optional CSS selector for `text` and `textAll`. On the detached text clone, insert a newline before each matching descendant after exclusions. Use inspected structural boundaries, such as `li, p` inside ATK instruction wrappers, to keep sibling headings and paragraphs separated. It works with or without `exclude`; fields without either option retain their existing `innerText` behavior. It does not infer arbitrary page layout.
 
 See [the Genius schema guide](docs/genius-schema.md) and `src/genius-extractors.test.ts` for tested examples.
+
+See [the ATK recipe guide](docs/atk-schema.md) and `src/atk-extractors.test.ts` for responsive-list fallbacks, recipe views and structural text boundaries.
 
 ## How to Build a Schema for a New Site
 

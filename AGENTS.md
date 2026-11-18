@@ -18,7 +18,9 @@ npm run build
 node dist/cli.js serve
 ```
 
-Vitest's worker/temporary-file operations can fail under the Codex sandbox. A task-local `TEMP`/`TMP` override alone did not resolve it; the original test command succeeded with scoped elevation. This is a verified temporary route, not a system repair. Use PowerShell `login:false` if the host profile reports `Get-AppxPackage` access denied.
+The existing `.git/hooks/pre-commit` runs `npx claude-code-map --quiet` and stages `.codemap/`. Inspect those generated index changes when verifying a commit; the hook may add them beyond the files staged explicitly.
+
+Vitest's worker/temporary-file operations can fail under the Codex sandbox. A task-local `TEMP`/`TMP` override alone did not resolve it; the original test command succeeded with scoped elevation. On October 31, npm tests, typecheck and build also exited 1 after their banners without diagnostics in the sandbox; all three original commands passed with scoped elevation. This is a verified temporary route, not a system repair. Use PowerShell `login:false` if the host profile reports `Get-AppxPackage` access denied.
 
 ## Constraints
 - Preserve unrelated edits and local captures. Do not commit MHTML, browser data, credentials, authenticated pages, or real lyric text as fixtures.
@@ -35,5 +37,7 @@ Vitest's worker/temporary-file operations can fail under the Codex sandbox. A ta
 - `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`: contribution and access boundaries.
 - `MANUAL-TESTS.md`: browser checks; `ROADMAP.md`: implemented history and remaining work.
 - `docs/genius-schema.md`: Genius page types, observed selectors, variants, and verification limits.
+- `docs/atk-schema.md`: ATK recipe views, responsive/print fallbacks, text boundaries and remaining live verification.
+- `docs/ci-verification.md`: hosted CI checks after pushing, duplicate push/PR events and the Windows LF/CRLF test repair. Verify hosted results as well as local checks.
 
 The legacy shared Gemini-rule pointer has been retired from this guidance. Retain recovery files without invoking deprecated agents or maintaining parallel instruction variants.
